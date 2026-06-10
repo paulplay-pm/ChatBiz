@@ -108,8 +108,10 @@ async def client(db_setup):
     rcm.get_redis = lambda: fake
 
     try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-            yield ac
+        from asgi_lifespan import LifespanManager
+        async with LifespanManager(app) as manager:
+            async with AsyncClient(transport=ASGITransport(app=manager.app), base_url="http://test") as ac:
+                yield ac
     finally:
         dbmod.SessionLocal = original_session
         rcm.get_redis = original_redis_factory
