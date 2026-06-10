@@ -288,7 +288,7 @@ class TestDetectCrossRule(unittest.TestCase):
     """Cross-rule dedup + ordering checks."""
 
     def test_no_overlap_two_distinct_types(self):
-        text = f"call 13800138000 or email foo@bar.com"
+        text = "call 13800138000 or email foo@bar.com"
         matches = detect(text)
         types = {m.type for m in matches}
         self.assertEqual(types, {"手机", "邮箱"})

@@ -47,7 +47,7 @@ async def load_routing_into_cache() -> int:
     global _inmemory
     async with get_session() as s:
         result = await s.execute(
-            select(ModelRouting).where(ModelRouting.enabled == True)
+            select(ModelRouting).where(ModelRouting.enabled.is_(True))
         )
         rows = result.scalars().all()
     settings = get_settings()

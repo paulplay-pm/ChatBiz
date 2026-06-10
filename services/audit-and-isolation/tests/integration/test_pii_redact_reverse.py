@@ -68,7 +68,7 @@ class TestRedactReverse(unittest.TestCase):
         self.assertIn("身份证", types)
 
     def test_redact_then_reverse(self):
-        text = f"手机 13800138000 邮箱 zhang@example.com"
+        text = "手机 13800138000 邮箱 zhang@example.com"
         redacted, mapping, types = _run(redact("trace-2", text))
         # Both placeholders present
         self.assertIn("[手机_", redacted)
