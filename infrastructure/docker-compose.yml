@@ -1,0 +1,142 @@
+# =============================================================================
+# ChatBiz — local docker-compose stack
+#
+# Scope of THIS file (incremental, Task 1 of credential-management):
+#   - postgres + redis as shared infra (used by many ChatBiz services)
+#   - credential            — FastAPI service
+#   - credential-migrate    — one-shot Alembic upgrade container
+#   - credential-cron       — periodic cleanup / alerting job
+#
+# Other services (audit-and-isolation, agent-runtime, etc.) will be added in
+# subsequent changes. They are referenced here by name (as env / depends_on
+# targets) but not declared yet — add them when those changes land.
+# =============================================================================
+
+name: chatbiz
+
+x-pg-env: &pg-env
+  POSTGRES_USER: chatbiz
+  POSTGRES_PASSWORD: chatbiz
+  POSTGRES_DB: credential
+
+services:
+  # ---------------------------------------------------------------------------
+  # Shared infrastructure
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: chatbiz-postgres
+    restart: unless-stopped
+    environment:
+      <<: *pg-env
+      # The credential service connects to `credential` (POSTGRES_DB above).
+      # Other databases (audit / knowledge / model) are not created here yet;
+      # add POSTGRES_MULTIPLE_DATABASES + the helper init script when those
+      # services land in their own changes.
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatbiz -d credential"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: chatbiz-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  # credential-management service
+  # ---------------------------------------------------------------------------
+  credential:
+    build:
+      context: ../services/credential
+      dockerfile: Dockerfile
+    container_name: chatbiz-credential
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/credential
+      REDIS_URL: redis://redis:6379/0
+      AUDIT_WEBHOOK_URL: ${AUDIT_WEBHOOK_URL:-}
+      WECOM_WEBHOOK_URL: ${WECOM_WEBHOOK_URL:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      ENVIRONMENT: ${ENVIRONMENT:-local}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      credential-migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; \
+sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  credential-migrate:
+    build:
+      context: ../services/credential
+      dockerfile: Dockerfile
+    container_name: chatbiz-credential-migrate
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/credential
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  credential-cron:
+    build:
+      context: ../services/credential
+      dockerfile: Dockerfile
+    container_name: chatbiz-credential-cron
+    restart: unless-stopped
+    command: ["python", "-m", "app.cron"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/credential
+      REDIS_URL: redis://redis:6379/0
+      WECOM_WEBHOOK_URL: ${WECOM_WEBHOOK_URL:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      credential-migrate:
+        condition: service_completed_successfully
+
+# -----------------------------------------------------------------------------
+# Volumes
+# -----------------------------------------------------------------------------
+volumes:
+  postgres-data:
+    name: chatbiz-postgres-data
+  redis-data:
+    name: chatbiz-redis-data
+
+# -----------------------------------------------------------------------------
+# Networks
+# -----------------------------------------------------------------------------
+networks:
+  default:
+    name: chatbiz-net
