@@ -37,7 +37,6 @@ the HTTP layer is added.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import secrets
 import string
@@ -50,7 +49,8 @@ from sqlalchemy import func as sa_func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crypto
-from app.models import Credential, CredentialAudit, CredentialType
+from app.audit import write_audit as _write_audit
+from app.models import Credential, CredentialType
 from app.schemas import (
     CredentialCreateRequest,
     CredentialDetailResponse,
@@ -123,16 +123,6 @@ def _generate_credential_id() -> str:
     """
     suffix = "".join(secrets.choice(_BASE62_ALPHABET) for _ in range(_ID_SUFFIX_LEN))
     return f"cred_{suffix}"
-
-
-def _hash_credential_id(credential_id: str) -> bytes:
-    """SHA-256 first 8 bytes — the audit-log hash column.
-
-    Audit rows store this 8-byte prefix instead of the plaintext id so
-    the audit table can be replicated to a less-trusted environment
-    without leaking ids. Spec §凭证访问审计.
-    """
-    return hashlib.sha256(credential_id.encode("utf-8")).digest()[:8]
 
 
 # ---------------------------------------------------------------------------
@@ -553,26 +543,22 @@ class CredentialService:
         cap: str | None = None,
         purpose: str | None = None,
     ) -> None:
-        """Write one row to ``credential_audit``.
+        """Write one row to ``credential_audit`` via :mod:`app.audit`.
 
-        TODO(Task 5): this is the in-DB half of the audit story. Task 5
-        will additionally POST a copy to the central
-        ``audit-and-isolation`` cap webhook (best-effort; the in-DB row
-        is the source of truth).
+        Thin wrapper kept for the in-service callsites; the HTTP layer
+        in ``app.routers.credentials`` calls :func:`app.audit.write_audit`
+        directly. Both paths land identical rows because they share the
+        same writer module.
         """
-        audit_row = CredentialAudit(
+        await _write_audit(
+            self._session,
             user_id=user_id,
-            credential_id_hash=_hash_credential_id(credential_id),
+            credential_id=credential_id,
             action=action,
+            success=success,
             cap=cap,
             purpose=purpose,
-            success=success,
         )
-        self._session.add(audit_row)
-        # Best-effort flush so the audit row lands in the same
-        # transaction as the operation; the HTTP layer's transaction
-        # boundary (Task 5) commits / rolls back the whole unit.
-        await self._session.flush()
 
 
 # ---------------------------------------------------------------------------
