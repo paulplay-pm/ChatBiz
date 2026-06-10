@@ -26,7 +26,7 @@ print("canvas-ui verify\n")
 # Gate 1-6: spec files
 specs = ["canvas-shell","canvas-workflow-list","canvas-editor","canvas-debugger","canvas-chatflow","canvas-auth"]
 for s in specs:
-    p = Path("/Users/paulwang/work/ChatBiz") / "openspec" / "changes" / "archive" / "2026-06-10-implement-canvas-ui" / "specs" / s / "spec.md"
+    p = Path("/Users/paulwang/work/ChatBiz") / "openspec" / "specs" / s / "spec.md"
     failed += check(f"spec: {s}", p.exists(), str(p) if p.exists() else "MISSING")
 
 # Gate 7: 14 node wrappers
@@ -73,6 +73,15 @@ failed += check("dev IAM plugin", (ROOT / "vite-plugin-dev-iam.ts").exists())
 # Gate 12: vitest tests
 failed += check("vitest unit tests", len(list((ROOT / "tests").rglob("*.test.ts"))) > 0)
 failed += check("playwright config", (ROOT / "playwright.config.ts").exists())
+
+# Gate 12b: at least 3 real e2e specs (auth, workflow create, node schema)
+e2e_dir = ROOT / "e2e"
+e2e_specs = list(e2e_dir.glob("*.spec.ts")) if e2e_dir.exists() else []
+failed += check(f"playwright e2e specs >= 3", len(e2e_specs) >= 3, f"{len(e2e_specs)} specs: {[s.name for s in e2e_specs]}")
+# Verify required specs exist by name
+for required in ("auth.spec.ts", "paul-monthly-report.spec.ts", "node-schema.spec.ts"):
+    found = (e2e_dir / required).exists() if e2e_dir.exists() else False
+    failed += check(f"e2e spec: {required}", found)
 
 # Gate 13: docker-compose
 dc = REPO / "infrastructure" / "docker-compose.yml"

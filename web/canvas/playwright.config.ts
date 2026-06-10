@@ -6,6 +6,12 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
+  webServer: {
+    command: 'pnpm dev --host 127.0.0.1',
+    url: 'http://localhost:5173',
+    reuseExistingServer: true,
+    timeout: 120_000,
+  },
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
