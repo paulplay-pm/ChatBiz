@@ -68,23 +68,23 @@ class TestRandomKeyGeneration:
 class TestValueRoundTrip:
     def test_round_trip_simple(self) -> None:
         dek = generate_dek()
-        nonce, blob = encrypt_with_dek(b"hello", dek)
-        assert decrypt_with_dek(nonce, blob, dek) == b"hello"
+        blob = encrypt_with_dek(b"hello", dek)
+        assert decrypt_with_dek(blob, dek) == b"hello"
 
     def test_round_trip_empty(self) -> None:
         """Empty plaintext MUST round-trip cleanly (GCM allows zero-length)."""
         dek = generate_dek()
-        nonce, blob = encrypt_with_dek(b"", dek)
-        # Empty-plaintext ciphertext is just the 16-byte GCM tag.
-        assert len(blob) == GCM_TAG_BYTES
-        assert decrypt_with_dek(nonce, blob, dek) == b""
+        blob = encrypt_with_dek(b"", dek)
+        # Empty-plaintext blob is just nonce + GCM tag (no body).
+        assert len(blob) == GCM_NONCE_BYTES + GCM_TAG_BYTES
+        assert decrypt_with_dek(blob, dek) == b""
 
     def test_round_trip_unicode_chinese(self) -> None:
         """Spec example: Chinese-character plaintext."""
         dek = generate_dek()
         plaintext = "你好世界,ChatBiz".encode()
-        nonce, blob = encrypt_with_dek(plaintext, dek)
-        assert decrypt_with_dek(nonce, blob, dek) == plaintext
+        blob = encrypt_with_dek(plaintext, dek)
+        assert decrypt_with_dek(blob, dek) == plaintext
 
     def test_round_trip_1mb(self) -> None:
         """Large plaintext (1 MiB) MUST round-trip in well under a second.
@@ -96,29 +96,33 @@ class TestValueRoundTrip:
         """
         dek = generate_dek()
         plaintext = os.urandom(1024 * 1024)
-        nonce, blob = encrypt_with_dek(plaintext, dek)
-        assert decrypt_with_dek(nonce, blob, dek) == plaintext
+        blob = encrypt_with_dek(plaintext, dek)
+        assert decrypt_with_dek(blob, dek) == plaintext
 
-    def test_ciphertext_contains_16_byte_tag(self) -> None:
-        """``blob`` is ``ciphertext || tag`` — empty pt is 16 bytes tag only."""
+    def test_blob_layout(self) -> None:
+        """``blob`` is ``nonce(12) || ciphertext || tag(16)`` — empty pt = 28 bytes."""
         dek = generate_dek()
-        _, blob = encrypt_with_dek(b"", dek)
-        assert len(blob) == GCM_TAG_BYTES
+        blob = encrypt_with_dek(b"", dek)
+        assert len(blob) == GCM_NONCE_BYTES + GCM_TAG_BYTES == 28
 
-    def test_nonce_is_12_bytes(self) -> None:
-        """AES-GCM nonce MUST be 96 bits."""
+    def test_blob_prefix_is_12_byte_nonce(self) -> None:
+        """The first 12 bytes of the blob are the AES-GCM nonce."""
         dek = generate_dek()
-        nonce, _ = encrypt_with_dek(b"x", dek)
-        assert len(nonce) == GCM_NONCE_BYTES == 12
+        blob = encrypt_with_dek(b"x", dek)
+        # Two encryptions of the same plaintext under the same DEK must
+        # produce different 12-byte prefixes (fresh CSPRNG nonce per call).
+        blob2 = encrypt_with_dek(b"x", dek)
+        assert blob[:GCM_NONCE_BYTES] != blob2[:GCM_NONCE_BYTES]
+        assert len(blob[:GCM_NONCE_BYTES]) == GCM_NONCE_BYTES == 12
 
     def test_encrypt_uses_fresh_nonce_each_call(self) -> None:
         """Re-encrypting the same plaintext under the same DEK MUST produce
-        a different nonce (and therefore a different ciphertext)."""
+        a different blob (fresh nonce → different prefix and body)."""
         dek = generate_dek()
-        n1, c1 = encrypt_with_dek(b"same", dek)
-        n2, c2 = encrypt_with_dek(b"same", dek)
-        assert n1 != n2
-        assert c1 != c2
+        b1 = encrypt_with_dek(b"same", dek)
+        b2 = encrypt_with_dek(b"same", dek)
+        assert b1 != b2
+        assert b1[:GCM_NONCE_BYTES] != b2[:GCM_NONCE_BYTES]
 
 
 class TestValueDecryptErrors:
@@ -131,48 +135,56 @@ class TestValueDecryptErrors:
         cryptography-library exception type.
         """
         dek = generate_dek()
-        nonce, blob = encrypt_with_dek(b"secret", dek)
+        blob = encrypt_with_dek(b"secret", dek)
         other_dek = generate_dek()
         assert other_dek != dek
         with pytest.raises(CredentialDecryptionError):
-            decrypt_with_dek(nonce, blob, other_dek)
+            decrypt_with_dek(blob, other_dek)
 
-    def test_short_ciphertext_raises(self) -> None:
-        """A blob shorter than the 16-byte GCM tag is structurally invalid."""
+    def test_short_blob_raises(self) -> None:
+        """A blob shorter than ``nonce(12) + tag(16)`` is structurally invalid."""
         dek = generate_dek()
-        nonce = b"\x00" * GCM_NONCE_BYTES
         with pytest.raises(CredentialDecryptionError):
-            decrypt_with_dek(nonce, b"\x00" * (GCM_TAG_BYTES - 1), dek)
+            decrypt_with_dek(b"\x00" * (GCM_NONCE_BYTES + GCM_TAG_BYTES - 1), dek)
 
-    def test_empty_ciphertext_raises(self) -> None:
+    def test_empty_blob_raises(self) -> None:
         dek = generate_dek()
-        nonce = b"\x00" * GCM_NONCE_BYTES
         with pytest.raises(CredentialDecryptionError):
-            decrypt_with_dek(nonce, b"", dek)
+            decrypt_with_dek(b"", dek)
 
-    def test_wrong_nonce_length_raises(self) -> None:
-        """``decrypt_with_dek`` MUST reject non-12-byte nonces up front."""
+    def test_nonce_only_blob_raises(self) -> None:
+        """A 12-byte (nonce-only) blob carries no tag and MUST be rejected."""
         dek = generate_dek()
-        with pytest.raises(ValueError, match="nonce"):
-            decrypt_with_dek(b"\x00" * 8, b"\x00" * GCM_TAG_BYTES, dek)
+        with pytest.raises(CredentialDecryptionError):
+            decrypt_with_dek(b"\x00" * GCM_NONCE_BYTES, dek)
 
     def test_tampered_ciphertext_raises(self) -> None:
-        """Flipping a single byte in the ciphertext MUST fail authentication."""
+        """Flipping a single byte in the body MUST fail authentication."""
         dek = generate_dek()
-        nonce, blob = encrypt_with_dek(b"important payload", dek)
+        blob = encrypt_with_dek(b"important payload", dek)
         tampered = bytearray(blob)
-        tampered[0] ^= 0x01
+        # Flip a byte in the ciphertext portion (just past the 12-byte nonce).
+        tampered[GCM_NONCE_BYTES] ^= 0x01
         with pytest.raises(CredentialDecryptionError):
-            decrypt_with_dek(nonce, bytes(tampered), dek)
+            decrypt_with_dek(bytes(tampered), dek)
 
     def test_tampered_tag_raises(self) -> None:
         """Flipping a byte in the trailing GCM tag MUST fail authentication."""
         dek = generate_dek()
-        nonce, blob = encrypt_with_dek(b"important payload", dek)
+        blob = encrypt_with_dek(b"important payload", dek)
         tampered = bytearray(blob)
         tampered[-1] ^= 0x01
         with pytest.raises(CredentialDecryptionError):
-            decrypt_with_dek(nonce, bytes(tampered), dek)
+            decrypt_with_dek(bytes(tampered), dek)
+
+    def test_tampered_nonce_raises(self) -> None:
+        """Flipping a byte in the nonce prefix MUST fail authentication."""
+        dek = generate_dek()
+        blob = encrypt_with_dek(b"important payload", dek)
+        tampered = bytearray(blob)
+        tampered[0] ^= 0x01
+        with pytest.raises(CredentialDecryptionError):
+            decrypt_with_dek(bytes(tampered), dek)
 
     def test_wrong_size_dek_raises(self) -> None:
         """``encrypt_with_dek`` MUST reject DEKs of the wrong length."""
@@ -277,13 +289,13 @@ class TestFullStack:
         plaintext = b"super-secret-credential-value"
 
         # Encrypt.
-        nonce, blob = encrypt_with_dek(plaintext, dek)
+        blob = encrypt_with_dek(plaintext, dek)
         enc_dek = encrypt_dek_with_master(dek, master)
 
         # Decrypt.
         recovered_dek = decrypt_dek_with_master(enc_dek, master)
         assert recovered_dek == dek
-        assert decrypt_with_dek(nonce, blob, recovered_dek) == plaintext
+        assert decrypt_with_dek(blob, recovered_dek) == plaintext
 
     def test_full_stack_with_wrong_master(self) -> None:
         master = generate_master_key()
@@ -298,7 +310,7 @@ class TestFullStack:
         is correct — the two layers authenticate independently."""
         master = generate_master_key()
         dek = generate_dek()
-        nonce, blob = encrypt_with_dek(b"hello", dek)
+        blob = encrypt_with_dek(b"hello", dek)
         enc_dek = encrypt_dek_with_master(dek, master)
 
         # Master unwraps fine.
@@ -306,6 +318,6 @@ class TestFullStack:
 
         # Value decrypt fails because the value blob was tampered.
         tampered = bytearray(blob)
-        tampered[0] ^= 0x01
+        tampered[GCM_NONCE_BYTES] ^= 0x01  # flip ciphertext byte
         with pytest.raises(CredentialDecryptionError):
-            decrypt_with_dek(nonce, bytes(tampered), dek)
+            decrypt_with_dek(bytes(tampered), dek)

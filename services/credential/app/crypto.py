@@ -17,10 +17,11 @@ async session — but the *crypto* itself is synchronous and unit-testable
 in isolation.
 
 The nonce layout follows the modern ``cryptography`` API style: each
-authenticated encryption returns a single blob of the form
-``nonce || ciphertext || tag``.  We split that blob apart on the way in
-(encrypt) and re-assemble it on the way out (decrypt) at the storage
-boundary. See ``_split_blob`` / ``_join_blob`` below.
+authenticated encryption returns a single self-contained blob of the
+form ``nonce || ciphertext || tag``. Both the value-under-DEK and the
+DEK-under-master layers use this same layout, so each maps cleanly to
+a single BYTEA column (``credentials.encrypted_value`` and
+``credentials.encrypted_dek``) with no sibling nonce column.
 
 This file is intentionally pure: there is no I/O, no logging, no
 configuration. Callers (services, routers) are responsible for wiring it
@@ -139,58 +140,60 @@ def generate_master_key() -> bytes:
 # ---------------------------------------------------------------------------
 
 
-def encrypt_with_dek(plaintext: bytes, dek: bytes) -> tuple[bytes, bytes]:
+def encrypt_with_dek(plaintext: bytes, dek: bytes) -> bytes:
     """Encrypt ``plaintext`` under ``dek`` using AES-256-GCM.
 
-    Returns a ``(nonce, ciphertext_and_tag)`` tuple:
+    Returns a single self-contained blob with layout
+    ``nonce(12) || ciphertext || tag(16)`` — identical in shape to
+    ``encrypt_dek_with_master``. The caller stores this blob verbatim
+    in ``credentials.encrypted_value``; no sibling nonce column is
+    needed.
 
-    * ``nonce`` is a fresh 12-byte CSPRNG value, safe to store alongside
-      the ciphertext.
-    * ``ciphertext_and_tag`` is the concatenation of ciphertext and
-      16-byte GCM auth tag, as emitted by the ``AESGCM`` AEAD
-      constructor.
+    * The 12-byte prefix is a fresh CSPRNG nonce, generated per call.
+    * The trailing bytes are the concatenation of ciphertext and
+      16-byte GCM auth tag, as emitted by the ``AESGCM`` AEAD.
 
-    This uses the *modern* ``AESGCM.encrypt`` API (single-blob output)
-    rather than the older ``Cipher + algorithms.AES + modes.GCM`` form.
-    The "nonce / ciphertext / tag" three-tuple from the older API is
-    collapsed into a single ciphertext+tag blob plus a separate nonce
-    here — see ``_split_blob`` / ``_join_blob`` for the boundary logic.
+    Symmetric counterpart of ``decrypt_with_dek``; a blob produced
+    here can always be reversed by ``decrypt_with_dek`` with the same
+    DEK. Empty plaintext produces a 28-byte blob (12 nonce + 16 tag).
     """
     _validate_dek(dek)
     nonce = secrets.token_bytes(GCM_NONCE_BYTES)
     aead = AESGCM(dek)
     ciphertext_and_tag = aead.encrypt(nonce, plaintext, associated_data=None)
-    return nonce, ciphertext_and_tag
+    # Storage layout: ``nonce || ciphertext || tag``. Matches the
+    # envelope returned by ``encrypt_dek_with_master`` so both layers
+    # land in single BYTEA columns with no schema asymmetry.
+    return nonce + ciphertext_and_tag
 
 
-def decrypt_with_dek(
-    nonce: bytes,
-    ciphertext_and_tag: bytes,
-    dek: bytes,
-) -> bytes:
+def decrypt_with_dek(encrypted_value: bytes, dek: bytes) -> bytes:
     """Decrypt a credential value previously produced by ``encrypt_with_dek``.
 
-    ``ciphertext_and_tag`` is the single-blob output of the modern
-    ``AESGCM`` API (ciphertext || tag). Authentication failures
-    (wrong key, tampered ciphertext, mismatched nonce length) raise
+    ``encrypted_value`` is the single self-contained blob with layout
+    ``nonce(12) || ciphertext || tag(16)``. We slice off the first 12
+    bytes as the nonce; the rest is fed to ``AESGCM.decrypt``.
+
+    Authentication failures (wrong key, tampered ciphertext) raise
     ``CredentialDecryptionError`` so callers can map that to an audit
     log "decrypt failed" event without leaking the underlying
-    ``InvalidTag`` detail to the user.
+    ``InvalidTag`` detail to the user. A blob shorter than the
+    minimum (12-byte nonce + 16-byte tag = 28 bytes) is rejected up
+    front with the same domain error rather than letting
+    ``AESGCM.decrypt`` raise an opaque ``ValueError`` from the C
+    layer.
     """
     _validate_dek(dek)
-    _validate_nonce(nonce)
-    if len(ciphertext_and_tag) < GCM_TAG_BYTES:
-        # A "ciphertext" shorter than the auth tag is structurally
-        # impossible — there is no ciphertext body at all. Fail fast
-        # with a clear error rather than letting ``AESGCM.decrypt``
-        # raise an opaque ``ValueError`` from the C layer.
+    if len(encrypted_value) < GCM_NONCE_BYTES + GCM_TAG_BYTES:
         raise CredentialDecryptionError(
-            f"ciphertext_and_tag must be at least {GCM_TAG_BYTES} bytes "
-            f"(got {len(ciphertext_and_tag)})"
+            f"encrypted_value must be at least {GCM_NONCE_BYTES + GCM_TAG_BYTES} bytes "
+            f"(got {len(encrypted_value)})"
         )
+    nonce = encrypted_value[:GCM_NONCE_BYTES]
+    body = encrypted_value[GCM_NONCE_BYTES:]
     aead = AESGCM(dek)
     try:
-        return aead.decrypt(nonce, ciphertext_and_tag, associated_data=None)
+        return aead.decrypt(nonce, body, associated_data=None)
     except InvalidTag as exc:
         raise CredentialDecryptionError("credential value authentication failed") from exc
 
@@ -418,11 +421,6 @@ def _validate_master(master: bytes) -> None:
         raise TypeError(f"master must be bytes, got {type(master).__name__}")
     if len(master) != MASTER_KEY_BYTES:
         raise ValueError(f"master must be exactly {MASTER_KEY_BYTES} bytes (got {len(master)})")
-
-
-def _validate_nonce(nonce: bytes) -> None:
-    if len(nonce) != GCM_NONCE_BYTES:
-        raise ValueError(f"nonce must be exactly {GCM_NONCE_BYTES} bytes (got {len(nonce)})")
 
 
 def _validate_nonce_prefix(blob: bytes) -> None:
