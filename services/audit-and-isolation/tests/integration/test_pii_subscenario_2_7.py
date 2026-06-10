@@ -25,7 +25,7 @@ Test shape:
 from __future__ import annotations
 
 import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from app.metrics import credential_unavailable_counter
 

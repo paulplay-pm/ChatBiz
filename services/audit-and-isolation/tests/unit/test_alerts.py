@@ -20,7 +20,6 @@ with the rest of the suite.
 from __future__ import annotations
 
 import asyncio
-import logging
 import unittest
 from unittest.mock import MagicMock, patch
 
