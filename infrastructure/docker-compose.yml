@@ -173,6 +173,66 @@ sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)
       postgres:
         condition: service_healthy
 
+  # ---------------------------------------------------------------------------
+  # workflow-engine service
+  # ---------------------------------------------------------------------------
+  workflow-engine:
+    build:
+      context: ../services/workflow-engine
+      dockerfile: Dockerfile
+    container_name: chatbiz-workflow-engine
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/workflow_engine
+      REDIS_URL: redis://redis:6379/0
+      AUDIT_ISOLATION_URL: http://audit-and-isolation:8080
+      CREDENTIAL_SERVICE_URL: http://credential:8000
+      KNOWLEDGE_BASE_URL: http://knowledge-base:8002
+      AGENT_RUNTIME_URL: http://agent-runtime:8003
+      WORKFLOW_ENGINE_SERVICE_TOKEN: ${WORKFLOW_ENGINE_SERVICE_TOKEN:-dev-wf-token}
+      WECOM_WEBHOOK_URL: ${WECOM_WEBHOOK_URL:-}
+      DOCKER_SANDBOX_ENABLED: "true"
+      DOCKER_SOCKET: /var/run/docker.sock
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      ENVIRONMENT: ${ENVIRONMENT:-local}
+    volumes:
+      # Mount Docker socket for code execution node sandbox
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      audit-and-isolation:
+        condition: service_healthy
+      credential:
+        condition: service_healthy
+      workflow-engine-migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://127.0.0.1:8001/healthz', timeout=2).status==200 else sys.exit(1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+
+  workflow-engine-migrate:
+    build:
+      context: ../services/workflow-engine
+      dockerfile: Dockerfile
+    container_name: chatbiz-workflow-engine-migrate
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/workflow_engine
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 # -----------------------------------------------------------------------------
 # Volumes
 # -----------------------------------------------------------------------------
