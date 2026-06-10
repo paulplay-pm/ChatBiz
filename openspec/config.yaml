@@ -1,0 +1,89 @@
+schema: superpowers-bridge
+
+# Project context
+# Shown to AI when creating artifacts. Reflects the project as of 2026-06-10.
+# Three design artifacts together form the source of truth (in priority order):
+#   1. docs/architecture.md  (technical architecture, 70KB Chinese)
+#   2. docs/prd.md           (product requirements, v1.5, 166KB Chinese)
+#   3. ~/.gstack/projects/paulplay-pm-ChatBiz/paulwang-main-design-20260609-230548.md
+#      (approved design doc — office-hours + plan-eng-review, 12 findings locked)
+context: |
+  项目名称：ChatBiz — 企业级 AI Agent 智能体平台（Lead Agent / Sub Agent + 工作流引擎 + 内网 AI + 数据隔离网关）。
+  当前阶段：pre-build。docs/ 已冻结；eng-review 12 个工程决策已锁定；0 行源代码。
+  仓库内产物：
+    - docs/architecture.md  (技术架构，中文，约 980 行，§4 是设计章节)
+    - docs/prd.md           (产品需求，v1.5，中文，8 章节 + 4 阶段里程碑)
+    - docs/prototype.html    (HTML 原型，4562 行)
+  3 个具名内部用户：paul（财务运营）、leo（基础服务）、anny（增值服务）。共同根因：用公网 AI 工具处理内部数据 = 数据泄露风险（合规红线，非想象威胁）。
+  9-12 月总周期（C-level sponsor 承诺）；MVP 2-3 月跑通 paul 财务月报 workflow + 数据隔离网关 + 基础审计。
+  5-7 FTE 满负荷 month 1-9。
+  工作流：所有变更通过 openspec/ 走 superpowers-bridge schema（brainstorm → proposal → design → specs → tasks → plan → apply → verify → retrospective）。
+  语言：所有产出物（brainstorm/proposal/design/specs/tasks/plan）和模型回复使用简体中文。
+  仓库内 schemas：openspec/schemas/superpowers-bridge/ 已装。
+  外部源：eng-review 12 个工程决策已 locked-in，详见设计 doc 的 ## GSTACK REVIEW REPORT，spec 作者须读取后再写新 spec，避免重新讨论。
+
+# Per-artifact rules
+# Rules scoped to each artifact type. Tight to the current pre-build reality.
+# Locked decisions from the eng-review (2026-06-10) are summarized under "eng-review-decisions" below.
+rules:
+  proposal:
+    - 必须明确本变更与三件源中哪一件的哪一节相关：docs/architecture.md §X、docs/prd.md §X、或设计 doc 的 GSTACK REVIEW REPORT
+    - 必须列出"非目标"（Non-goals），明确不做的事
+    - 影响面涉及"未来实施"时，必须明确标注 [FUTURE-IMPLEMENTATION] 并说明：当前不实现，只为后续实施做准备
+    - 若与 12 个 eng-review 锁定决策任一条冲突，必须 surface 冲突并先回到设计 doc 修正
+  design:
+    - 设计文档须包含：Context、Goals/Non-Goals、Decisions（含每个决策的备选方案与拒绝理由）、Risks/Trade-offs、Migration Plan、Open Questions
+    - 涉及架构层面时必须引用 docs/architecture.md 的对应章节
+    - 任何技术选型（框架/数据库/中间件）必须与 architecture.md §4.4 一致；偏离需给出书面理由并提出 architecture.md 的更新建议
+    - 触及 12 个 eng-review 决策任一条时，须先检查设计 doc 里该决策的 finding 编号（Arch #1-#6 / Quality #1-#3 / Test #1-#2 / Perf #1-#2），引用之，不重提
+    - 若涉及 12 类节点类型中任一种，必须以"Node Contract (TypedDict)"为共用契约，不可每节点 4 份独立代码（UI / StateGraph / schema / validator）
+    - 触及数据隔离网关时：egress 强制点（不是 ingress）、HA、跨网关 trace-id 关联、4 个错误边界（canvas drag / runtime / user / security）
+  specs:
+    - 每个 Requirement 须使用 SHALL 或 MUST 表述
+    - 每个 Requirement 至少有一个 #### Scenario（WHEN/THEN 格式）
+    - 若 spec 涉及未来代码层（API/数据库/前端），必须标注 [FUTURE-IMPLEMENTATION] 提示当前仓库无对应代码
+    - 测试规范：3 层金字塔（单元 pytest / 集成 LangGraph e2e / E2E Playwright）+ LLM eval（50 个 paul 财务月报场景作为基线）
+    - 4 个 critical path 必须显式列为 Requirement：① paul 财务月报 end-to-end ② 数据隔离网关 PII 拦截 ③ 人工审批中断与续接 ④ 插件加载失败降级
+    - 后端 spec 必须包含：API 请求/响应校验规则、异常用例、权限校验用例
+    - 数据库变更必须包含：数据回滚测试、多租户隔离测试用例
+    - 前端 spec 必须包含：页面交互用例、权限渲染校验
+    - 所有 spec 必须绑定：单元测试覆盖率 ≥100%、接口 100% 覆盖、安全用例全覆盖
+  tasks:
+    - 任务粒度：每条任务预计 2 小时内可完成
+    - 设计/文档类任务可以独立存在；任何"编码"任务必须配对至少一条"验证/测试/评审"任务
+    - 不允许"先实现后补测试"的工作顺序
+    - 编码任务必须附带：规范校验清单、安全校验清单
+    - 涉及 12 类节点类型时，task 必须以 Node Contract 为前置（先建 schema → 生成代码，不要先写单个节点）
+    - 状态存储 task 必须明确 PostgreSQL（workflow state）+ Redis（canvas realtime）双层
+    - 编码 Python 必须遵循 SQLAlchemy ORM + 异步 + 审计埋点
+    - 编码 React 必须遵循 TypeScript 严格 + Hooks + 状态隔离
+  brainstorm:
+    - 必须明确记录被拒方案（rejected alternatives）及拒绝理由
+    - Open Questions 必须列出本轮未决的问题，禁止隐藏在决策叙述中
+    - 触及 12 个 eng-review 锁定决策时，直接引用其 finding 编号，不再做对比
+    - 触及 3 个具名用户的工作流时（paul 月报 / leo 数据查询 / anny 文档审核），必须在视图中把这 3 个场景作为"必中 wedge"
+  verify:
+    - 验证清单必须可逐条勾选，每条对应一个可观察的产物（文件存在、命令退出码、文档章节等）
+    - 不可观察的验证项（如"看起来对"）不算通过
+    - 4 个 critical path 必须在 verify 阶段 100% 覆盖：paul 财务月报 e2e / 网关 PII 拦截 e2e / 人工审批中断续接 e2e / 插件降级 e2e
+    - 性能验证：数据隔离网关 P99 < 500ms（100 RPS 压测）
+    - LLM eval：50 个 paul 财务月报场景输出质量基线
+
+# Eng-review locked decisions
+# 12 finding 全部 approved（2026-06-10）。spec/change 作者必须先看这一节再下笔，避免重复讨论。
+# 完整 finding 描述见设计 doc 的 ## GSTACK REVIEW REPORT。
+# 引用约定：发现 spec 与某条冲突时，写 "[ENG-#N]" 引用对应 finding 编号。
+eng-review-decisions:
+  - 'Arch #1 (P1): 数据隔离网关 = egress 强制点 + 2 实例 HA + 跨网关 trace-id 关联。失败模式：网关挂 = 所有 LLM 调用挂。'
+  - 'Arch #2 (P1): 12 节点类型共享一份 Node Contract (TypedDict)，从 1 份 schema 生成 UI / StateGraph / schema / validator。'
+  - 'Arch #3 (P1): 四层记忆系统（工作 / 短期 Redis / 长期 PostgreSQL / 语义 Milvus）需在 architecture.md §4.3.X 补详细设计。'
+  - 'Arch #4 (P2): Workflow + Chatflow 复用同一 LangGraph StateGraph；Chatflow 是 Workflow 的 loop back 变体。'
+  - 'Arch #5 (P2): MVP 包含 MCP 集成（filesystem / fetch / postgres 三个核心 server）。'
+  - 'Arch #6 (P2): 人工审批节点 = LangGraph Checkpointer + 通知渠道（企微/邮件/站内信 至少 1 个）+ 审批人 web UI 重新进入 + 24h 默认超时。'
+  - 'Quality #1 (P2): Node Contract 代码生成；12 节点各写 4 份 = DRY 违反 + 48 处不一致。'
+  - 'Quality #2 (P2): 状态双层：PostgreSQL（workflow state source of truth）+ Redis（canvas 实时 + event sourcing 回滚）。'
+  - 'Quality #3 (P2): 错误处理 4 边界：canvas drag-loop / runtime（LLM 5xx timeout 限额）/ user（参数不全）/ security（未授权凭证）。'
+  - 'Test #1 (P1): 3 层测试金字塔 + LLM eval（pytest / LangGraph 集成 / Playwright E2E / 50 paul 场景 LLM eval）。'
+  - 'Test #2 (P1): 4 critical path 100% 覆盖：paul 财务月报 / 网关 PII 拦截 / 人工审批中断续接 / 插件降级。'
+  - 'Perf #1 (P1): 网关补 3 性能项：缓存（prompt 模板/凭据/路由表）+ 限流（per-user per-workflow）+ 批处理（独立 workflow 合并）。'
+  - 'Perf #2 (P1): 5 个存储量预估：audit log 780GB/3mo / workflow state 500MB / Milvus 100GB / canvas 500MB / MinIO 10TB/year。'

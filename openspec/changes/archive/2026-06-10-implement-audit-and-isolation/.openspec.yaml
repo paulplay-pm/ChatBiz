@@ -1,0 +1,4 @@
+schema: superpowers-bridge
+created: 2026-06-10
+goal: 在 2-3 月 MVP 窗口内落地 egress 强制点,保证 PII 拦截率 100% + 失败安全(fail-closed for PII,
+  fail-open for非敏感模型调用)。Lose this = entire agent platform dead.

@@ -1,33 +1,38 @@
-# workflow-engine Specification
+# workflow-engine Specification (Delta)
 
-## Purpose
-TBD - created by archiving change add-chatbiz-platform. Update Purpose after archive.
-## Requirements
-### Requirement: 工作流列表
-系统 MUST 提供工作流列表视图,以卡片形式展示名称、状态、运行次数、共享范围;支持按名称搜索,按状态/共享范围/类型筛选。
+本 change 修改 workflow-engine capability 的多个 Requirement,新增 5 个 Requirement(对应 brainstorm Q11 人工审批 4 设计点 / Q3 代码 sandbox / Q12 错误处理 / Q15 OpenAPI / 调整后的 4 critical path 协调)。
 
-#### Scenario: 列表加载
-- **WHEN** 用户打开工作流列表页面
-- **THEN** 系统 MUST 渲染工作流卡片网格,每卡片显示名称、状态、运行次数、共享范围;加载时间 < 1s (本地数据库 1k workflow 内)
+## MODIFIED Requirements
 
-#### Scenario: 按名称搜索
-- **WHEN** 用户在搜索框输入关键词
-- **THEN** 系统 MUST 实时(<200ms)过滤卡片,只显示名称包含关键词的工作流
+### Requirement: 12 类节点类型
+系统 MUST 实现 12 类业务节点 + 2 个控制节点(开始 / 结束) = 共 14 类节点:开始 / 结束 / LLM / 知识检索 / Agent / 条件分支 / 循环 / 迭代 / HTTP 请求 / 代码执行 / 人工审批 / 子流程 / 参数提取 / 变量赋值。所有 14 类节点 MUST 在本 change 落地;跨 service 依赖(知识检索 / Agent)走 stub 策略,接口固化、integration test 用 mock,真实接通在对应 service change 里完成。
 
-### Requirement: 可视化画布
-系统 MUST 提供基于 React Flow / X6 的可视化画布编辑器,支持 12 类节点的拖拽、连线、参数配置、调试运行;画布 JSON 可序列化为可执行图。
+#### Scenario: 14 节点全部可用
+- **WHEN** 实现方完成本 change
+- **THEN** 系统 MUST 列出 14 类节点且每类的 Node Contract + execute() 完整实现;画布前端 change (`implement-canvas-ui`) 可通过 `GET /api/nodes/:type/schema` 拿到所有 14 类的 config schema
 
-#### Scenario: 拖拽节点
-- **WHEN** 用户从节点面板拖拽一个 LLM 节点到画布
-- **THEN** 系统 MUST 在画布上创建该节点实例,位置为释放点;节点 ID 唯一,无重复
+#### Scenario: 知识检索节点 stub
+- **WHEN** workflow 含知识检索节点 + knowledge-base service 尚未实现
+- **THEN** 节点 MUST 走 stub HTTP 调 `http://knowledge-base:8002/retrieve`(未实现返 503),单元测试用 `respx` mock 返回 fixture;knowledge-base change 落地后 URL 不变,实现接管
 
-#### Scenario: 节点连线
-- **WHEN** 用户从一个节点的输出端口拖拽连线到另一个节点的输入端口
-- **THEN** 系统 MUST 创建一条带箭头方向的边,自动校验源节点有输出端口、目标节点有输入端口;校验失败 MUST 阻止连线
+#### Scenario: Agent 节点 stub
+- **WHEN** workflow 含 Agent 节点 + agent-runtime service 尚未实现
+- **THEN** 节点 MUST 走 stub HTTP 调 `http://agent-runtime:8003/invoke`(未实现返 503),单元测试用 mock;agent-runtime change 落地后接管
 
-#### Scenario: 调试运行
-- **WHEN** 用户点击"调试运行"按钮
-- **THEN** 系统 MUST 序列化画布为 JSON,调用 LangGraph 编译服务,执行工作流,实时流式返回每个节点的执行结果(状态、输出、耗时)
+### Requirement: 节点契约 (Node Contract)
+系统 MUST 用 1 份 Pydantic BaseModel 驱动每类节点的 4 份产物(画布 UI config schema / StateGraph 节点函数 / I/O schema / 验证函数),运行时 introspect 生成,不允许每节点独立写 4 份。eng-review Arch #2 + Quality #1 锁定。12 × 4 = 48 份组件从 1 个源生成。
+
+#### Scenario: 节点定义一致性
+- **WHEN** 实施方新增 1 类节点
+- **THEN** 系统 MUST 仅需在 `app/nodes/contracts/<type>.py` 中加 1 个 Pydantic BaseModel;`BaseModel.model_json_schema()` 自动暴露 I/O schema + config schema;StateGraph 节点函数由 `app/nodes/registry.py` 通过 Pydantic `model_validate()` 自动包装;不允许手动写 4 份独立代码
+
+#### Scenario: 节点 schema API
+- **WHEN** 前端发 `GET /api/nodes/llm/schema`
+- **THEN** 系统 MUST 返回 LLM 节点 config schema(JSON Schema 格式),前端用 `@rjsf/core` 渲染 config 面板;返回 MUST 含 `model` / `prompt` / `temperature` 等 LLM 节点专有字段
+
+#### Scenario: 14 节点 schema 全部可查
+- **WHEN** 实施方完成本 change
+- **THEN** `GET /api/nodes/{type}/schema` 对 14 类节点 MUST 全部返 200 + 非空 JSON schema
 
 ### Requirement: 工作流执行
 系统 MUST 将画布 JSON 编译为 LangGraph StateGraph 并执行;支持串行/并行、条件路由、错误处理、结果聚合;4 错误边界 MUST 全覆盖(eng-review Quality #3)。编译 MUST 在请求线程完成(compiled_graph 缓存到内存);执行 MUST 异步(后台 asyncio task);执行事件 MUST 持久化到 `node_event` 表 + SSE 流式推送给前端。
@@ -71,36 +76,6 @@ TBD - created by archiving change add-chatbiz-platform. Update Purpose after arc
 - **WHEN** 实施方完成本 change
 - **THEN** workflow / chatflow MUST 共享同一份 `compile_state_graph(workflow_definition)` 调用,差异仅在 dispatch + thread_id 处理;不允许 2 套独立编译路径
 
-### Requirement: 12 类节点类型
-系统 MUST 实现 12 类业务节点 + 2 个控制节点(开始 / 结束) = 共 14 类节点:开始 / 结束 / LLM / 知识检索 / Agent / 条件分支 / 循环 / 迭代 / HTTP 请求 / 代码执行 / 人工审批 / 子流程 / 参数提取 / 变量赋值。所有 14 类节点 MUST 在本 change 落地;跨 service 依赖(知识检索 / Agent)走 stub 策略,接口固化、integration test 用 mock,真实接通在对应 service change 里完成。
-
-#### Scenario: 14 节点全部可用
-- **WHEN** 实现方完成本 change
-- **THEN** 系统 MUST 列出 14 类节点且每类的 Node Contract + execute() 完整实现;画布前端 change (`implement-canvas-ui`) 可通过 `GET /api/nodes/:type/schema` 拿到所有 14 类的 config schema
-
-#### Scenario: 知识检索节点 stub
-- **WHEN** workflow 含知识检索节点 + knowledge-base service 尚未实现
-- **THEN** 节点 MUST 走 stub HTTP 调 `http://knowledge-base:8002/retrieve`(未实现返 503),单元测试用 `respx` mock 返回 fixture;knowledge-base change 落地后 URL 不变,实现接管
-
-#### Scenario: Agent 节点 stub
-- **WHEN** workflow 含 Agent 节点 + agent-runtime service 尚未实现
-- **THEN** 节点 MUST 走 stub HTTP 调 `http://agent-runtime:8003/invoke`(未实现返 503),单元测试用 mock;agent-runtime change 落地后接管
-
-### Requirement: 节点契约 (Node Contract)
-系统 MUST 用 1 份 Pydantic BaseModel 驱动每类节点的 4 份产物(画布 UI config schema / StateGraph 节点函数 / I/O schema / 验证函数),运行时 introspect 生成,不允许每节点独立写 4 份。eng-review Arch #2 + Quality #1 锁定。12 × 4 = 48 份组件从 1 个源生成。
-
-#### Scenario: 节点定义一致性
-- **WHEN** 实施方新增 1 类节点
-- **THEN** 系统 MUST 仅需在 `app/nodes/contracts/<type>.py` 中加 1 个 Pydantic BaseModel;`BaseModel.model_json_schema()` 自动暴露 I/O schema + config schema;StateGraph 节点函数由 `app/nodes/registry.py` 通过 Pydantic `model_validate()` 自动包装;不允许手动写 4 份独立代码
-
-#### Scenario: 节点 schema API
-- **WHEN** 前端发 `GET /api/nodes/llm/schema`
-- **THEN** 系统 MUST 返回 LLM 节点 config schema(JSON Schema 格式),前端用 `@rjsf/core` 渲染 config 面板;返回 MUST 含 `model` / `prompt` / `temperature` 等 LLM 节点专有字段
-
-#### Scenario: 14 节点 schema 全部可查
-- **WHEN** 实施方完成本 change
-- **THEN** `GET /api/nodes/{type}/schema` 对 14 类节点 MUST 全部返 200 + 非空 JSON schema
-
 ### Requirement: 工作流状态持久化
 系统 MUST 将 workflow_definition / workflow_run / node_event / approval 4 张业务表 + LangGraph 官方 `langgraph_checkpoints` 表 持久化到 PostgreSQL;**MUST NOT** 用 Redis 存 workflow execution state(画布实时状态 + event sourcing 留给 `implement-canvas-ui` change)。eng-review Quality #2 本 change 拆分:仅 PG,Redis 推迟。回滚以 PostgreSQL 为准。
 
@@ -130,6 +105,8 @@ TBD - created by archiving change add-chatbiz-platform. Update Purpose after arc
 #### Scenario: 插件加载失败降级
 - **WHEN** workflow 调用的 HTTP 节点 downstream service 返 503
 - **THEN** 系统 MUST 走 retry 1 次后 degrade:`node_event.status=skipped` + `error_class=runtime` + workflow_run 继续(若后续节点不依赖此结果),audit log 记录 degradation;不允许 fail-fast 整个 workflow
+
+## ADDED Requirements
 
 ### Requirement: 人工审批节点(eng-review Arch #6)
 人工审批节点 MUST 实现 4 个设计点:(1) LangGraph Checkpointer 持久化到 PostgreSQL(官方 langgraph-checkpoint-postgres 包)(2) 通知渠道:复用 `audit-and-isolation/app/alerts.py` 发企微 webhook(env var `WECOM_WEBHOOK_URL`,未配置在本地环境不发)(3) web UI reentry:`POST /approvals/:id:resume` 端点 + `GET /approvals/pending?user=X` 列表(前端 UI 留给 `implement-canvas-ui` change)(4) 24h 默认超时:apscheduler 启动时注册 cron job(每 5 分钟扫),超时自动 cancel。
@@ -209,4 +186,3 @@ workflow-engine MUST 暴露 13 个 REST endpoint + 1 个 Node Contract schema en
 #### Scenario: fixture 端到端通过
 - **WHEN** 测试加载 fixture 启动 workflow_run(mock ERP HTTP 200 + mock audit-and-isolation 网关返固定 LLM 响应 + mock 企微 webhook 200)
 - **THEN** workflow_run MUST 走完 7 节点全部 status=completed,audit_log 14 字段完整,checkpoint 在 approval 点可被 reentry API resume
-
