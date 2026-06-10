@@ -18,6 +18,7 @@ be importable from ``app.nodes`` so the workflow compiler can introspect them.
 """
 from __future__ import annotations
 
+import importlib
 from typing import Any, Callable
 
 from pydantic import BaseModel
@@ -133,10 +134,35 @@ def list_node_types() -> list[dict]:
     ]
 
 
+def bind_execute_fns() -> None:
+    """For each registered type, find and bind the module-level <type>_execute function.
+    Called once at app startup (in app/nodes/__init__.py, after the 14 node imports).
+
+    The ``@register`` decorator installs a default ``execute_fn`` that returns ``{}``.
+    The concrete implementations are defined as module-level ``<type>_execute``
+    functions; this function walks ``NODE_REGISTRY`` and binds them so the workflow
+    compiler's wrapped node function actually does work.
+    """
+    for type_name in list(NODE_REGISTRY.keys()):
+        try:
+            # Node modules live at app.nodes.<type_name> (flat structure; the
+            # BaseConfig / BaseNode base classes live at app.nodes.contracts.base,
+            # but the concrete executables are at app.nodes.<type_name>).
+            module = importlib.import_module(f"app.nodes.{type_name}")
+            fn_name = f"{type_name}_execute"
+            if hasattr(module, fn_name):
+                NODE_REGISTRY[type_name].execute_fn = getattr(module, fn_name)
+        except ImportError:
+            # Module for this type doesn't exist; skip (the node is registered
+            # but has no concrete implementation yet).
+            pass
+
+
 __all__ = [
     "NODE_REGISTRY",
     "NodeContract",
     "register",
     "get_contract",
     "list_node_types",
+    "bind_execute_fns",
 ]

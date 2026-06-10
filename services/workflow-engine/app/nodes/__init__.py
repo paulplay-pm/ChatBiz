@@ -22,10 +22,22 @@ from app.nodes.iterate import IterateNode
 from app.nodes.knowledge import KnowledgeNode
 from app.nodes.llm import LLMNode
 from app.nodes.loop import LoopNode
-from app.nodes.registry import NODE_REGISTRY, get_contract, list_node_types, register
+from app.nodes.registry import (
+    NODE_REGISTRY,
+    bind_execute_fns,
+    get_contract,
+    list_node_types,
+    register,
+)
 from app.nodes.start import StartNode
 from app.nodes.subflow import SubflowNode
 from app.nodes.variable_assign import VariableAssignNode
+
+# Wire concrete <type>_execute functions into NODE_REGISTRY. The @register
+# decorator installs a default no-op execute_fn; the real implementations
+# are module-level <type>_execute functions. This must run after all 14
+# node modules are imported (above) so importlib can find them.
+bind_execute_fns()
 
 __all__ = [
     "NODE_REGISTRY",
