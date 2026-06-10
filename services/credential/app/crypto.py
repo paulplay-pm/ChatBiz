@@ -30,6 +30,7 @@ to Postgres and to the audit log.
 
 from __future__ import annotations
 
+import functools
 import secrets
 from dataclasses import dataclass
 from typing import Final
@@ -221,6 +222,13 @@ def _derive_master_subkey(master: bytes) -> bytes:
       "slow on brute force" property for free.
     * Argon2id would require an extra native binary; scrypt ships in
       the standard ``cryptography`` package and uses OpenSSL.
+
+    The derivation is cached: scrypt with ``N=2^15`` takes ~30-50 ms
+    per call, which dominates the use-API hot path (the spec's P99
+    SLO is 50 ms). There is exactly one active master key per
+    process, so ``lru_cache(maxsize=1)`` removes the per-op overhead
+    without changing the API. A rotation installs a new master key;
+    the cache is invalidated by ``_invalidate_subkey_cache``.
     """
     _validate_master(master)
     from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
@@ -233,6 +241,24 @@ def _derive_master_subkey(master: bytes) -> bytes:
         p=_SCRYPT_P,
     )
     return kdf.derive(master)
+
+
+@functools.lru_cache(maxsize=2)
+def _derive_master_subkey_cached(master: bytes) -> bytes:
+    """lru_cache wrapper for ``_derive_master_subkey``.
+
+    The cache holds up to 2 master keys (current + the most-recently
+    retired) so a rotation does not flush the hot path's cache entry.
+    Rotation also calls ``_invalidate_subkey_cache`` to drop old
+    retired keys once the rotation flow has finished its re-wrap of
+    every DEK.
+    """
+    return _derive_master_subkey(master)
+
+
+def _invalidate_subkey_cache() -> None:
+    """Drop the cached subkey. Called after ``rotate_master_key``."""
+    _derive_master_subkey_cached.cache_clear()
 
 
 def encrypt_dek_with_master(dek: bytes, master: bytes) -> bytes:
@@ -249,7 +275,7 @@ def encrypt_dek_with_master(dek: bytes, master: bytes) -> bytes:
     """
     _validate_dek(dek)
     _validate_master(master)
-    subkey = _derive_master_subkey(master)
+    subkey = _derive_master_subkey_cached(master)
     nonce = secrets.token_bytes(GCM_NONCE_BYTES)
     aead = AESGCM(subkey)
     ciphertext_and_tag = aead.encrypt(nonce, dek, associated_data=None)
@@ -271,7 +297,7 @@ def decrypt_dek_with_master(encrypted_dek: bytes, master: bytes) -> bytes:
     """
     _validate_master(master)
     _validate_nonce_prefix(encrypted_dek)
-    subkey = _derive_master_subkey(master)
+    subkey = _derive_master_subkey_cached(master)
     nonce = encrypted_dek[:GCM_NONCE_BYTES]
     body = encrypted_dek[GCM_NONCE_BYTES:]
     aead = AESGCM(subkey)
@@ -400,6 +426,11 @@ async def rotate_master_key(
         session.add(new_row)
         await session.flush()
         new_key_id = new_row.key_id
+
+    # Drop the cached subkey for the retired master. The cache now
+    # retains only the new master (the most-recently used one is the
+    # hot path); older retired keys fall out of the LRU naturally.
+    _invalidate_subkey_cache()
 
     return MasterKeyRecord(key_id=new_key_id, key=new_master)
 
