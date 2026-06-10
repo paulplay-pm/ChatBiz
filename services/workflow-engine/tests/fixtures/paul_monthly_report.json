@@ -1,0 +1,21 @@
+{
+  "nodes": [
+    {"id": "start", "type": "start", "config": {}, "position": {"x": 0, "y": 0}},
+    {"id": "fetch_erp", "type": "http", "config": {"method": "GET", "url": "http://mock-erp/data", "retry_count": 1, "credential_id": "cred-erp"}},
+    {"id": "set_vars", "type": "variable_assign", "config": {"vars": {"month": "2026-05", "revenue_threshold": 1000000}}},
+    {"id": "check", "type": "condition", "config": {"expression": "{% if n_set_vars_outputs_revenue > 1000000 %}true{% else %}false{% endif %}"}},
+    {"id": "summary", "type": "llm", "config": {"model": "gpt-4", "credential_id": "cred-openai", "prompt": "{{n_set_vars_outputs_month}} 月报: 总营收 {{n_set_vars_outputs_revenue}}", "temperature": 0.7}},
+    {"id": "approve", "type": "approval", "config": {"approver_user_id": "u-paul", "timeout_hours": 24, "approval_content_template": "请审批 {{n_set_vars_outputs_month}} 月报"}},
+    {"id": "end", "type": "end", "config": {}, "position": {"x": 0, "y": 500}}
+  ],
+  "edges": [
+    {"from": "start", "to": "fetch_erp"},
+    {"from": "fetch_erp", "to": "set_vars"},
+    {"from": "set_vars", "to": "check"},
+    {"from": "check", "to": "summary", "condition": "true"},
+    {"from": "check", "to": "end", "condition": "false"},
+    {"from": "summary", "to": "approve"},
+    {"from": "approve", "to": "end"}
+  ],
+  "variables": {"month": "2026-05", "revenue_threshold": 1000000}
+}
