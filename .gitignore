@@ -12,15 +12,7 @@ build/
 develop-eggs/
 dist/
 downloads/
-eggs/
 .eggs/
-# lib/  # Python virtualenv pattern — frontend src/lib/ needs to be committed
-!web/canvas/src/lib/
-# lib64/  # Python virtualenv pattern — frontend src/lib/ needs to be committed
-!web/canvas/src/lib/
-parts/
-sdist/
-var/
 wheels/
 pip-wheel-metadata/
 share/python-wheels/

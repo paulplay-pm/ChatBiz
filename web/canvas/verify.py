@@ -26,7 +26,7 @@ print("canvas-ui verify\n")
 # Gate 1-6: spec files
 specs = ["canvas-shell","canvas-workflow-list","canvas-editor","canvas-debugger","canvas-chatflow","canvas-auth"]
 for s in specs:
-    p = Path("/Users/paulwang/work/ChatBiz") / "openspec" / "changes" / "implement-canvas-ui" / "specs" / s / "spec.md"
+    p = Path("/Users/paulwang/work/ChatBiz") / "openspec" / "changes" / "archive" / "2026-06-10-implement-canvas-ui" / "specs" / s / "spec.md"
     failed += check(f"spec: {s}", p.exists(), str(p) if p.exists() else "MISSING")
 
 # Gate 7: 14 node wrappers
