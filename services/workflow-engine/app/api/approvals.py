@@ -1,12 +1,13 @@
 import uuid
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_session
 from app.models.workflow import Approval, WorkflowRun
 from app.errors.classes import ApprovalNotFound, ApprovalAlreadyResponded, UnauthorizedApprovalAccess, UserError
+from app.api.deps import get_user_id
 
 router = APIRouter(prefix="/approvals", tags=["approvals"])
 
@@ -21,9 +22,10 @@ async def list_pending(
     user: str,
     page: int = 1,
     page_size: int = 20,
+    _user_id: str = Depends(get_user_id),
     session: AsyncSession = Depends(get_session),
 ):
-    """List pending approvals for a user."""
+    """List pending approvals for a user. Auth enforced via shared dep."""
     if not user:
         raise UserError("缺少 user 查询参数")
     offset = (page - 1) * page_size
@@ -55,15 +57,13 @@ async def list_pending(
 async def resume_approval(
     approval_id: uuid.UUID,
     body: ResumeRequest,
-    x_user_id: str = Header(..., alias="X-User-Id"),
+    user_id: str = Depends(get_user_id),
     session: AsyncSession = Depends(get_session),
 ):
-    if not x_user_id:
-        raise UserError("缺少 X-User-Id header")
     ap = await session.get(Approval, approval_id)
     if ap is None:
         raise ApprovalNotFound(f"审批 {approval_id} 不存在")
-    if ap.approver_user_id != x_user_id:
+    if ap.approver_user_id != user_id:
         raise UnauthorizedApprovalAccess(f"无权访问审批 {approval_id}")
     if ap.status != "pending":
         raise ApprovalAlreadyResponded(f"审批已 {ap.status},不可重复 resume")
@@ -80,11 +80,9 @@ async def resume_approval(
 @router.post("/{approval_id}:cancel")
 async def cancel_approval(
     approval_id: uuid.UUID,
-    x_user_id: str = Header(..., alias="X-User-Id"),
+    user_id: str = Depends(get_user_id),
     session: AsyncSession = Depends(get_session),
 ):
-    if not x_user_id:
-        raise UserError("缺少 X-User-Id header")
     ap = await session.get(Approval, approval_id)
     if ap is None:
         raise ApprovalNotFound(f"审批 {approval_id} 不存在")
@@ -92,7 +90,7 @@ async def cancel_approval(
     if run is None:
         raise UserError(f"workflow_run {ap.run_id} 不存在")
     # Allow approver OR workflow starter to cancel
-    if ap.approver_user_id != x_user_id and run.started_by != x_user_id:
+    if ap.approver_user_id != user_id and run.started_by != user_id:
         raise UnauthorizedApprovalAccess(f"无权取消审批 {approval_id}")
     ap.status = "cancelled"
     ap.responded_at = datetime.utcnow()

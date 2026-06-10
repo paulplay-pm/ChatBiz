@@ -1,5 +1,5 @@
 import uuid
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_session
 from app.models.workflow import WorkflowDefinition
@@ -7,22 +7,15 @@ from app.errors.classes import UserError
 from sqlalchemy import select
 from app.errors.cycle_detection import detect_cycle
 from app.nodes.registry import NODE_REGISTRY
+from app.api.deps import get_user_id
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
-
-
-def get_validate_user_id(request: Request) -> str:
-    uid = request.headers.get("X-User-Id")
-    if not uid:
-        raise UserError("缺少 X-User-Id header")
-    return uid
 
 
 @router.post("/{workflow_id}/validate")
 async def validate_workflow(
     workflow_id: uuid.UUID,
-    request: Request,
-    user_id: str = Depends(get_validate_user_id),
+    user_id: str = Depends(get_user_id),
     session: AsyncSession = Depends(get_session),
 ):
     """Validate a workflow definition for: (1) DAG cycles, (2) node type registration,
