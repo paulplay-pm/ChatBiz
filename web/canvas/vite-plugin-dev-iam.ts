@@ -23,7 +23,7 @@ export function devIam(): Plugin {
         req.on('data', (c) => { body += c; });
         req.on('end', () => {
           try {
-            const { username, password } = JSON.parse(body);
+            const { username } = JSON.parse(body);
             if (!username) {
               res.statusCode = 400;
               res.setHeader('Content-Type', 'application/json');

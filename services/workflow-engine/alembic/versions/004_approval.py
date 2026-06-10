@@ -38,7 +38,7 @@ def upgrade() -> None:
         sa.Column("status", sa.Text(), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("responded_at", sa.DateTime(), nullable=True),
-        sa.Column("response_payload", postgresql.JSONB(), nullable=True),
+        sa.Column("response_payload", sa.JSON(), nullable=True),
         sa.ForeignKeyConstraint(
             ["run_id"],
             ["workflow_run.run_id"],

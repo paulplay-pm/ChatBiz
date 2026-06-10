@@ -31,7 +31,8 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import BigInteger, Boolean, ForeignKey, Index, Integer, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
@@ -59,7 +60,7 @@ class WorkflowDefinition(Base):
     version: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     created_by: Mapped[str] = mapped_column(Text, nullable=False)
-    definition_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    definition_json: Mapped[dict] = mapped_column(JSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
     archived: Mapped[bool] = mapped_column(Boolean, default=False)
 
@@ -124,8 +125,8 @@ class NodeEvent(Base):
     )
     node_id: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False)
-    input_json: Mapped[dict | None] = mapped_column(JSONB, default=None)
-    output_json: Mapped[dict | None] = mapped_column(JSONB, default=None)
+    input_json: Mapped[dict | None] = mapped_column(JSON, default=None)
+    output_json: Mapped[dict | None] = mapped_column(JSON, default=None)
     started_at: Mapped[datetime | None] = mapped_column(default=None)
     ended_at: Mapped[datetime | None] = mapped_column(default=None)
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -165,7 +166,7 @@ class Approval(Base):
     status: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
     responded_at: Mapped[datetime | None] = mapped_column(default=None)
-    response_payload: Mapped[dict | None] = mapped_column(JSONB, default=None)
+    response_payload: Mapped[dict | None] = mapped_column(JSON, default=None)
 
     __table_args__ = (
         Index(

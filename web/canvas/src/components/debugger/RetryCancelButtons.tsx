@@ -5,11 +5,9 @@ import { api } from '@/lib/apiClient';
 
 interface Props {
   workflowId: string | undefined;
-  runId: string;
-  status: string;
 }
 
-export function RetryCancelButtons({ workflowId, runId, status }: Props) {
+export function RetryCancelButtons({ workflowId }: Props) {
   const navigate = useNavigate();
 
   const onRetry = async () => {

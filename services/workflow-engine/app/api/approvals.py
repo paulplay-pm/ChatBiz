@@ -42,6 +42,7 @@ async def list_pending(
                 "approval_id": str(a.approval_id),
                 "run_id": str(a.run_id),
                 "node_id": a.node_id,
+                "approver_user_id": a.approver_user_id,
                 "status": a.status,
                 "created_at": a.created_at.isoformat(),
             }

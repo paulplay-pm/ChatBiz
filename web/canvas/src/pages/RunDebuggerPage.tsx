@@ -81,7 +81,7 @@ export default function RunDebuggerPage() {
           </div>
         )}
         <div style={{ marginTop: 16 }}>
-          <RetryCancelButtons workflowId={run.workflow_id} runId={run.run_id} status={run.status} />
+          <RetryCancelButtons workflowId={run.workflow_id} />
         </div>
       </Card>
 

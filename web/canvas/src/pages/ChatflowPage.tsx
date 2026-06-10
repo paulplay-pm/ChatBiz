@@ -5,7 +5,6 @@ import { api } from '@/lib/apiClient';
 import { useSession } from '@/hooks/useSession';
 import { useRunEvents } from '@/hooks/useRunEvents';
 import { ChatBubble, BubbleType } from '@/components/chatflow/ChatBubble';
-import { ApprovalInlineCard } from '@/components/chatflow/ApprovalInlineCard';
 
 interface WorkflowMeta {
   id: string;

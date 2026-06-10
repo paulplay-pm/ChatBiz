@@ -11,7 +11,12 @@ describe('autoLayout', () => {
     const edges: CanvasEdge[] = [{ id: 'e1', from: 'n1', to: 'n2' }];
     const result = autoLayout(nodes, edges);
     expect(result).toHaveLength(2);
-    expect(result[0].position).not.toEqual({ x: 0, y: 0 });
+    // dagre produces {x:90,y:40} after subtracting 90/40 → {0,0}. At least verify
+    // that both node positions were assigned by dagre (not the original {0,0}).
+    expect(result[0]!.position).toBeDefined();
+    expect(result[1]!.position).toBeDefined();
+    // Positions should differ after layout; with rankdir=LR, x changes and y may stay equal.
+    expect(result[0]!.position.x).not.toEqual(result[1]!.position.x);
   });
 
   it('should handle empty graph', () => {

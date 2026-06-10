@@ -3,13 +3,13 @@ import { useCanvasEditStore } from '../src/store/useCanvasEditStore';
 
 describe('useCanvasEditStore', () => {
   it('should add nodes and mark dirty', () => {
-    const { addNode, nodes, dirty } = useCanvasEditStore.getState();
+    const { addNode, nodes } = useCanvasEditStore.getState();
     expect(nodes).toHaveLength(0);
     addNode({ id: 'n1', type: 'llm', config: { model: 'gpt-4' }, position: { x: 100, y: 200 } });
     const state = useCanvasEditStore.getState();
     expect(state.nodes).toHaveLength(1);
     expect(state.dirty).toBe(true);
-    expect(state.nodes[0].type).toBe('llm');
+    expect(state.nodes[0]!.type).toBe('llm');
   });
 
   it('should remove nodes and associated edges', () => {
@@ -42,9 +42,9 @@ describe('useCanvasEditStore', () => {
     const store = useCanvasEditStore.getState();
     store.setInitial('wf-3', 1, [{ id: 'n1', type: 'llm', config: {}, position: { x: 0, y: 0 } }], []);
     store.setNodeStatus('n1', 'running');
-    expect(useCanvasEditStore.getState().nodes[0].status).toBe('running');
+    expect(useCanvasEditStore.getState().nodes[0]!.status).toBe('running');
     store.setNodeStatus('n1', 'completed');
-    expect(useCanvasEditStore.getState().nodes[0].status).toBe('completed');
+    expect(useCanvasEditStore.getState().nodes[0]!.status).toBe('completed');
   });
 
   it('should mark clean', () => {

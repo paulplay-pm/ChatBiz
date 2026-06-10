@@ -5,7 +5,7 @@ import { message } from 'antd';
 
 export function useSaveWorkflow() {
   const qc = useQueryClient();
-  const { workflowId, version, nodes, edges, markClean, setInitial } = useCanvasEditStore();
+  const { workflowId, nodes, edges, markClean, setInitial } = useCanvasEditStore();
 
   return useMutation({
     mutationFn: async (overrides?: { name?: string }) => {

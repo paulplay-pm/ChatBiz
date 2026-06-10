@@ -35,7 +35,7 @@ def upgrade() -> None:
         sa.Column("version", sa.Integer(), nullable=False),
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("created_by", sa.Text(), nullable=False),
-        sa.Column("definition_json", postgresql.JSONB(), nullable=False),
+        sa.Column("definition_json", sa.JSON(), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("archived", sa.Boolean(), nullable=False),
         sa.PrimaryKeyConstraint("id", "version", name="pk_workflow_definition"),

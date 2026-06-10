@@ -10,10 +10,10 @@ export function useUndoRedo() {
       if (!isMod) return;
       if (e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
-        store.undo();
+        store.getState().undo();
       } else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
         e.preventDefault();
-        store.redo();
+        store.getState().redo();
       } else if (e.key === 's') {
         e.preventDefault();
         window.dispatchEvent(new CustomEvent('chatbiz-save-workflow'));

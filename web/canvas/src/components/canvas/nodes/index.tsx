@@ -35,11 +35,11 @@ const META: Record<string, NodeMeta> = {
 
 const ALL_TYPES = Object.keys(META);
 
-export function NodeWrapper({ id, type, data, selected }: NodeProps) {
-  const meta = META[type || 'start'] || META.start;
+export function NodeWrapper({ type, data, selected }: NodeProps) {
+  const meta = META[type || 'start'] ?? META.start;
   const config = (data as any).config || {};
   const status: NodeStatus = (data as any).status || 'pending';
-  const borderColor = selected ? '#1890ff' : (meta.statusColor[status] || '#d9d9d9');
+  const borderColor = selected ? '#1890ff' : (meta?.statusColor[status] || '#d9d9d9');
 
   return (
     <div
@@ -55,10 +55,10 @@ export function NodeWrapper({ id, type, data, selected }: NodeProps) {
     >
       {type !== 'start' && <Handle type="target" position={Position.Left} />}
       <div style={{ fontWeight: 600, marginBottom: 4 }}>
-        {meta.icon} {meta.label}
+        {meta?.icon} {meta?.label}
       </div>
       <div style={{ color: '#666', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {meta.summary(config)}
+        {meta?.summary(config)}
       </div>
       {type !== 'end' && <Handle type="source" position={Position.Right} />}
     </div>

@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { ReactFlow, Background, Controls, MiniMap, ReactFlowProvider, useReactFlow, Connection } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Button, Space, message } from 'antd';
-import { SaveOutlined, PartitionOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Button, message } from 'antd';
+import { SaveOutlined, PartitionOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
-import { useCanvasEditStore, CanvasNode, CanvasEdge } from '@/store/useCanvasEditStore';
+import { useCanvasEditStore } from '@/store/useCanvasEditStore';
 import { useUndoRedo } from '@/hooks/useUndoRedo';
 import { useSaveWorkflow } from '@/hooks/useSaveWorkflow';
 import { nodeTypes } from '@/components/canvas/nodes';
@@ -21,7 +21,7 @@ function CanvasPageInner() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const {
-    workflowId, version, nodes, edges, dirty, selectedNodeId,
+    workflowId, nodes, edges, dirty,
     setInitial, addNode, addEdge, removeNode, removeEdge,
     selectNode,
   } = useCanvasEditStore();

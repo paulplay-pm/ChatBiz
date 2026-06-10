@@ -22,7 +22,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.config import get_settings
 
 _settings = get_settings()
-engine = create_async_engine(_settings.database_url, pool_pre_ping=True, pool_size=20)
+# When the URL is SQLite (aiosqlite), pool_size is not supported.
+# Build kwargs dynamically so tests can override DATABASE_URL without
+# hitting StaticPool argument errors.
+_engine_kwargs: dict = dict(pool_pre_ping=True, pool_size=20)
+if "sqlite" in _settings.database_url:
+    _engine_kwargs = dict(echo=False)
+engine = create_async_engine(_settings.database_url, **_engine_kwargs)
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 
