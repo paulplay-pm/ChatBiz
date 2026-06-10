@@ -14,8 +14,10 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# lib/  # Python virtualenv pattern — frontend src/lib/ needs to be committed
+!web/canvas/src/lib/
+# lib64/  # Python virtualenv pattern — frontend src/lib/ needs to be committed
+!web/canvas/src/lib/
 parts/
 sdist/
 var/
