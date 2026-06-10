@@ -1,0 +1,188 @@
+openapi: 3.1.0
+info:
+  title: chatbiz-audit-and-isolation
+  version: 0.1.0
+paths:
+  /v1/chat/completions:
+    post:
+      summary: Chat Completions
+      description: 'OpenAI-compatible proxy endpoint with PII isolation + audit.
+
+
+        See module docstring for the 6-step pipeline.'
+      operationId: chat_completions_v1_chat_completions_post
+      parameters:
+      - name: x-trace-id
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 8
+          maxLength: 128
+          title: X-Trace-Id
+      - name: x-model-kind
+        in: header
+        required: true
+        schema:
+          type: string
+          title: X-Model-Kind
+      - name: x-bypass-isolation
+        in: header
+        required: false
+        schema:
+          type: string
+          default: 'false'
+          title: X-Bypass-Isolation
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /healthz:
+    get:
+      summary: Healthz
+      description: 'Liveness probe — always 200 if the process is alive.
+
+
+        The body is a tiny ``{"status": "ok"}`` so a debug client
+
+        can curl the endpoint and see a parseable response.'
+      operationId: healthz_healthz_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+                title: Response Healthz Healthz Get
+  /readyz:
+    get:
+      summary: Readyz
+      description: 'Readiness probe — 200 only when every dependency is reachable.
+
+
+        Each check is wrapped in its own try/except so a single
+
+        failing dependency produces a useful ``checks`` body
+
+        rather than a 500. The HTTP status is 200 only when *all*
+
+        checks pass.'
+      operationId: readyz_readyz_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /v1/models:
+    get:
+      summary: List Models
+      description: 'Return the enabled models from ``model_routing``.
+
+
+        The ``created`` timestamp is the row''s ``updated_at`` (in
+
+        unix seconds), which gives clients a stable, monotonic
+
+        ordering signal that doesn''t change unless a model is
+
+        actually updated. We pick ``updated_at`` over ``id`` because
+
+        a newer-model-restart scenario should bump the timestamp
+
+        visibly to clients.'
+      operationId: list_models_v1_models_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelList'
+components:
+  schemas:
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    ModelInfo:
+      properties:
+        id:
+          type: string
+          title: Id
+        object:
+          type: string
+          title: Object
+          default: model
+        created:
+          type: integer
+          title: Created
+        owned_by:
+          type: string
+          title: Owned By
+      type: object
+      required:
+      - id
+      - created
+      - owned_by
+      title: ModelInfo
+      description: 'OpenAI-shaped model descriptor — the only fields a client
+
+        should ever need (id + ownership).'
+    ModelList:
+      properties:
+        object:
+          type: string
+          title: Object
+          default: list
+        data:
+          items:
+            $ref: '#/components/schemas/ModelInfo'
+          type: array
+          title: Data
+      type: object
+      required:
+      - data
+      title: ModelList
+      description: Top-level response body — matches OpenAI's ``/v1/models`` shape.
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
