@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_session
 from app.models.workflow import WorkflowRun, NodeEvent
 from app.executor.sse import run_events_sse
+from app.api.deps import get_user_id
 
 router = APIRouter(prefix="/runs", tags=["runs"])
 
@@ -12,16 +13,10 @@ router = APIRouter(prefix="/runs", tags=["runs"])
 @router.get("/{run_id}")
 async def get_run(
     run_id: uuid.UUID,
-    x_user_id: str = Depends(lambda: None),  # placeholder, override below
+    _user_id: str = Depends(get_user_id),
     session: AsyncSession = Depends(get_session),
 ):
-    """Get workflow_run status + last 50 node events."""
-    from fastapi import Header
-    # Hacky: re-extract user_id
-    return await _get_run_impl(run_id, session)
-
-
-async def _get_run_impl(run_id, session):
+    """Get workflow_run status + last 50 node events. Auth via shared dep."""
     run = await session.get(WorkflowRun, run_id)
     if run is None:
         raise HTTPException(status_code=404, detail={"error_class": "user", "error_message": f"workflow_run {run_id} 不存在"})

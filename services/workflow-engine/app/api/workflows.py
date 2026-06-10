@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from app.database import get_session
 from app.models.workflow import WorkflowDefinition
 from app.errors.classes import SecurityError, UserError
+from app.api.deps import get_user_id
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
 
@@ -19,14 +20,6 @@ class CreateWorkflowRequest(BaseModel):
 class UpdateWorkflowRequest(BaseModel):
     name: Optional[str] = None
     definition_json: Optional[dict] = None
-
-
-def get_user_id(request: Request) -> str:
-    """Extract user_id from request. MVP: header X-User-Id (V1.0: replace with IAM/JWT)."""
-    uid = request.headers.get("X-User-Id")
-    if not uid:
-        raise UserError("缺少 X-User-Id header (MVP 阶段用 header 鉴权,V1.0 切 IAM)")
-    return uid
 
 
 @router.post("", status_code=201)
