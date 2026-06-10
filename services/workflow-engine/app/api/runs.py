@@ -50,4 +50,4 @@ async def _get_run_impl(run_id, session):
 @router.get("/{run_id}/events")
 async def stream_events(run_id: uuid.UUID):
     """SSE stream of node events for the run."""
-    return await run_events_sse(str(run_id))
+    return run_events_sse(str(run_id))
