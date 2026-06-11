@@ -123,6 +123,18 @@ dmypy.json
 .sisyphus/
 .playwright-mcp/
 
+# Playwright (test runner, MCP cache, trace artifacts)
+.playwright/
+.last-run.json
+*-trace.zip
+*-trace.json
+playwright-report/
+test-results/
+
+# Vite (used by web/canvas; also a sensible default for any future TS service)
+.vite/
+*.tsbuildinfo
+
 # Project-specific
 AGENTS.md
 .cache/
