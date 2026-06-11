@@ -97,7 +97,7 @@ async def get_llm_api_key(model_name: str, token: str) -> str:
                     continue
                 logger.error(f"credential service unreachable: {e}")
                 raise
-    raise RuntimeError("credential service unavailable after retry")
+    raise RuntimeError("credential service unavailable after retry")  # pragma: no cover — defensive fallback; retry loop always returns or raises
 
 
 def reset_cache_for_tests() -> None:

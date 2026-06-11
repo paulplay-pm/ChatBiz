@@ -158,6 +158,26 @@ class TestAuditOutboxRetry(unittest.TestCase):
         # Queue still has 2 records
         self.assertEqual(outbox._queue.qsize(), 2)
 
+    def test_stop_handles_timeout_gracefully(self):
+        """stop() catches asyncio.TimeoutError and logs a warning,
+        then sets _task to None (covers writer.py:60-61)."""
+        outbox = AuditOutbox()
+
+        class _NeverDone:
+            @staticmethod
+            def done():
+                return False
+
+        outbox._task = _NeverDone()
+
+        # Replace asyncio.wait_for to simulate timeout
+        async def _fake_wait_for(awaitable, timeout):
+            raise asyncio.TimeoutError()
+
+        with patch.object(asyncio, "wait_for", _fake_wait_for):
+            _run(outbox.stop())
+        self.assertIsNone(outbox._task)
+
 
 if __name__ == "__main__":
     unittest.main()

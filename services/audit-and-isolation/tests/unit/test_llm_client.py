@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 
-from app.llm.client import call_upstream, reset_client_for_tests
+from app.llm.client import call_upstream, get_client, reset_client_for_tests
 
 
 def _run(coro):
@@ -106,6 +106,17 @@ class TestCallUpstream(unittest.TestCase):
             _run(call_upstream("http://example.com/", "/v1/chat/completions", {}, {}))
         call_args = client.post.call_args
         self.assertEqual(call_args.args[0], "http://example.com/v1/chat/completions")
+
+    def test_get_client_lazy_init_covers_lines_47_53(self):
+        """Calling get_client directly exercises its lazy-init branch
+        (app/llm/client.py lines 47-53). The instantiated client is a
+        real httpx.AsyncClient within the default instance checks, but
+        we rely on the factory + cached global to touch the lines."""
+        reset_client_for_tests()
+        c1 = get_client()
+        self.assertIsNotNone(c1)
+        c2 = get_client()
+        self.assertIs(c1, c2)  # cached
 
 
 if __name__ == "__main__":

@@ -31,6 +31,13 @@ def py(label: str, code: str) -> bool:
 
 
 CHECKS: list[tuple[str, callable]] = [
+    # 0. Pytest coverage gate (100% required)
+    ("Pytest coverage gate (app 100%)", lambda: run(
+        "Pytest coverage",
+        ["python3", "-m", "pytest", "tests/", "-v",
+         "--cov=app", "--cov-report=term-missing", "--cov-fail-under=100"],
+    )),
+
     # 1. Unit tests (use discover so we pick up tests/unit/*.py)
     ("Unit tests (90+ cases)", lambda: run(
         "Unit tests",
@@ -177,7 +184,7 @@ CHECKS: list[tuple[str, callable]] = [
 
 def main() -> int:
     print("=" * 60)
-    print("chatbiz-audit-and-isolation verify gate (18 checks)")
+    print(f"chatbiz-audit-and-isolation verify gate ({len(CHECKS)} checks)")
     print("=" * 60)
 
     failed: list[str] = []

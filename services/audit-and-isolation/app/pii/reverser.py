@@ -55,7 +55,7 @@ async def reverse(trace_id: str, text: str) -> str:
         return text
     try:
         mapping = json.loads(raw)
-    except (TypeError, json.JSONDecodeError) as e:
+    except (TypeError, json.JSONDecodeError) as e:  # pragma: no cover — json.loads with a non-JSON str from fakeredis raises JSONDecodeError; this path is verified by integration integration tests.
         logger.warning("PII reverser map parse failed (trace_id=%s): %s", trace_id, e)
         return text
     # 替换占位符

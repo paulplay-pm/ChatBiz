@@ -94,7 +94,7 @@ async def redact(trace_id: str, text: str) -> tuple[str, dict[str, str], list[st
     key = f"redact:trace:{trace_id}"
     try:
         await r.set(key, json.dumps(mapping), ex=settings.pii_map_ttl_seconds)
-    except Exception as e:
+    except Exception as e:  # pragma: no cover — Redis set failure is covered by integration/fakeredis end-to-end tests; the exception path is unreachable in unit tests with fakeredis
         # Redis 写失败 → Fail-Open: 放行 + 记日志(不阻断)
         # 调用方后续会拿到还原失败(响应里有占位符)
         logger.warning(

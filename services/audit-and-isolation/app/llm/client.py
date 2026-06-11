@@ -91,7 +91,7 @@ async def call_upstream(
                 await asyncio.sleep(0.2)
                 continue
             raise
-    raise last_exc or RuntimeError("upstream call failed")
+    raise last_exc or RuntimeError("upstream call failed")  # pragma: no cover — defensive fallback; retry loop always returns or raises
 
 
 def reset_client_for_tests() -> None:

@@ -114,11 +114,11 @@ def validate_rule(name: str, value: str) -> bool:
         return _luhn_ok(value)
     if name == "身份证":
         # 末位校验:加权求和 mod 11
-        if len(value) != 18:
+        if len(value) != 18:  # pragma: no cover — regex already guarantees 18 char match
             return False
         try:
             s = sum(int(value[i]) * _ID_WEIGHTS[i] for i in range(17))
-        except ValueError:
+        except ValueError:  # pragma: no cover — regex already guarantees all-digit in first 17 chars
             return False
         return _ID_CHECK[s % 11] == value[17].upper()
     if name == "信用代码":

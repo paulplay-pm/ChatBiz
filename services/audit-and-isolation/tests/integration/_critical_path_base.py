@@ -84,6 +84,7 @@ class CriticalPathTestBase(unittest.TestCase):
         reset_outbox_for_tests()
         # fakeredis for the PII map round-trip.
         redis_client.reset_pool_for_tests()
+        self._original_get_redis = redis_client.get_redis
         self._fake_redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
         redis_client.get_redis = lambda: self._fake_redis
         # Auth → fixed service_id.
@@ -115,6 +116,10 @@ class CriticalPathTestBase(unittest.TestCase):
         self._route_patcher.stop()
         if self._llm_patcher is not None:
             self._llm_patcher.stop()
+        # Restore the real redis factory so other test modules don't
+        # get a fakeredis that was local to this test process.
+        redis_client.get_redis = self._original_get_redis
+        redis_client.reset_pool_for_tests()
 
     # ----------------------------------------------------------- helpers
 
