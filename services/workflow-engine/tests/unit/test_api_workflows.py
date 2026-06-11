@@ -52,6 +52,79 @@ async def test_list_workflows_returns_latest_visible_definitions(client, auth_he
 
 
 @pytest.mark.asyncio
+async def test_list_workflows_search_filters_by_name(client, auth_headers, db_setup):
+    """GET /workflows?search=foo filters by name substring."""
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+    TestSession = async_sessionmaker(db_setup, expire_on_commit=False)
+    async with TestSession() as s:
+        s.add(WorkflowDefinition(id=uuid.uuid4(), version=1, name="alpha-monthly", created_by="test-user", definition_json={"mode": "workflow"}))
+        s.add(WorkflowDefinition(id=uuid.uuid4(), version=1, name="beta", created_by="test-user", definition_json={"mode": "workflow"}))
+        await s.commit()
+    r = await client.get("/workflows?search=alpha", headers=auth_headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["total"] == 1
+    assert data["workflows"][0]["name"] == "alpha-monthly"
+
+
+@pytest.mark.asyncio
+async def test_list_workflows_type_filter(client, auth_headers, db_setup):
+    """GET /workflows?type=chatflow filters by definition.mode."""
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+    TestSession = async_sessionmaker(db_setup, expire_on_commit=False)
+    async with TestSession() as s:
+        s.add(WorkflowDefinition(id=uuid.uuid4(), version=1, name="wf", created_by="test-user", definition_json={"mode": "workflow"}))
+        s.add(WorkflowDefinition(id=uuid.uuid4(), version=1, name="cf", created_by="test-user", definition_json={"mode": "chatflow"}))
+        await s.commit()
+    r = await client.get("/workflows?type=chatflow", headers=auth_headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["total"] == 1
+    assert data["workflows"][0]["name"] == "cf"
+
+
+@pytest.mark.asyncio
+async def test_list_workflows_sharing_filter(client, auth_headers, db_setup):
+    """GET /workflows?sharing=team filters by definition.sharing."""
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+    TestSession = async_sessionmaker(db_setup, expire_on_commit=False)
+    async with TestSession() as s:
+        s.add(WorkflowDefinition(id=uuid.uuid4(), version=1, name="p", created_by="test-user", definition_json={"sharing": "private"}))
+        s.add(WorkflowDefinition(id=uuid.uuid4(), version=1, name="t", created_by="test-user", definition_json={"sharing": "team"}))
+        await s.commit()
+    r = await client.get("/workflows?sharing=team", headers=auth_headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["total"] == 1
+    assert data["workflows"][0]["name"] == "t"
+
+
+@pytest.mark.asyncio
+async def test_list_workflows_pagination(client, auth_headers, db_setup):
+    """GET /workflows?page=2&page_size=1 returns the second page."""
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+    TestSession = async_sessionmaker(db_setup, expire_on_commit=False)
+    base = uuid.uuid4()
+    async with TestSession() as s:
+        for i in range(3):
+            s.add(WorkflowDefinition(id=uuid.uuid4(), version=1, name=f"w{i}", created_by="test-user", definition_json={"mode": "workflow"}))
+        await s.commit()
+    r1 = await client.get("/workflows?page=1&page_size=2", headers=auth_headers)
+    r2 = await client.get("/workflows?page=2&page_size=2", headers=auth_headers)
+    assert r1.status_code == 200
+    assert r2.status_code == 200
+    d1 = r1.json()
+    d2 = r2.json()
+    assert d1["total"] == 3
+    assert len(d1["workflows"]) == 2
+    assert len(d2["workflows"]) == 1
+    # pages are disjoint
+    ids1 = {w["id"] for w in d1["workflows"]}
+    ids2 = {w["id"] for w in d2["workflows"]}
+    assert ids1.isdisjoint(ids2)
+
+
+@pytest.mark.asyncio
 async def test_get_workflow_latest(client, auth_headers, db_setup):
     """GET /workflows/:id returns the latest version."""
     from sqlalchemy.ext.asyncio import async_sessionmaker
