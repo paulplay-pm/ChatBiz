@@ -1,0 +1,27 @@
+# LLM provider SDK blocklist — direct imports of any package listed here
+# are forbidden outside `allowlist.yaml`. This is the **compile-time** half
+# of the egress-enforcement defense; the runtime half lives in
+# `services/audit-and-isolation/app/auth.py` (credential service token).
+#
+# To add a new LLM provider:
+#   1. PR this file with the new entry.
+#   2. At least one reviewer must approve.
+#   3. CI's `gateway-static-scan` job will validate the scanner can identify it.
+#
+# Each entry is the **top-level package name** (the part before the first
+# dot). Sub-modules are matched implicitly via the AST `Import` node.
+
+packages:
+  # Major hosted providers
+  - openai
+  - anthropic
+  - cohere
+  - google
+  - mistralai
+  # Other providers commonly seen in the wild
+  - deepseek
+  - together
+  - groq
+  - fireworks
+  - perplexity
+  - xai

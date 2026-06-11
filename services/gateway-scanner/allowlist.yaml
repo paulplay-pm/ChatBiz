@@ -1,0 +1,30 @@
+# Allowlist — paths exempt from the blocklist. Entries are either
+# absolute paths (must start with `/`) or glob patterns (resolved
+# against the scan root).
+#
+# Why each entry exists:
+#
+#   services/audit-and-isolation/app/llm/client.py
+#     The audit-and-isolation service IS the gateway — it is the one
+#     place in the repo that legitimately needs to construct upstream
+#     provider SDK calls (it proxies them, after PII redaction). The
+#     runtime token check in `auth.py` is what enforces "no other
+#     service may call providers directly".
+#
+#   services/gateway-scanner/**
+#     This directory is the scanner itself; its tests deliberately
+#     import hypothetical LLM provider modules to exercise detection.
+#
+#   **/tests/**
+#     Test fixtures and conftests sometimes need to import names
+#     for negative cases. Real code under test should never be in
+#     here; if you find a production path that needs an allowlist
+#     entry, prefer fixing the production path instead.
+
+paths:
+  # The gateway itself
+  - "**/services/audit-and-isolation/app/llm/**"
+  # The scanner and its own test fixtures
+  - "**/services/gateway-scanner/**"
+  # Generic test directories (any path containing /tests/)
+  - "**/tests/**"

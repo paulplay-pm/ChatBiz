@@ -1,0 +1,59 @@
+name: gateway-static-scan
+
+# Compile-time half of the data-isolation-gateway egress defense
+# (eng-review Arch #1, locked 2026-06-10). This job blocks any PR that
+# imports an LLM provider SDK directly outside of the allowlist.
+#
+# Companion to services/audit-and-isolation/app/auth.py (runtime
+# half — credential service token). See
+# openspec/changes/gateway-egress-enforcement-p0 for the full design.
+
+on:
+  pull_request:
+    paths:
+      - "services/**"
+      - "libs/**"
+      - "services/gateway-scanner/**"
+      - ".github/workflows/gateway-static-scan.yml"
+  push:
+    branches: [main]
+    paths:
+      - "services/**"
+      - "libs/**"
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: AST scan for LLM provider imports
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install scanner
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e services/gateway-scanner
+
+      - name: Run scanner against services/
+        run: |
+          python -m gateway_scanner services/ \
+            --blocklist services/gateway-scanner/blocklist.yaml \
+            --allowlist services/gateway-scanner/allowlist.yaml
+
+      - name: Run scanner against libs/ (if present)
+        run: |
+          if [ -d "libs" ]; then
+            python -m gateway_scanner libs/ \
+              --blocklist services/gateway-scanner/blocklist.yaml \
+              --allowlist services/gateway-scanner/allowlist.yaml
+          else
+            echo "libs/ not present — skipping"
+          fi
