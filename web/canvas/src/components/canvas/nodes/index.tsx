@@ -36,9 +36,10 @@ const META: Record<string, NodeMeta> = {
 const ALL_TYPES = Object.keys(META);
 
 export function NodeWrapper({ type, data, selected }: NodeProps) {
+  const nodeData = (data ?? {}) as { config?: Record<string, unknown>; status?: NodeStatus };
   const meta = META[type || 'start'] ?? META.start;
-  const config = (data as any).config || {};
-  const status: NodeStatus = (data as any).status || 'pending';
+  const config = nodeData.config || {};
+  const status: NodeStatus = nodeData.status || 'pending';
   const borderColor = selected ? '#1890ff' : (meta?.statusColor[status] || '#d9d9d9');
 
   return (

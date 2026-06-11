@@ -19,6 +19,39 @@ async def test_create_workflow(client, auth_headers, db_setup):
 
 
 @pytest.mark.asyncio
+async def test_list_workflows_returns_latest_visible_definitions(client, auth_headers, db_setup):
+    """GET /workflows returns current user's non-archived latest definitions for Canvas list page."""
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+    TestSession = async_sessionmaker(db_setup, expire_on_commit=False)
+    wf_id = uuid.uuid4()
+    archived_id = uuid.uuid4()
+    other_id = uuid.uuid4()
+    async with TestSession() as s:
+        s.add(WorkflowDefinition(id=wf_id, version=1, name="old", created_by="test-user", definition_json={"mode": "workflow"}))
+        s.add(WorkflowDefinition(id=wf_id, version=2, name="latest", created_by="test-user", definition_json={"mode": "workflow"}))
+        s.add(WorkflowDefinition(id=archived_id, version=1, name="archived", created_by="test-user", definition_json={}, archived=True))
+        s.add(WorkflowDefinition(id=other_id, version=1, name="other", created_by="other-user", definition_json={}))
+        await s.commit()
+
+    r = await client.get("/workflows", headers=auth_headers)
+
+    assert r.status_code == 200
+    data = r.json()
+    assert data["total"] == 1
+    assert data["workflows"] == [
+        {
+            "id": str(wf_id),
+            "version": 2,
+            "name": "latest",
+            "created_by": "test-user",
+            "created_at": data["workflows"][0]["created_at"],
+            "archived": False,
+            "definition_json": {"mode": "workflow"},
+        }
+    ]
+
+
+@pytest.mark.asyncio
 async def test_get_workflow_latest(client, auth_headers, db_setup):
     """GET /workflows/:id returns the latest version."""
     from sqlalchemy.ext.asyncio import async_sessionmaker

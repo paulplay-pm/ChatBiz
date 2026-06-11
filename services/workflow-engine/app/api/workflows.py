@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
@@ -20,6 +20,54 @@ class CreateWorkflowRequest(BaseModel):
 class UpdateWorkflowRequest(BaseModel):
     name: Optional[str] = None
     definition_json: Optional[dict] = None
+
+
+@router.get("")
+async def list_workflows(
+    user_id: str = Depends(get_user_id),
+    session: AsyncSession = Depends(get_session),
+    search: str | None = None,
+    type: str | None = Query(default=None),
+    sharing: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+):
+    stmt = select(WorkflowDefinition).where(
+        WorkflowDefinition.created_by == user_id,
+        WorkflowDefinition.archived.is_(False),
+    ).order_by(WorkflowDefinition.created_at.desc(), WorkflowDefinition.version.desc())
+    rows = (await session.execute(stmt)).scalars().all()
+    latest: dict[uuid.UUID, WorkflowDefinition] = {}
+    for wf in rows:
+        if search and search not in wf.name:
+            continue
+        definition = wf.definition_json or {}
+        if type and definition.get("mode") != type:
+            continue
+        if sharing and definition.get("sharing") != sharing:
+            continue
+        if wf.id not in latest or wf.version > latest[wf.id].version:
+            latest[wf.id] = wf
+
+    workflows = sorted(latest.values(), key=lambda wf: wf.created_at, reverse=True)
+    total = len(workflows)
+    start = max(page - 1, 0) * page_size
+    end = start + page_size
+    return {
+        "workflows": [
+            {
+                "id": str(wf.id),
+                "version": wf.version,
+                "name": wf.name,
+                "created_by": wf.created_by,
+                "created_at": wf.created_at.isoformat(),
+                "archived": wf.archived,
+                "definition_json": wf.definition_json,
+            }
+            for wf in workflows[start:end]
+        ],
+        "total": total,
+    }
 
 
 @router.post("", status_code=201)

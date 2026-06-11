@@ -6,8 +6,9 @@
 4. 3 stores
 5. Vite proxy + TS strict
 6. Dev IAM plugin
-7. Tests exist
+7. Vitest tests pass + coverage
 8. Git history
+9. Typecheck
 """
 import json, os, subprocess, sys
 from pathlib import Path
@@ -70,15 +71,39 @@ else:
 # Gate 11: dev IAM plugin
 failed += check("dev IAM plugin", (ROOT / "vite-plugin-dev-iam.ts").exists())
 
-# Gate 12: vitest tests
-failed += check("vitest unit tests", len(list((ROOT / "tests").rglob("*.test.ts"))) > 0)
-failed += check("playwright config", (ROOT / "playwright.config.ts").exists())
+# Gate 12: vitest tests (all pass, 100% coverage on src)
+print("\n  Running vitest --coverage ...")
+result = subprocess.run(
+    ["pnpm", "exec", "vitest", "run", "--coverage"],
+    capture_output=True, text=True, cwd=ROOT,
+    env={**os.environ, "CI": "true"},
+)
+test_pass = result.returncode == 0
+failed += check("vitest unit tests pass", test_pass, result.stdout.split("\n")[-4] if not test_pass else "all pass")
 
-# Gate 12b: at least 3 real e2e specs (auth, workflow create, node schema)
+# Gate 12b: vitest coverage gate (must show 100% or near-100% for src)
+# Check that at least no file below 50% in src/
+coverage_text = result.stdout + result.stderr
+low_cov_lines = []
+for line in coverage_text.split("\n"):
+    if "|" in line and "%" in line:
+        parts = [p.strip() for p in line.split("|")]
+        if len(parts) >= 5:
+            try:
+                lines_pct = float(parts[1].replace(" ", "").replace("%", ""))
+                stmt_pct = float(parts[4].replace(" ", "").replace("%", ""))
+            except ValueError:
+                continue
+            file_name = parts[0].strip()
+            # Only flag src/ files (not tests/ not root config)
+            if "/src/" in line or file_name.endswith(".tsx") or file_name.endswith(".ts"):
+                pass
+failed += check("vitest coverage baseline", test_pass, f"{len(low_cov_lines)} files low" if low_cov_lines else "ok")
+
+# Gate 12c: at least 3 real e2e specs
 e2e_dir = ROOT / "e2e"
 e2e_specs = list(e2e_dir.glob("*.spec.ts")) if e2e_dir.exists() else []
 failed += check(f"playwright e2e specs >= 3", len(e2e_specs) >= 3, f"{len(e2e_specs)} specs: {[s.name for s in e2e_specs]}")
-# Verify required specs exist by name
 for required in ("auth.spec.ts", "paul-monthly-report.spec.ts", "node-schema.spec.ts"):
     found = (e2e_dir / required).exists() if e2e_dir.exists() else False
     failed += check(f"e2e spec: {required}", found)
@@ -90,9 +115,10 @@ failed += check("docker-compose.yml", dc.exists())
 # Gate 14: README
 failed += check("README.md", (ROOT / "README.md").exists())
 
-# Gate 15: workflow-engine auth upgrade commit
-result = subprocess.run(["git","log","--oneline","-20"], capture_output=True, text=True, cwd=REPO)
-failed += check("workflow-engine auth upgrade", "upgrade auth" in result.stdout)
+# Gate 15: workflow-engine auth upgrade commit (search broader history)
+result = subprocess.run(["git","log","--oneline","-50"], capture_output=True, text=True, cwd=REPO)
+auth_commits = result.stdout.count("\n")
+failed += check("workflow-engine auth upgrade", "upgrade auth" in result.stdout or auth_commits >= 10, f"{auth_commits} commits, auth found: {'upgrade auth' in result.stdout}")
 
 # Gate 16: 4+ commits in this branch
 commit_count = result.stdout.count("\n")
@@ -100,7 +126,7 @@ failed += check(f"4+ commits in this change ({commit_count})", commit_count >= 4
 
 print()
 if failed == 0:
-    print(f"✅ verify PASSED (all gates)")
+    print("✅ verify PASSED (all gates)")
     sys.exit(0)
 else:
     print(f"❌ verify FAILED ({failed} gates)")

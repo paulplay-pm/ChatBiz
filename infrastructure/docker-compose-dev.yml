@@ -125,6 +125,23 @@ services:
         cd /tmp
         alembic -c /app/alembic.ini upgrade head
 
+  workflow-engine:
+    image: chatbiz/workflow-engine:dev
+    build:
+      context: ../services/workflow-engine
+      dockerfile: Dockerfile
+    command:
+      - uvicorn
+      - app.main:app
+      - --host=0.0.0.0
+      - --port=8001
+      - --reload
+      - --reload-dir=/app/app
+    volumes:
+      - ../services/workflow-engine:/app
+      - pycache-workflow-engine:/app/__pycache__
+      - /var/run/docker.sock:/var/run/docker.sock
+
   workflow-engine-migrate:
     extends:
       file: docker-compose.yml
