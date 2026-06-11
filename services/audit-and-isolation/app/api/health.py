@@ -32,7 +32,7 @@ from __future__ import annotations
 import logging
 
 import httpx
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Request, Response
 from sqlalchemy import text
 
 from app import redis_client
@@ -46,13 +46,28 @@ router = APIRouter()
 
 
 @router.get("/healthz")
-async def healthz() -> dict:
-    """Liveness probe — always 200 if the process is alive.
+async def healthz(request: Request) -> Response:
+    """Liveness probe — 200 by default, 503 when draining.
 
-    The body is a tiny ``{"status": "ok"}`` so a debug client
-    can curl the endpoint and see a parseable response.
+    Phase B (HA topology, task 2.1): when K8s sends SIGTERM the
+    lifespan flips ``app.state.draining = True``. The L4 LB
+    (``deploy/audit-and-isolation/nginx.conf``) calls
+    ``/healthz`` every 5s; on 503 it stops forwarding new
+    connections and the pod's in-flight requests get up to 30s
+    to finish before SIGKILL.
     """
-    return {"status": "ok"}
+    draining = getattr(request.app.state, "draining", False)
+    if draining:
+        return Response(
+            content='{"status": "draining"}',
+            media_type="application/json",
+            status_code=503,
+        )
+    return Response(
+        content='{"status": "ok"}',
+        media_type="application/json",
+        status_code=200,
+    )
 
 
 @router.get("/readyz")

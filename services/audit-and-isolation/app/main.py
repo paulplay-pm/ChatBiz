@@ -42,6 +42,10 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     settings = get_settings()
     logger.info(f"audit-and-isolation starting in {settings.environment}")
+    # Phase B (HA topology, task 2.1): draining flag is False on startup.
+    # K8s preStop flips it to True so /healthz can return 503 and the
+    # L4 LB can stop forwarding before SIGKILL.
+    app.state.draining = False
     # 启动时加载路由表
     try:
         count = await load_routing_into_cache()
@@ -54,7 +58,10 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
-        # 关闭
+        # 关闭:先置 draining 标志,让 /healthz 立即返回 503
+        # L4 LB 检测到 503 停止转发新连接
+        # in-flight 请求有 30s 排空时间(由 K8s preStop sleep 30 控制)
+        app.state.draining = True
         await get_outbox().stop()
         await dispose_engine()
 

@@ -86,7 +86,17 @@ def _body(response):
 
 @pytest.mark.asyncio
 async def test_healthz_returns_ok_status():
-    assert await health.healthz() == {"status": "ok"}
+    from fastapi import FastAPI
+
+    from starlette.testclient import TestClient
+
+    test_app = FastAPI()
+    test_app.state.draining = False
+    test_app.include_router(health.router)
+    client = TestClient(test_app)
+    response = client.get("/healthz")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
 
 
 @pytest.mark.asyncio
@@ -177,6 +187,63 @@ async def test_readyz_returns_503_with_marker_when_credential_service_fails():
     assert body["redis"] == "ok"
     assert body["credential_service"] == "fail: credential down"
     assert body["routing_table"] == "ok"
+
+
+@pytest.mark.asyncio
+async def test_healthz_returns_503_when_app_state_draining_is_true():
+    """Phase B: preStop drain — /healthz returns 503 when app.state.draining."""
+    from fastapi import FastAPI
+
+    from app.main import app
+
+    test_app = FastAPI()
+    test_app.state.draining = True
+    test_app.include_router(health.router)
+
+    from starlette.testclient import TestClient
+
+    with patch.object(health, "logger"):
+        client = TestClient(test_app)
+        response = client.get("/healthz")
+
+    assert response.status_code == 503
+    body = response.json()
+    assert body["status"] == "draining"
+
+
+@pytest.mark.asyncio
+async def test_healthz_returns_200_when_app_state_draining_is_false():
+    """Phase B: /healthz returns 200 when not draining."""
+    from fastapi import FastAPI
+
+    test_app = FastAPI()
+    test_app.state.draining = False
+    test_app.include_router(health.router)
+
+    from starlette.testclient import TestClient
+
+    client = TestClient(test_app)
+    response = client.get("/healthz")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+@pytest.mark.asyncio
+async def test_healthz_returns_200_when_draining_attribute_missing():
+    """Backwards compat: legacy callers that set no draining attr get 200."""
+    from fastapi import FastAPI
+
+    test_app = FastAPI()
+    test_app.include_router(health.router)
+
+    from starlette.testclient import TestClient
+
+    client = TestClient(test_app)
+    response = client.get("/healthz")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
 
 
 @pytest.mark.asyncio

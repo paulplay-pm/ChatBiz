@@ -85,6 +85,65 @@ async def test_lifespan_continues_when_routing_load_fails_and_still_runs_shutdow
     assert "routing table load failed: database unavailable" in caplog.messages
 
 
+@pytest.mark.asyncio
+async def test_lifespan_sets_draining_false_on_startup_and_true_during_shutdown():
+    """Phase B (HA topology): preStop drain.
+
+    While inside the lifespan body, ``app.state.draining`` MUST be
+    ``False`` (the pod is accepting traffic). Once shutdown begins the
+    flag flips to ``True`` so the health endpoint can flip to 503 and
+    the L4 LB can stop forwarding.
+    """
+    outbox = _Outbox()
+    state_holder: dict[str, object] = {}
+
+    class _State:
+        pass
+
+    captured: dict[str, bool] = {}
+
+    async def _stop():
+        captured["stop_draining"] = bool(getattr(state_holder["state"], "draining", False))
+
+    outbox.stop.side_effect = _stop
+
+    app = FastAPI()
+    state_holder["state"] = app.state
+
+    with (
+        patch.object(main, "get_settings", return_value=SimpleNamespace(environment="test")),
+        patch.object(main, "load_routing_into_cache", new=AsyncMock(return_value=2)),
+        patch.object(main, "get_outbox", return_value=outbox),
+        patch.object(main, "dispose_engine", new=AsyncMock()),
+    ):
+        async with main.lifespan(app):
+            captured["running_draining"] = bool(app.state.draining)
+
+    assert captured["running_draining"] is False, "must NOT be draining while serving traffic"
+    assert captured["stop_draining"] is True, "must flip to draining before outbox.stop()"
+    assert app.state.draining is True, "draining flag persists after shutdown for inspection"
+
+
+@pytest.mark.asyncio
+async def test_lifespan_draining_observable_via_app_state_attribute():
+    """After lifespan exit, the flag is a stable attribute on app.state."""
+    outbox = _Outbox()
+    app = FastAPI()
+    assert not hasattr(app.state, "draining")
+
+    with (
+        patch.object(main, "get_settings", return_value=SimpleNamespace(environment="test")),
+        patch.object(main, "load_routing_into_cache", new=AsyncMock(return_value=2)),
+        patch.object(main, "get_outbox", return_value=outbox),
+        patch.object(main, "dispose_engine", new=AsyncMock()),
+    ):
+        async with main.lifespan(app):
+            inside = app.state.draining
+            assert inside is False
+
+    assert app.state.draining is True
+
+
 def test_app_registers_expected_routers_and_metadata():
     route_paths = {route.path for route in main.app.routes if isinstance(route, Route)}
 
