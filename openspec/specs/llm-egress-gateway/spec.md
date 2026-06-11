@@ -215,7 +215,7 @@ TBD - created by archiving change implement-audit-and-isolation. Update Purpose 
 - **THEN** 系统 MUST 检查:① PG 可连 ② Redis 可连 ③ credential service 可达 ④ 启动时路由表已加载;全 OK → 200;任一失败 → 503
 
 ### Requirement: 4 critical path 100% 覆盖(eng-review Test #2)
-本服务 = 4 critical path 中的 #2 "数据隔离网关 PII 拦截"。测试 MUST 100% 覆盖 8 个子场景。
+本服务 = 4 critical path 中的 #2 "数据隔离网关 PII 拦截"。测试 MUST 100% 覆盖 8 个子场景，并且 `services/audit-and-isolation` 的 pytest-cov `app` 覆盖率 MUST 达到 100%。coverage gate 与 critical path gate 任一失败 MUST 阻断 release。
 
 #### Scenario: PII 拦截子场景 2.1 — 身份证脱敏 + 还原
 - **WHEN** e2e 测试:调用方发含身份证的 prompt → 假 LLM 返回含占位符的 response
@@ -248,6 +248,25 @@ TBD - created by archiving change implement-audit-and-isolation. Update Purpose 
 #### Scenario: PII 拦截子场景 2.8 — trace 跨实例
 - **WHEN** 实例 A 处理后 Redis 写入 map,实例 B 收到同 trace 后续请求
 - **THEN** 测试 MUST 验证:实例 B 能从 Redis 拉 map 还原
+
+#### Scenario: audit-and-isolation app 覆盖率 100%
+- **WHEN** 执行 `PYTHONPATH=. python3 -m pytest tests/ -v --cov=app --cov-report=term-missing --cov-fail-under=100`
+- **THEN** 本服务 app 包覆盖率 MUST 为 100%，且命令 MUST 以 exit code 0 结束
+
+### Requirement: 网关错误分支覆盖
+OpenAI-compatible 代理端点 MUST 由自动化测试覆盖 user、runtime、security 三类错误边界；canvas drag-loop 在本服务 N/A，但 MUST 在文档中说明不适用。
+
+#### Scenario: user 错误覆盖
+- **WHEN** 请求缺少 model、缺少 X-Trace-Id、缺少 X-Model-Kind、JSON 非法或 body 超过 1MB
+- **THEN** 测试 MUST 验证网关返回对应 422/413/400 响应，且不会调用上游 LLM
+
+#### Scenario: runtime 错误覆盖
+- **WHEN** credential service 不可达、upstream LLM 返回 5xx、timeout、429 或未知异常
+- **THEN** 测试 MUST 验证网关返回 503/502/504/429，且相应 metric/audit 语义不回退
+
+#### Scenario: security 错误覆盖
+- **WHEN** 请求缺少 Authorization、token 非 Bearer 或 credential auth verify 失败
+- **THEN** 测试 MUST 验证网关 fail-closed 返回 401，且不继续处理 PII 或上游调用
 
 ### Requirement: 凭证 / 密钥安全(对齐 CLAUDE.md 全局约束)
 主密钥 / 凭证明文 MUST NOT 入 commit / log / audit / 测试 fixture;LLM provider API Key MUST NOT 出现在源码或环境变量中(通过 credential service 拿)。

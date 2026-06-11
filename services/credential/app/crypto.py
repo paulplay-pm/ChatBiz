@@ -389,9 +389,8 @@ async def rotate_master_key(
         new_master = generate_master_key()
     _validate_master(new_master)
 
-    old = await load_master_key(session)
-
     async with session.begin():
+        old = await load_master_key(session)
         # Re-wrap every DEK (current and previous-window) under the new master.
         creds_stmt = select(Credential)
         creds_result = await session.execute(creds_stmt)

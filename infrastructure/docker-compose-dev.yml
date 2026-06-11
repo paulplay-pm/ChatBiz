@@ -1,0 +1,242 @@
+# =============================================================================
+# ChatBiz — local development docker-compose (extends docker-compose.yml)
+#
+# Goals
+# -----
+# 1. **No rebuild for code changes.** Service images are built once and reused.
+#    The host's source tree is bind-mounted over the image's /app directory
+#    so file edits in services/<svc> are immediately visible inside the
+#    container.
+# 2. **Reload on save.** Each service is launched with `uvicorn --reload`,
+#    which watches /app for *.py changes and restarts the worker.
+#    Workflow:
+#
+#        docker compose \
+#            -f infrastructure/docker-compose.yml \
+#            -f infrastructure/docker-compose-dev.yml \
+#            up -d <svc>
+#        # Edit services/credential/app/foo.py → uvicorn auto-reloads.
+#        # No `docker compose build`, no container recreate required.
+#
+# 3. **Dependencies still baked in.** Requirements from pyproject.toml are
+#    installed in the image at build time (cached layer). We do NOT mount
+#    the host's site-packages — only the source tree, so a host venv
+#    mismatch can't poison the container.
+#
+# What this file does NOT do
+# --------------------------
+# - It does not modify the prod docker-compose.yml; both can coexist and
+#   `extends` keys select this one when -f is passed.
+# - It does not change ports, networks, or healthchecks (those are
+#   inherited via `extends`).
+# - It does not install dev/test dependencies in the running container;
+#   run pytest on the host (`cd services/<svc> && pytest`) for unit tests.
+# =============================================================================
+
+name: chatbiz
+
+# ---------------------------------------------------------------------------
+# Services — each `extends` re-uses the prod definition for env, ports,
+# healthcheck, depends_on; we override image / command / volumes.
+#
+# The `volumes` block is written explicitly per service (no anchor) because
+# `extends` merges keys by name, and the prod service has no `volumes`
+# key — anchor substitution collapses into a single dict otherwise.
+# ---------------------------------------------------------------------------
+services:
+
+  credential:
+    extends:
+      file: docker-compose.yml
+      service: credential
+    image: chatbiz/credential:dev
+    build:
+      context: ../services/credential
+      dockerfile: Dockerfile
+    # cron worker 没有 HTTP 端口，禁用 healthcheck（prod 用 k8s CronJob 运行，
+    # 也不依赖 HTTP healthcheck；本地 dev 用 while+sleep 循环保持常驻）
+    healthcheck:
+      disable: true
+    command:
+      - uvicorn
+      - app.main:app
+      - --host=0.0.0.0
+      - --port=8000
+      - --reload
+      - --reload-dir=/app/app
+    volumes:
+      # Source tree bind-mount. Read-write so uvicorn --reload can write
+      # __pycache__/ sub-tree. The /app mount shadows the image's COPY.
+      - ../services/credential:/app
+      # Persist __pycache__ across container restarts.
+      - pycache-credential:/app/__pycache__
+
+  credential-cron:
+    extends:
+      file: docker-compose.yml
+      service: credential-cron
+    image: chatbiz/credential:dev
+    build:
+      context: ../services/credential
+      dockerfile: Dockerfile
+    # ── dev 模式：cron 用 while+sleep 循环，不依赖 k8s CronJob ──
+    command:
+      - bash
+      - -c
+      - |
+        while true; do
+          python -m app.cron
+          echo '[dev] cron cycle done; sleeping 60s'
+          sleep 60
+        done
+    volumes:
+      - ../services/credential:/app
+      - pycache-credential:/app/__pycache__
+
+  # credential-migrate — the dev bind-mount shadows /app with the host's
+  # credential source tree. The host's `alembic/` directory (the Alembic
+  # migration scripts) then collides with the site-packages `alembic`
+  # package (same name), and Python imports the local `alembic/` instead
+  # of the real one — `from alembic.config import main` fails. Fix by
+  # running alembic from a different working dir so cwd doesn't shadow
+  # the package.
+  credential-migrate:
+    extends:
+      file: docker-compose.yml
+      service: credential-migrate
+    image: chatbiz/credential:dev
+    build:
+      context: ../services/credential
+      dockerfile: Dockerfile
+    working_dir: /tmp
+    volumes:
+      - ../services/credential:/app
+      - pycache-credential:/app/__pycache__
+    command:
+      - bash
+      - -c
+      - |
+        set -euo pipefail
+        # Set PYTHONPATH so the alembic `script_location = alembic` (in
+        # alembic.ini) resolves to the migrated /app/alembic scripts,
+        # and `from app.models import Base` (in env.py) finds /app/app.
+        # Run from /tmp so the cwd `alembic/` does not shadow
+        # site-packages.
+        export PYTHONPATH="/home/credential/.local/lib/python3.12/site-packages:/app"
+        cd /tmp
+        alembic -c /app/alembic.ini upgrade head
+        # Bootstrap an active master key for local development if the DB
+        # is empty. Production should seed/rotate keys through a KMS-aware
+        # bootstrap process; this is local-only so the service can start.
+        python - <<'PY'
+        import asyncio, os, secrets, uuid
+        from sqlalchemy import text
+        from sqlalchemy.ext.asyncio import create_async_engine
+
+        async def main():
+            engine = create_async_engine(os.environ["DATABASE_URL"])
+            async with engine.begin() as conn:
+                active = (await conn.execute(
+                    text("SELECT count(*) FROM encryption_keys WHERE status IN ('ACTIVE', 'active')")
+                )).scalar_one()
+                if active == 0:
+                    await conn.execute(
+                        text("INSERT INTO encryption_keys (key_id, encrypted_key, status) VALUES (:key_id, :encrypted_key, 'ACTIVE')"),
+                        {"key_id": uuid.uuid4(), "encrypted_key": secrets.token_bytes(32)},
+                    )
+            await engine.dispose()
+
+        asyncio.run(main())
+        PY
+
+  audit-and-isolation:
+    extends:
+      file: docker-compose.yml
+      service: audit-and-isolation
+    image: chatbiz/audit-and-isolation:dev
+    build:
+      context: ../services/audit-and-isolation
+      dockerfile: Dockerfile
+    command:
+      - uvicorn
+      - app.main:app
+      - --host=0.0.0.0
+      - --port=8080
+      - --reload
+      - --reload-dir=/app/app
+    volumes:
+      - ../services/audit-and-isolation:/app
+      - pycache-audit-and-isolation:/app/__pycache__
+
+  audit-and-isolation-migrate:
+    extends:
+      file: docker-compose.yml
+      service: audit-and-isolation-migrate
+    image: chatbiz/audit-and-isolation:dev
+    build:
+      context: ../services/audit-and-isolation
+      dockerfile: Dockerfile
+    working_dir: /tmp
+    volumes:
+      - ../services/audit-and-isolation:/app
+      - pycache-audit-and-isolation:/app/__pycache__
+    command:
+      - bash
+      - -c
+      - |
+        set -euo pipefail
+        export PYTHONPATH="/home/audit/.local/lib/python3.12/site-packages:/app"
+        cd /tmp
+        alembic -c /app/alembic.ini upgrade head
+
+  workflow-engine-migrate:
+    extends:
+      file: docker-compose.yml
+      service: workflow-engine-migrate
+    image: chatbiz/workflow-engine:dev
+    build:
+      context: ../services/workflow-engine
+      dockerfile: Dockerfile
+    working_dir: /tmp
+    volumes:
+      - ../services/workflow-engine:/app
+      - pycache-workflow-engine:/app/__pycache__
+    command:
+      - bash
+      - -c
+      - |
+        set -euo pipefail
+        export PYTHONPATH="/home/wf/.local/lib/python3.12/site-packages:/app"
+        cd /tmp
+        alembic -c /app/alembic.ini upgrade head
+
+# workflow-engine — left untouched here because the prod service has
+# `security_opt: [no-new-privileges:true]` and Compose's service-name
+# merge would duplicate that list (validation error: "items at 0 and 1
+# are equal"). To enable --reload for workflow-engine, override its
+# `command` from the host at run time:
+#
+#     docker compose -f docker-compose.yml \
+#         -f docker-compose-dev.yml \
+#         run --rm -p 8001:8001 workflow-engine \
+#         uvicorn app.main:app --host=0.0.0.0 --port=8001 --reload \
+#         --reload-dir=/app/app
+#
+# The dev compose still bind-mounts the source tree in the prod
+# workflow-engine container, so the `run` override picks up host edits.
+
+# -----------------------------------------------------------------------------
+# Per-service pycache named volumes.
+# -----------------------------------------------------------------------------
+volumes:
+  pycache-credential:
+    name: chatbiz-pycache-credential
+  pycache-audit-and-isolation:
+    name: chatbiz-pycache-audit
+  pycache-workflow-engine:
+    name: chatbiz-pycache-workflow
+
+# Inherit prod network.
+networks:
+  default:
+    name: chatbiz-net
