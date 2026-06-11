@@ -1,0 +1,95 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: audit-archive
+  namespace: chatbiz
+  labels:
+    app.kubernetes.io/name: chatbiz-audit-and-isolation
+    app.kubernetes.io/component: archive-job
+    app.kubernetes.io/part-of: chatbiz
+spec:
+  # Daily 02:00 UTC. Off-peak for both chatbiz's own LLM traffic and
+  # the upstream providers' maintenance windows; well before the
+  # K8s daily backup at 03:00 UTC so MinIO is free to absorb the
+  # ~9 GB / day of parquet writes.
+  schedule: "0 2 * * *"
+  timeZone: "UTC"
+  # Don't pile up failed runs; the next schedule must catch up.
+  concurrencyPolicy: Forbid
+  # Keep the last 3 successful + 3 failed logs for postmortem.
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  # Don't start new jobs if the previous one is more than 6h old —
+  # catches up missed runs after a long outage.
+  startingDeadlineSeconds: 21600
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      # The job pod must finish the full 1000-row batch (a few
+      # seconds under normal conditions, up to ~10 minutes if the
+      # MinIO link is slow). 30 minutes is the upper bound.
+      activeDeadlineSeconds: 1800
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: chatbiz-audit-and-isolation
+            app.kubernetes.io/component: archive-job
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: audit-and-isolation
+          containers:
+            - name: archive
+              image: chatbiz/audit-and-isolation:latest
+              imagePullPolicy: IfNotPresent
+              command:
+                - python
+                - -m
+                - jobs.archive_audit
+                - --days-threshold=90
+                - --batch-size=1000
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: audit-and-isolation
+                      key: database-url
+                - name: REDIS_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: audit-and-isolation
+                      key: redis-url
+                - name: CREDENTIAL_SERVICE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: audit-and-isolation
+                      key: credential-service-url
+                - name: MINIO_ENDPOINT_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: audit-and-isolation
+                      key: minio-endpoint-url
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: audit-and-isolation
+                      key: minio-access-key
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: audit-and-isolation
+                      key: minio-secret-key
+              resources:
+                requests:
+                  cpu: 200m
+                  memory: 256Mi
+                limits:
+                  cpu: 1000m
+                  memory: 1Gi
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 1000
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
