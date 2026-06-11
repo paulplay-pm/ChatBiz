@@ -30,6 +30,12 @@ function CanvasPageInner() {
   const [edgeMenu, setEdgeMenu] = useState<{ edgeId: string; value: string } | null>(null);
   const saveMutation = useSaveWorkflow();
 
+  // Track which edges are selected. ReactFlow is in controlled mode (we own
+  // edges), so it does not maintain its own selection state — it just emits
+  // select changes through onEdgesChange. We track them here and merge them
+  // into rfEdges so the Backspace delete handler can find the selected ones.
+  const [selectedEdgeIds, setSelectedEdgeIds] = useState<Set<string>>(new Set());
+
   // Map our store's CanvasNode/CanvasEdge to React Flow's {id, type, position, data}/{id, source, target} shape.
   // Without this mapping, React Flow can't render edges (it needs source/target, not from/to) and
   // node components can't read their config (data.config vs top-level config).
@@ -48,8 +54,9 @@ function CanvasPageInner() {
       source: e.from,
       target: e.to,
       data: e.condition ? { condition: e.condition } : undefined,
+      selected: selectedEdgeIds.has(e.id),
     })),
-    [edges],
+    [edges, selectedEdgeIds],
   );
 
   useUndoRedo();
@@ -176,6 +183,7 @@ function CanvasPageInner() {
           nodes={rfNodes as any}
           edges={rfEdges as any}
           nodeTypes={nodeTypes as any}
+          deleteKeyCode={['Backspace', 'Delete']}
           onNodesChange={(changes) => {
             changes.forEach((c) => {
               if (c.type === 'position' && c.position) {
@@ -194,6 +202,19 @@ function CanvasPageInner() {
             changes.forEach((c) => {
               if (c.type === 'remove') {
                 removeEdge(c.id);
+                setSelectedEdgeIds((prev) => {
+                  if (!prev.has(c.id)) return prev;
+                  const next = new Set(prev);
+                  next.delete(c.id);
+                  return next;
+                });
+              } else if (c.type === 'select') {
+                setSelectedEdgeIds((prev) => {
+                  const next = new Set(prev);
+                  if (c.selected) next.add(c.id);
+                  else next.delete(c.id);
+                  return next;
+                });
               }
             });
           }}
