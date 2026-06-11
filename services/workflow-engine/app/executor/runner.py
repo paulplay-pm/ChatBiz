@@ -101,7 +101,10 @@ async def run_workflow(
 
     # 3. Build initial state and dispatch.
     initial_state = dict(initial_state or {})
-    initial_state["_run_id"] = str(run_id)
+    # ``_run_id`` is left as a UUID; the compiler json-encodes it before
+    # persisting to the JSONB column. Keeping it typed here lets downstream
+    # code that expects a UUID (FK relationships) work without a re-parse.
+    initial_state["_run_id"] = run_id
     initial_state["_started_by"] = started_by
     initial_state["_workflow_variables"] = workflow_definition.get("variables", {})
 

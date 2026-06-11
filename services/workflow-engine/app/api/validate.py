@@ -52,7 +52,9 @@ async def validate_workflow(
         t = n.get("type")
         if t in NODE_REGISTRY:
             try:
-                NODE_REGISTRY[t].validate_config(n.get("config", {}))
+                # BaseNode expects a top-level {"config": {...}} payload; wrap the
+                # node's config dict so Pydantic can locate the typed config field.
+                NODE_REGISTRY[t].validate_config({"config": n.get("config", {})})
             except Exception as e:
                 errors.append({"type": "config_invalid", "node_id": n.get("id"), "message": f"节点 {n.get('id')!r} config 验证失败: {e}"})
     for e in definition.get("edges", []):

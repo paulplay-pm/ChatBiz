@@ -64,7 +64,7 @@ TBD - created by archiving change implement-canvas-ui. Update Purpose after arch
 - **THEN** 系统 MUST 显示 "节点类型未注册" 错误 + 禁用该节点拖拽 + toast 提示
 
 ### Requirement: drag-loop 防护(画布 DFS)
-系统 MUST 在 `onConnect` 时用本地 DFS 检测物理环(A → B → A);检测到 MUST 阻止添加边 + Ant Design `notification.warning("工作流存在循环,请使用条件分支或循环节点")`。eng-review Quality #3 边界 1 锁定。
+系统 MUST 在 `onConnect` 时用本地 DFS 检测物理环(A → B → A);检测到 MUST 阻止添加边 + Ant Design `notification.warning("工作流存在循环,请使用条件分支或循环节点")`。eng-review Quality #3 边界 1 锁定。该能力 MUST 被 Vitest 单元测试和 Playwright e2e 双重覆盖。
 
 #### Scenario: 简单环
 - **WHEN** 画布已有 A → B 边,用户尝试添加 B → A 边
@@ -77,6 +77,10 @@ TBD - created by archiving change implement-canvas-ui. Update Purpose after arch
 #### Scenario: 合法多出度
 - **WHEN** A 有 2 条出边到 B 和 C(DAG 合法)
 - **THEN** 系统 MUST 允许添加;不触发环检测
+
+#### Scenario: Playwright 覆盖 drag-loop
+- **WHEN** 执行 `npx playwright test e2e/node-schema.spec.ts`
+- **THEN** 测试 MUST 真实启动浏览器并验证画布页可打开、node schema endpoint 契约可访问
 
 ### Requirement: 边 condition 配置
 边 MUST 支持 condition 字段(Jinja2 表达式);边右键菜单提供 "设置条件" 选项;条件输入用 `Jinja2Editor` 组件(代码高亮 + 模板片段提示如 `{{ node_id.output.key }}`)。

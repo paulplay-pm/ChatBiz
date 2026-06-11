@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_session
+from app.errors.classes import SecurityError
 from app.models.workflow import WorkflowRun, NodeEvent
 from app.executor.sse import run_events_sse
 from app.api.deps import get_user_id
@@ -13,13 +14,18 @@ router = APIRouter(prefix="/runs", tags=["runs"])
 @router.get("/{run_id}")
 async def get_run(
     run_id: uuid.UUID,
-    _user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_user_id),
     session: AsyncSession = Depends(get_session),
 ):
-    """Get workflow_run status + last 50 node events. Auth via shared dep."""
+    """Get workflow_run status + last 50 node events. Auth via shared dep.
+
+    Cross-user access denied: a user can only fetch runs they themselves started.
+    """
     run = await session.get(WorkflowRun, run_id)
     if run is None:
         raise HTTPException(status_code=404, detail={"error_class": "user", "error_message": f"workflow_run {run_id} 不存在"})
+    if run.started_by != user_id:
+        raise SecurityError(f"无权访问 workflow_run {run_id}")
     events = (await session.execute(
         select(NodeEvent).where(NodeEvent.run_id == run_id).order_by(NodeEvent.id.desc()).limit(50)
     )).scalars().all()
