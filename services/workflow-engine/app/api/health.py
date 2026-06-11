@@ -2,7 +2,7 @@ import httpx
 from fastapi import APIRouter
 from app.config import get_settings
 from app.database import engine
-from app.redis_client import get_redis
+import app.redis_client as _rcm
 
 router = APIRouter(tags=["health"])
 
@@ -29,7 +29,7 @@ async def readyz():
 
     # Redis
     try:
-        r = get_redis()
+        r = _rcm.get_redis()
         await r.ping()
         checks["redis"] = "ok"
     except Exception as e:

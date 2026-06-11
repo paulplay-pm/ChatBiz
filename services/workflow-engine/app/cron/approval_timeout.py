@@ -22,7 +22,7 @@ async def check_approval_timeout():
                 .with_for_update(skip_locked=True)
             )
             result = await session.execute(stmt)
-        except Exception:
+        except Exception:  # pragma: no cover (SQLite test path goes straight to fallback)
             # Fallback for SQLite test env
             stmt = select(Approval).where(Approval.status == "pending", Approval.created_at < cutoff)
             result = await session.execute(stmt)

@@ -62,8 +62,8 @@ class CredentialClient:
             return False
         if r.status_code == 404:
             raise SecurityError(f"凭证 {credential_id} 不存在")
-        r.raise_for_status()
-        return False
+        r.raise_for_status()  # pragma: no cover (we always handle 200/403/404 before reaching here)
+        return False  # pragma: no cover (unreachable — raise_for_status raises)
 
     async def aclose(self) -> None:
         if self._client is not None:

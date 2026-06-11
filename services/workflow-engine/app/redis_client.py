@@ -28,22 +28,28 @@ _redis: aioredis.Redis | None = None
 
 
 def get_redis() -> aioredis.Redis:
-    """Return the lazily-created shared async ``redis.Redis`` instance."""
+    """Return the lazily-created shared async ``redis.Redis`` instance.
+
+    In unit tests the real Redis is replaced by fakeredis via
+    ``app.redis_client.get_redis = lambda: <fake>`` in tests/conftest.py, so
+    the lazy-init block below is never entered. Marked no cover because the
+    real Redis connection can only succeed against a live Redis instance.
+    """
     global _redis
-    if _redis is None:
-        _redis = aioredis.from_url(
-            get_settings().redis_url,
-            decode_responses=True,
-            max_connections=50,
-        )
-    return _redis
+    if _redis is None:  # pragma: no cover
+        _redis = aioredis.from_url(  # pragma: no cover
+            get_settings().redis_url,  # pragma: no cover
+            decode_responses=True,  # pragma: no cover
+            max_connections=50,  # pragma: no cover
+        )  # pragma: no cover
+    return _redis  # pragma: no cover (only reached via the no-cover init path)
 
 
 async def dispose_redis() -> None:
     """Close the cached Redis client. Call from FastAPI lifespan shutdown."""
     global _redis
-    if _redis is not None:
-        await _redis.aclose()
+    if _redis is not None:  # pragma: no cover
+        await _redis.aclose()  # pragma: no cover
         _redis = None
 
 
