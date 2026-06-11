@@ -60,18 +60,9 @@ importers:
         specifier: ^4.5.5
         version: 4.5.7(@types/react@18.3.31)(react@18.3.1)
     devDependencies:
-      '@esbuild/linux-arm64':
-        specifier: 0.21.5
-        version: 0.21.5
       '@playwright/test':
         specifier: ^1.45.0
         version: 1.60.0
-      '@rollup/rollup-linux-arm64-gnu':
-        specifier: 4.61.1
-        version: 4.61.1
-      '@rollup/rollup-linux-arm64-musl':
-        specifier: 4.61.1
-        version: 4.61.1
       '@testing-library/jest-dom':
         specifier: ^6.4.8
         version: 6.9.1
@@ -634,6 +625,7 @@ packages:
     resolution: {integrity: sha512-x5Xr49hwt3hdW75UOZm3395YwwzPyauktslv29KpWL/T+vVAzoT3azLcTWv0eMciBNrx+DYjH4paehHoLpPvpg==}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-arm64-musl@4.61.1':
     resolution: {integrity: sha512-unMS3H73DpaoPyyEVPjGKleM/s0mkmsauTENpw4INQY8y4+IuLNjkueQ5QCtC0D3N38Y38yhAU8OoZ20S2Tm6w==}
@@ -2658,7 +2650,8 @@ snapshots:
   '@esbuild/freebsd-x64@0.21.5':
     optional: true
 
-  '@esbuild/linux-arm64@0.21.5': {}
+  '@esbuild/linux-arm64@0.21.5':
+    optional: true
 
   '@esbuild/linux-arm@0.21.5':
     optional: true
@@ -2899,9 +2892,11 @@ snapshots:
   '@rollup/rollup-linux-arm-musleabihf@4.61.1':
     optional: true
 
-  '@rollup/rollup-linux-arm64-gnu@4.61.1': {}
+  '@rollup/rollup-linux-arm64-gnu@4.61.1':
+    optional: true
 
-  '@rollup/rollup-linux-arm64-musl@4.61.1': {}
+  '@rollup/rollup-linux-arm64-musl@4.61.1':
+    optional: true
 
   '@rollup/rollup-linux-loong64-gnu@4.61.1':
     optional: true
