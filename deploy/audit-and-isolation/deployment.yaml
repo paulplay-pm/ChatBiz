@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chatbiz-audit-and-isolation
+  namespace: chatbiz
+  labels:
+    app: chatbiz-audit-and-isolation
+    component: data-isolation-gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: chatbiz-audit-and-isolation
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: chatbiz-audit-and-isolation
+        component: data-isolation-gateway
+    spec:
+      terminationGracePeriodSeconds: 45
+      # 30s preStop drain (lifespan flips app.state.draining=True)
+      # + 15s buffer before SIGKILL. See app/main.py: lifespan.
+      containers:
+        - name: audit-and-isolation
+          image: chatbiz/audit-and-isolation:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          lifecycle:
+            preStop:
+              # /healthz returns 503 the moment app.state.draining flips
+              # True; the L4 LB detects the 503 in <=5s and stops
+              # forwarding. In-flight requests get the rest of the 30s.
+              exec:
+                command: ["/bin/sh", "-c", "sleep 30"]
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          envFrom:
+            - configMapRef:
+                name: chatbiz-audit-and-isolation
+            - secretRef:
+                name: chatbiz-audit-and-isolation
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi

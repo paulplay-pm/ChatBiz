@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: chatbiz-audit-and-isolation
+  namespace: chatbiz
+spec:
+  # At least one instance must be available during voluntary disruptions
+  # (node drain, autoscaler scale-down). Combined with replicas=2 this
+  # guarantees the L4 LB has >= 1 healthy upstream at all times.
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: chatbiz-audit-and-isolation
