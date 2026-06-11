@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { ReactFlow, Background, Controls, MiniMap, ReactFlowProvider, useReactFlow, Connection } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Button, message } from 'antd';
@@ -29,6 +29,28 @@ function CanvasPageInner() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [edgeMenu, setEdgeMenu] = useState<{ edgeId: string; value: string } | null>(null);
   const saveMutation = useSaveWorkflow();
+
+  // Map our store's CanvasNode/CanvasEdge to React Flow's {id, type, position, data}/{id, source, target} shape.
+  // Without this mapping, React Flow can't render edges (it needs source/target, not from/to) and
+  // node components can't read their config (data.config vs top-level config).
+  const rfNodes = useMemo(
+    () => nodes.map((n) => ({
+      id: n.id,
+      type: n.type,
+      position: n.position,
+      data: { config: n.config, status: n.status },
+    })),
+    [nodes],
+  );
+  const rfEdges = useMemo(
+    () => edges.map((e) => ({
+      id: e.id,
+      source: e.from,
+      target: e.to,
+      data: e.condition ? { condition: e.condition } : undefined,
+    })),
+    [edges],
+  );
 
   useUndoRedo();
 
@@ -151,8 +173,8 @@ function CanvasPageInner() {
       <NodePanel />
       <div style={{ flex: 1, position: 'relative' }} onDrop={onDrop} onDragOver={onDragOver}>
         <ReactFlow
-          nodes={nodes as any}
-          edges={edges as any}
+          nodes={rfNodes as any}
+          edges={rfEdges as any}
           nodeTypes={nodeTypes as any}
           onNodesChange={(changes) => {
             changes.forEach((c) => {
