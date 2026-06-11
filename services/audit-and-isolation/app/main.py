@@ -30,6 +30,7 @@ from fastapi import FastAPI
 from app.api.chat import router as chat_router
 from app.api.health import router as health_router
 from app.api.models import router as models_router
+from app.api.traces import router as traces_router
 from app.audit.writer import get_outbox
 from app.config import get_settings
 from app.database import dispose_engine
@@ -63,6 +64,7 @@ app = FastAPI(title="chatbiz-audit-and-isolation", version="0.1.0", lifespan=lif
 app.include_router(chat_router, prefix="/v1")
 app.include_router(health_router)
 app.include_router(models_router, prefix="/v1")
+app.include_router(traces_router)
 
 
 __all__ = ["app", "lifespan"]
