@@ -1,5 +1,9 @@
 # ChatBiz Agent Platform
 
+<p align="center">
+  <img src="assets/logo.png" alt="ChatBiz Logo" width="240" />
+</p>
+
 > **企业级 AI Agent 智能体平台** — 让企业中的每一位员工都能轻松构建和部署 AI 智能体,实现业务流程的智能化升级。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
