@@ -1,0 +1,67 @@
+# docker-compose fixture for HA failover e2e (Phase B task 2.4).
+#
+# This is a *test fixture* — it is consumed by the e2e suite but the
+# e2e test itself uses mock L4 LB + fake audit-and-isolation instances
+# (see services/audit-and-isolation/tests/e2e/test_ha_failover.py) so it
+# does not need docker compose up. The compose file is left here for
+# the next spec phase that wants to run the real K8s-style HA test
+# against actual pods.
+#
+# Bring up locally:
+#   docker compose -f deploy/audit-and-isolation/docker-compose.yml up
+#
+# Components:
+#   * audit-and-isolation-a — instance A (port 8081)
+#   * audit-and-isolation-b — instance B (port 8082)
+#   * nginx-l4 — NGINX stream L4 LB listening on 8080, proxying to
+#     the two instances, with health_check on /healthz every 5s.
+#
+# The postgres + redis dependencies are *not* included in this fixture
+# because the e2e test is purely about the LB + draining behavior,
+# not the full request path. Production compose files (services
+# audit-and-isolation/Dockerfile) keep the DB/Redis wiring intact.
+
+services:
+  audit-and-isolation-a:
+    image: chatbiz/audit-and-isolation:0.1.0
+    container_name: chatbiz-audit-and-isolation-a
+    ports:
+      - "8081:8080"
+    environment:
+      AUDIT_ISOLATION_INSTANCE_ID: A
+      AUDIT_ISOLATION_DRAIN_AT_SIGTERM: "true"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    stop_grace_period: 45s
+
+  audit-and-isolation-b:
+    image: chatbiz/audit-and-isolation:0.1.0
+    container_name: chatbiz-audit-and-isolation-b
+    ports:
+      - "8082:8080"
+    environment:
+      AUDIT_ISOLATION_INSTANCE_ID: B
+      AUDIT_ISOLATION_DRAIN_AT_SIGTERM: "true"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    stop_grace_period: 45s
+
+  nginx-l4:
+    image: nginx:1.27-alpine
+    container_name: chatbiz-audit-and-isolation-l4
+    depends_on:
+      - audit-and-isolation-a
+      - audit-and-isolation-b
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    # HA relies on the upstream DNS being correct. In the docker-compose
+    # network we point the upstream at the service names.
+    command: ["nginx", "-g", "daemon off;"]
