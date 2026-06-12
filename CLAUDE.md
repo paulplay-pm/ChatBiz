@@ -138,3 +138,27 @@ OpenSpec CLI 用 `openspec-*`(`openspec-propose` / `openspec-explore` / `openspe
 | 6379 | redis | 已分配 | 共享基础设施 |
 
 冲突检测规则:本表"已分配"行的端口在 compose 改写前查表;命中保留位要先跟 change 沟通挪位;命中未来分配区可直接用并在 PR 描述里登记。
+
+### 前端目录与端口约定(强制)
+
+- **所有前端页面代码统一放到 `web/` 目录下**,不要在 `apps/`、`clients/`、`ui/` 等其它地方新建前端项目。当前已有：
+  - `web/canvas` — 工作流/Chatflow 编辑器
+  - `web/admin-web` — 管理后台前端
+- **新增前端能力时**,在 `web/` 下新建子目录,例如 `web/<frontend-name>`;并通过 `VITE_APP_BASE=/<frontend-name>/` 配置子路径。
+- **统一 Dockerfile 与单端口**：所有前端子应用由 `web/Dockerfile` 统一构建并打包到同一个 nginx 容器,对外只暴露 **1 个端口 `5173`**。路径分发规则由 `web/nginx.conf` 维护：
+  - `http://localhost:5173/` → portal 首页
+  - `http://localhost:5173/canvas/` → `web/canvas`
+  - `http://localhost:5173/admin-web/` → `web/admin-web`
+  - 新增子应用需同时增加 `location /<name>/` 与 `web/Dockerfile` 的 `COPY` 步骤。
+- **`5173` 是 web 统一入口端口**,不进后端 service 端口表;后续如需暴露公网,仍由该 nginx 容器负责,不再为单个前端分配独立容器端口。
+- 本地开发验证统一入口：
+  ```bash
+  cd /Users/paulwang/work/ChatBiz/web
+  # 分别构建子应用
+  VITE_APP_BASE=/canvas/    pnpm --dir canvas    exec vite build
+  VITE_APP_BASE=/admin-web/ pnpm --dir admin-web build
+  # 构建并启动统一 web 容器
+  docker build -t chatbiz-web:unified .
+  docker run -d --rm -p 5173:80 chatbiz-web:unified
+  ```
+
