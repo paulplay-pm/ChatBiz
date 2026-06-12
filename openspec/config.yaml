@@ -1,5 +1,18 @@
 schema: superpowers-bridge
 
+# Project-wide convention (2026-06-12): all new changes via `openspec-propose`
+# MUST default to schema `superpowers-bridge`. The CLI's `openspec new change`
+# currently scaffolds `schema: spec-driven` by default; agents MUST manually
+# rewrite the change's `.openspec.yaml` to `schema: superpowers-bridge` BEFORE
+# running `openspec status` so the full 8-artifact flow
+# (brainstorm → proposal → design → specs → tasks → plan → apply → verify →
+# retrospective) is enforced. Spec-driven skips brainstorm/plan/verify/
+# retrospective and silently ignores the `apply` MUST-rules in this file.
+# Why: the 12 eng-review decisions, 4 critical paths, and per-artifact rules
+# below are designed for the 8-stage superpowers-bridge lifecycle; a
+# spec-driven change would bypass them.
+defaultSchema: superpowers-bridge
+
 # Project context
 # Shown to AI when creating artifacts. Reflects the project as of 2026-06-10.
 # Three design artifacts together form the source of truth (in priority order):
@@ -31,6 +44,7 @@ rules:
     - 必须列出"非目标"（Non-goals），明确不做的事
     - 影响面涉及"未来实施"时，必须明确标注 [FUTURE-IMPLEMENTATION] 并说明：当前不实现，只为后续实施做准备
     - 若与 12 个 eng-review 锁定决策任一条冲突，必须 surface 冲突并先回到设计 doc 修正
+    - 前后端覆盖：每个功能 capability 必须声明 "前端范围 / 后端范围 / 是否豁免前端" 三项；豁免前端的必须给出书面理由（例：纯内部 API / 纯后台 job / 协议层 / 已由其他 change 接管）
   design:
     - 设计文档须包含：Context、Goals/Non-Goals、Decisions（含每个决策的备选方案与拒绝理由）、Risks/Trade-offs、Migration Plan、Open Questions
     - 涉及架构层面时必须引用 docs/architecture.md 的对应章节
@@ -42,6 +56,8 @@ rules:
     - 每个 Requirement 须使用 SHALL 或 MUST 表述
     - 每个 Requirement 至少有一个 #### Scenario（WHEN/THEN 格式）
     - 若 spec 涉及未来代码层（API/数据库/前端），必须标注 [FUTURE-IMPLEMENTATION] 提示当前仓库无对应代码
+    - 前后端同步：每个 capability 的 spec 必须**同时**包含后端（API / DB / 服务层）和前端（页面 / 交互 / 权限渲染）两部分；纯后端 / 纯前端 / 协议层 capability 必须在 spec 顶部以 "Frontend Scope: N/A — <理由>" 显式声明豁免（例如纯内部 API、纯后台 job、协议层实现、已由其他 change 接管）。无豁免声明 = apply 阶段不通过
+    - 豁免前端时，spec 仍需在 Impact 段落说明该能力如何被用户/上游消费（被哪个 UI 调用、调用方是谁、是否仅运维后台），避免出现"无主 capability"
     - 测试规范：3 层金字塔（单元 pytest / 集成 LangGraph e2e / E2E Playwright）+ LLM eval（50 个 paul 财务月报场景作为基线）
     - 4 个 critical path 必须显式列为 Requirement：① paul 财务月报 end-to-end ② 数据隔离网关 PII 拦截 ③ 人工审批中断与续接 ④ 插件加载失败降级
     - 后端 spec 必须包含：API 请求/响应校验规则、异常用例、权限校验用例
@@ -75,11 +91,15 @@ rules:
     - MUST: 容器名约定 chatbiz-<service>；network 用 compose 内置 DNS（http://<service>:<port>），不引 host 网络
     - MUST: 健康检查用 HTTP GET <port>/healthz（HEALTHCHECK 与 docker-compose healthcheck 同步）
     - MUST: 端口从 CLAUDE.md 端口分配表选用；如新占端口，先更新端口表再写 compose
-    - MUST: 涉及数据库的服务同时添加 <service>-migrate 一次性容器（restart: "no", command: alembic upgrade head），主 service depends_on 链 service_completed_successfully
+    - MUST: 涉及数据库的服务同时添加 <service>-migrate 一次性容器（restart=no，command=alembic-upgrade-head），主 service depends_on 链 service_completed_successfully
     - MUST: 环境变量用 ${VAR:-default} 语法，便于本地与生产覆盖
     - MUST: 容器内 cmd 使用 python -m app.<entrypoint> 风格
     - MUST: 新 service 单测覆盖率 100%、至少 1 个集成测试；未达标不允许 apply
     - MUST: 引用 eng-review Arch #1 的 egress 强制点（任何 LLM/外部 HTTP 出口必须走 audit-and-isolation）
+    # 前后端同步落地（与 specs 规则配套）
+    - MUST: 每个 capability 必须同时落地后端 + 前端；豁免前端需在 spec 顶部显式声明且理由可接受（纯内部 API / 纯后台 job / 协议层 / 已被其他 change 接管）。无豁免声明或纯后端 apply = 失败
+    - MUST: 前端落地至少包含：页面 / 组件 / 路由 / 权限渲染 / E2E Playwright 用例。React 走 TypeScript 严格 + Hooks + 状态隔离（与编码规范一致）
+    - MUST: 后端落地至少包含：API 路由 / Pydantic schema / 审计埋点 / 异常映射。Python 走 SQLAlchemy ORM + 异步（与编码规范一致）
 
 # Eng-review locked decisions
 # 12 finding 全部 approved（2026-06-10）。spec/change 作者必须先看这一节再下笔，避免重复讨论。
