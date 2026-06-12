@@ -246,25 +246,21 @@ class TestMetricsEndpoint(unittest.TestCase):
         """The body contains at least one metric sample line for
         every required family (counters render as
         ``name{labels} value``; gauges the same; histograms
-        render ``_bucket``/``_count``/``_sum``)."""
-        # Touch the labelled counters + histogram with at least
-        # one label set so a sample line is rendered (an
-        # unlabelled counter or an unlabelled histogram with
-        # ``labelnames`` set only renders the HELP/TYPE
-        # preamble, no sample).
-        gateway_requests_total.labels(
-            method="POST", path="/v1/chat/completions", status="200"
-        ).inc(0)
-        gateway_pii_hits_total.labels(pii_type="身份证", action="mask").inc(0)
-        gateway_request_duration_seconds.labels(
-            method="POST", path="/v1/chat/completions"
-        ).observe(0.0)
+        render ``_bucket``/``_count``/``_sum``).
+
+        We don't pin the value to ``0.0`` — other tests in
+        the suite may have already incremented the counter
+        (the chat pipeline is wired to update it on every
+        request). We just verify the *form* of the sample
+        line: ``name{...} <float>``.
+        """
         body, _ = _exposition(self.client)
-        # Counter — ``requests_total{...} 0.0`` at minimum.
+        # Counter — ``requests_total{...} <float>``.
         self.assertRegex(
             body,
             re.compile(
-                rf"^{_REQUEST_TOTAL_NAME}\{{[^}}]*\}} 0\.0$", re.MULTILINE
+                rf"^{re.escape(_REQUEST_TOTAL_NAME)}\{{[^}}]*\}} \d+(?:\.\d+)?$",
+                re.MULTILINE,
             ),
         )
         # Histogram — count + sum + bucket.
@@ -274,13 +270,17 @@ class TestMetricsEndpoint(unittest.TestCase):
         # Gauge.
         self.assertRegex(
             body,
-            re.compile(rf"^{_ACTIVE_CONN_NAME}.*0\.0$", re.MULTILINE),
+            re.compile(
+                rf"^{re.escape(_ACTIVE_CONN_NAME)} \d+(?:\.\d+)?$",
+                re.MULTILINE,
+            ),
         )
-        # PII hits counter (after we labelled it).
+        # PII hits counter.
         self.assertRegex(
             body,
             re.compile(
-                rf"^{_PII_HITS_NAME}\{{[^}}]*\}} 0\.0$", re.MULTILINE
+                rf"^{re.escape(_PII_HITS_NAME)}\{{[^}}]*\}} \d+(?:\.\d+)?$",
+                re.MULTILINE,
             ),
         )
 
