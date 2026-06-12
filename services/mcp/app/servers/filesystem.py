@@ -346,9 +346,42 @@ def main() -> None:
     asyncio.run(run_stdio())
 
 
+TOOL_NAMES = ("read_file", "write_file", "list_dir", "search")
+
+
+def HANDLER(tool_name: str, args: dict[str, Any]) -> dict[str, Any]:
+    """Synchronous adapter used by ``app.router.McpRouter``.
+
+    The standalone filesystem server exposes MCP stdio handlers via
+    ``build_server``. The central router needs a plain sync function
+    with a stable signature, so this adapter delegates to the same
+    implementation helpers.
+    """
+    policy = McpSecurityPolicy.from_env()
+    if tool_name == "fs_read_file":
+        tool_name = "read_file"
+    if tool_name == "fs_write_file":
+        tool_name = "write_file"
+    if tool_name == "fs_list_dir":
+        tool_name = "list_dir"
+    if tool_name == "fs_search":
+        tool_name = "search"
+    if tool_name == "read_file":
+        return {"content": _read_file_impl(args["path"], policy)}
+    if tool_name == "write_file":
+        return _write_file_impl(args["path"], args.get("content", ""), policy)
+    if tool_name == "list_dir":
+        return {"entries": _list_dir_impl(args["path"], policy)}
+    if tool_name == "search":
+        return {"matches": _search_impl(args["path"], args.get("pattern", "*"), policy)}
+    raise ValueError(f"unknown filesystem tool: {tool_name}")
+
+
 __all__ = [
     "SERVER_NAME",
     "SERVER_VERSION",
+    "TOOL_NAMES",
+    "HANDLER",
     "build_server",
     "run_stdio",
     "main",

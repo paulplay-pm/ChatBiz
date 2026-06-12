@@ -497,10 +497,39 @@ def main() -> None:
     asyncio.run(_run())
 
 
+TOOL_NAMES = ("execute_query", "list_tables", "describe_table")
+
+
+def _run_coro(coro):
+    """Run an async helper from the router's sync HANDLER adapter."""
+    return asyncio.run(coro)
+
+
+def HANDLER(tool_name: str, args: dict[str, Any]) -> dict[str, Any]:
+    """Synchronous adapter used by ``app.router.McpRouter``."""
+    if tool_name.startswith("pg_"):
+        tool_name = tool_name.removeprefix("pg_")
+    if tool_name == "execute_query":
+        return _run_coro(_execute_query_impl(args.get("sql", "")))
+    if tool_name == "list_tables":
+        return {"tables": _run_coro(_list_tables_impl(args.get("schema", "public")))}
+    if tool_name == "describe_table":
+        return {
+            "columns": _run_coro(
+                _describe_table_impl(
+                    args.get("table_name", ""), args.get("schema", "public")
+                )
+            )
+        }
+    raise ValueError(f"unknown postgres tool: {tool_name}")
+
+
 __all__ = [
     "McpError",
     "McpSecurityError",
     "McpTimeoutError",
+    "TOOL_NAMES",
+    "HANDLER",
     "_assert_readonly",
     "_AuditClient",
     "_audit_client",

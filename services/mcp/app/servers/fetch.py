@@ -36,7 +36,7 @@ import orjson
 from bs4 import BeautifulSoup
 from mcp.server import Server
 
-from app.router import make_audit_call
+from app.audit import make_audit_call
 from app.security import (
     McpParseError,
     McpResponseTooLargeError,
@@ -44,7 +44,34 @@ from app.security import (
     McpSecurityPolicy,
 )
 
+TOOL_NAMES = ("fetch_url", "fetch_html", "fetch_json")
+
+
+def _run_coro(coro):
+    """Run an async helper from the router's sync HANDLER adapter."""
+    return __import__("asyncio").run(coro)
+
+
+def HANDLER(tool_name: str, args: dict[str, Any]) -> dict[str, Any]:
+    """Synchronous adapter used by ``app.router.McpRouter``."""
+    # The central router advertises names with the fetch_ prefix; the
+    # standalone server uses bare tool names.
+    if tool_name.startswith("fetch_") and tool_name not in TOOL_NAMES:
+        tool_name = tool_name.removeprefix("fetch_")
+        tool_name = f"fetch_{tool_name}"
+    url = args.get("url", "")
+    if tool_name == "fetch_url":
+        return _run_coro(fetch_url(url))
+    if tool_name == "fetch_html":
+        return {"text": _run_coro(fetch_html(url))}
+    if tool_name == "fetch_json":
+        return _run_coro(fetch_json(url))
+    raise ValueError(f"unknown fetch tool: {tool_name}")
+
+
 __all__ = [
+    "TOOL_NAMES",
+    "HANDLER",
     "build_server",
     "fetch_url",
     "fetch_html",

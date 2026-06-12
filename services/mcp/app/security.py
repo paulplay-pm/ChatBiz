@@ -174,6 +174,9 @@ def _int_env(name: str, default: int) -> int:
 # ---------------------------------------------------------------------------
 
 
+DEFAULT_FETCH_MAX_BYTES = 1_048_576  # 1 MiB
+
+
 class McpSecurityPolicy:
     """Env-driven allowlist + SSRF defense shared by the 3 servers.
 
@@ -185,16 +188,42 @@ class McpSecurityPolicy:
 
     DEFAULT_FETCH_MAX_BYTES = 1_048_576  # 1 MiB
 
-    def __init__(self) -> None:
-        self.fs_allowed_dirs: tuple[Path, ...] = tuple(
-            Path(p).resolve() for p in _split_csv(os.environ.get("MCP_FS_ALLOWED_DIRS", ""))
+    def __init__(
+        self,
+        *,
+        allowed_dirs: tuple[Path, ...] | list[Path] | None = None,
+        allowed_domains: tuple[str, ...] | list[str] | None = None,
+        max_response_bytes: int | None = None,
+    ) -> None:
+        self.fs_allowed_dirs: tuple[Path, ...] = (
+            tuple(Path(p).resolve() for p in allowed_dirs)
+            if allowed_dirs is not None
+            else tuple(
+                Path(p).resolve()
+                for p in _split_csv(os.environ.get("MCP_FS_ALLOWED_DIRS", ""))
+            )
         )
-        self.fetch_allowed_domains: tuple[str, ...] = tuple(
-            _split_csv(os.environ.get("MCP_FETCH_ALLOWED_DOMAINS", ""))
+        self.fetch_allowed_domains: tuple[str, ...] = (
+            tuple(allowed_domains)
+            if allowed_domains is not None
+            else tuple(_split_csv(os.environ.get("MCP_FETCH_ALLOWED_DOMAINS", "")))
         )
-        self.fetch_max_bytes: int = _int_env(
-            "MCP_FETCH_MAX_BYTES", self.DEFAULT_FETCH_MAX_BYTES
+        self.fetch_max_bytes: int = (
+            max_response_bytes
+            if max_response_bytes is not None
+            else _int_env("MCP_FETCH_MAX_BYTES", self.DEFAULT_FETCH_MAX_BYTES)
         )
+
+    # -- construction helpers ------------------------------------------------
+
+    @classmethod
+    def from_env(cls) -> "McpSecurityPolicy":
+        """Construct a policy from the current process environment.
+
+        Server implementations call this at startup; tests monkeypatch
+        env vars and use it as a small public factory.
+        """
+        return cls()
 
     # -- public API ----------------------------------------------------------
 
@@ -223,8 +252,8 @@ class McpSecurityPolicy:
                 "refuses to start without an explicit allowlist)"
             )
 
-    def check_path(self, path: str) -> None:
-        """Reject any path that resolves outside ``MCP_FS_ALLOWED_DIRS``.
+    def check_path(self, path: str) -> Path:
+        """Return the resolved path if it is inside ``MCP_FS_ALLOWED_DIRS``.
 
         ``Path.resolve()`` walks the full chain of ``..`` segments
         *and* follows symlinks, so traversal/escape attempts land on
@@ -242,6 +271,7 @@ class McpSecurityPolicy:
             raise McpSecurityError(
                 f"path {resolved} is not in allowed dirs {self.fs_allowed_dirs}"
             )
+        return resolved
 
     def check_url(self, url: str) -> None:
         """Reject URLs whose host is off the allowlist or a private IP."""
@@ -285,6 +315,7 @@ class McpSecurityPolicy:
 
 
 __all__ = [
+    "DEFAULT_FETCH_MAX_BYTES",
     "McpError",
     "McpParseError",
     "McpResponseTooLargeError",
