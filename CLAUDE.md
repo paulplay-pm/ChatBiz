@@ -39,6 +39,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 完整规则在 `openspec/config.yaml` —— 写新 change 之前先读。
 
+[FUTURE-IMPLEMENTATION] `docs/architecture.md` §4.3.Y PII 规则集段落即将在 `gateway-egress-enforcement-p0` apply 阶段补全,引用 `services/audit-and-isolation/app/pii/{rules,detector,redactor,reverser}.py` 作为权威实现。
+
 ## 已锁定的工程决策(eng-review 2026-06-10,12 finding 全部 approved)
 
 来自 design doc `## GSTACK REVIEW REPORT`,**不要再重新讨论**:
