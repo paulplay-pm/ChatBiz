@@ -45,6 +45,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 [FUTURE-IMPLEMENTATION] `docs/architecture.md` §4.3.Z 4 错误边界(eng-review Quality #3 锁定)即将在 `four-error-boundaries` apply 阶段补全,引用 `§4.3.5` 企业安全 + 既有 4 边界错误类(`SecurityError` / `UserError` / `WorkflowRuntimeError` / 7-class `audit-and-isolation/errors.py`)。
 
+[FUTURE-IMPLEMENTATION] `docs/architecture.md` §4.6 5 存储量预估(eng-review Perf #2 锁定)即将在 `storage-estimates` apply 阶段补全,引用 `§4.3.X` L4 100GB + `§4.3.Y` PII mask 节省 + `§4.5` 部署架构;漂移监控 V1.0+。
+
 ## 已锁定的工程决策(eng-review 2026-06-10,12 finding 全部 approved)
 
 来自 design doc `## GSTACK REVIEW REPORT`,**不要再重新讨论**:

@@ -32,6 +32,7 @@
     - [4.3.Z 4 错误边界(eng-review Quality #3 锁定)](#43z-4-错误边界eng-review-quality-3-锁定)
   - [4.4 技术栈选型](#44-技术栈选型)
   - [4.5 部署架构](#45-部署架构)
+  - [4.6 存储量预估(eng-review Perf #2 锁定)](#46-存储量预估eng-review-perf-2-锁定)
 - [五、参考资料](#五参考资料)
 
 ---
@@ -1184,6 +1185,67 @@ credential service 路径承担,属于 §4.3.5 凭证未授权的 security 边�
 │  ELK Stack │ Jaeger                                             │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+### 4.6 存储量预估(eng-review Perf #2 锁定)
+
+> eng-review 2026-06-10 锁定的 Perf #2 明确"5 个存储量预估"。本段集中
+> 给出 5 数字 + 计算依据 + 漂移监控;不**实现**容量监控脚本(留 V1.0+)。
+
+**5 数字总览**
+
+| # | 存储 | 容量 | 位置 | 保留 | eng-review 编号 |
+|---|------|------|------|------|-----------------|
+| 1 | audit log(冷) | **780GB / 3mo** | MinIO 分布式 | 3 年 | Perf #2 #1 |
+| 2 | workflow state | **500MB** | PostgreSQL | 永久 | Perf #2 #2 |
+| 3 | Milvus 向量 | **100GB** | Milvus cluster | 永久 | Perf #2 #3 |
+| 4 | canvas JSON | **500MB** | PostgreSQL + Redis | 永久 | Perf #2 #4 |
+| 5 | 文档(原文件) | **10TB / year** | MinIO 分布式 | 永久 | Perf #2 #5 |
+
+**计算依据**(eng-review Perf #2 锁定)
+
+1. **audit log 780GB/3mo**:基于 metadata-only 14 字段(每条 ~2KB)
+   × 50K events/day × 90 天 = ~9GB PG 热数据;冷数据 + 历史累计 + 索引
+   副本 ≈ 780GB/3mo(实际 PG 50GB + MinIO 720GB)
+2. **workflow state 500MB**:基于 1000 workflow × 5 versions × 100KB/workflow JSON
+   = 500MB;不**含** LangGraph checkpoint(checkpoint 单存 PG `workflow_state` 表)
+3. **Milvus 100GB**:基于 1B chunks × 1KB/chunk + index 副本(IVF/HNSW 索引约
+   等于原始向量大小 30%);与 `§4.3.X` L4 段锁定数字一致
+4. **canvas JSON 500MB**:基于 1000 canvas × 50 versions × 10KB/canvas JSON
+   + Redis 实时状态副本;不**含**画布图片/资产(那些走 MinIO 文档)
+5. **文档 10TB/year**:基于企业日均 30GB 文档上传(合同 / 报告 / 财务凭证)
+   × 365 天 = 10.95TB;含冗余副本(3 副本 erasure coding)
+
+**与既有 §4.3 段的引用**
+
+- `§4.3.X 4 层记忆`:L4 100GB 数字与本段 Milvus 100GB 一致
+- `§4.3.Y PII 规则集`:mask-only 节省存储(原文 hash 而非原文)—— audit log
+  780GB 是 mask 后数字
+- `§4.5 部署架构`:PostgreSQL 主从 / Redis Sentinel / MinIO 分布式 部署
+  形态承载本段 5 数字
+
+**漂移监控(留 V1.0+)** `[FUTURE-IMPLEMENTATION]`
+
+- **触发**:实际容量 vs 预估 偏差 > 30% 时,**`Prometheus` 告警**
+- **监控指标**:`chatbiz_storage_bytes{store="audit|state|vector|canvas|doc"}`
+- **执行**:`services/operations/storage_monitor.py` 定时任务,每日 02:00
+  UTC(与 audit 归档任务同时间窗口),对比 PG `pg_total_relation_size` /
+  `du` 输出
+- **告警通道**:复用 `services/audit-and-isolation/app/alerts.py::send_wecom()`
+- **数字修订**:漂移确认后,本段数字 MUST 同步更新 + commit
+
+**eng-review 决策引用**:
+- Perf #2(5 存储量预估全部锁定)
+
+**下游 spec 引用**:
+- `services/operations/storage_monitor.py`(漂移监控,V1.0+ 留)
+- `services/audit-and-isolation/app/alerts.py::send_wecom()`(告警通道)
+- T3 4 层记忆(已引用 L4 100GB)
+
+**eng-review 之外的决策**(本 spec D1-D4):
+- 数字计算依据本 spec 显式给出(eng-review 报告里只给数字)
+- 漂移阈值 30%(MVP 保守值,V1.0+ 可调)
+- 漂移监控走 audit-and-isolation 既有 `alerts.py` 通道(不**新**建告警系统)
+- L4 100GB 数字与 `§4.3.X` 段一致(避免漂移)
 
 ---
 
