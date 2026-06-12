@@ -3,7 +3,7 @@
 **Frontend Scope: 含前端**（卡片列表 + 弹窗表单 + 状态徽章 + 权限渲染）
 
 **Impact**（被谁消费）：
-- 被 admin / paul / leo / anny 在 admin-web "MCP 工具" 页面消费
+- 被 admin / paul / leo / anny 在 admin "MCP 工具" 页面消费
 - 被 `mcp-server-lifecycle` 内部消费（CRUD 出元数据后由 lifecycle 改 status）
 - 未来被 `agent-runtime` 通过 `GET /v1/mcp/servers` 间接消费（拉 server 列表决定 Agent 可用 tool）
 
@@ -73,7 +73,7 @@ The system SHALL expose `DELETE /v1/mcp/servers/{id}` which MUST first check the
 
 ### Requirement: Frontend renders MCP server cards
 
-The admin-web view `/mcp-tools` MUST render one card per registered MCP server. Each card MUST show: icon (chosen by transport), name, subtitle, status badge (green "已连接" / gray "未连接" / yellow "连接中" / red "错误"), `Server: <name> | Transport: <transport>` line, tools list (truncated to 4 with `+N more`), and action buttons (`配置` / `断开` / `连接`). Cards MUST be laid out in a responsive grid (1 col mobile, 2 col md, 3 col lg).
+The admin view `/mcp-tools` MUST render one card per registered MCP server. Each card MUST show: icon (chosen by transport), name, subtitle, status badge (green "已连接" / gray "未连接" / yellow "连接中" / red "错误"), `Server: <name> | Transport: <transport>` line, tools list (truncated to 4 with `+N more`), and action buttons (`配置` / `断开` / `连接`). Cards MUST be laid out in a responsive grid (1 col mobile, 2 col md, 3 col lg).
 
 The view MUST be route-guarded: only users with role `mcp.admin` can see it; others get HTTP 403 from the API and the route is hidden in the nav.
 
@@ -91,7 +91,7 @@ The view MUST be route-guarded: only users with role `mcp.admin` can see it; oth
 
 ### Requirement: Frontend form to add/edit MCP server
 
-The admin-web MUST provide a modal form (opened from the "+ 添加 MCP Server" button or card "配置" action) with fields: name (text), transport (select stdio/sse/http), command (text), args (chip input), env (key-value pair editor), security_config (JSON editor for `allowed_dirs` / `allowed_domains` / `dsn`). The form MUST validate client-side (matching backend rules) and submit to `POST` or `PATCH` accordingly. On 409 (duplicate name) the form MUST highlight the name field and show the error inline.
+The admin MUST provide a modal form (opened from the "+ 添加 MCP Server" button or card "配置" action) with fields: name (text), transport (select stdio/sse/http), command (text), args (chip input), env (key-value pair editor), security_config (JSON editor for `allowed_dirs` / `allowed_domains` / `dsn`). The form MUST validate client-side (matching backend rules) and submit to `POST` or `PATCH` accordingly. On 409 (duplicate name) the form MUST highlight the name field and show the error inline.
 
 #### Scenario: Add server form submission
 - **WHEN** admin fills in the form with valid data and clicks "保存"

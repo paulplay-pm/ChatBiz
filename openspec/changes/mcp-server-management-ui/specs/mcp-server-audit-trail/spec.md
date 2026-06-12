@@ -55,7 +55,7 @@ The system MUST redact values of fields named `env.MCP_*_KEY`, `env.MCP_*_TOKEN`
 Per eng-review Test #2 critical path #4, the system MUST handle plugin load failure with graceful degradation. This means:
 - A server with `status='error'` MUST NOT cause the `/v1/mcp/servers` list endpoint to fail (the list returns the row with `status='error'`, the rest are unaffected).
 - A server with `status='error'` MUST NOT cause the `list_advertised_tools` of OTHER servers to fail (the router's per-server HANDLER must isolate the error).
-- The admin-web card MUST render the `error` state with a red badge and a tooltip showing `last_error`.
+- The admin card MUST render the `error` state with a red badge and a tooltip showing `last_error`.
 
 #### Scenario: List endpoint not affected by one error server
 - **WHEN** 3 servers exist, 1 with `status='error'`, and admin GETs `/v1/mcp/servers`

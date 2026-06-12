@@ -11,7 +11,7 @@
 
 ### Requirement: Playwright is configured
 
-The system MUST have `web/admin-web/playwright.config.ts` with:
+The system MUST have `web/admin/playwright.config.ts` with:
 - `testDir: './e2e'`
 - `timeout: 30_000`
 - `fullyParallel: true`
@@ -31,7 +31,7 @@ The system MUST have `web/admin-web/playwright.config.ts` with:
 
 ### Requirement: Bootstrap E2E smoke test exists
 
-The file `web/admin-web/e2e/admin-web-bootstrap.spec.ts` MUST contain exactly 1 test scenario: "Open /mcp-tools and verify SideNav + Placeholder". The test MUST:
+The file `web/admin/e2e/admin-bootstrap.spec.ts` MUST contain exactly 1 test scenario: "Open /mcp-tools and verify SideNav + Placeholder". The test MUST:
 1. `await page.goto('/mcp-tools')`
 2. Verify URL is `/mcp-tools`
 3. Verify SideNav is visible (`await expect(page.getByRole('navigation')).toBeVisible()`)
@@ -48,7 +48,7 @@ The file `web/admin-web/e2e/admin-web-bootstrap.spec.ts` MUST contain exactly 1 
 
 ### Requirement: Vitest is configured
 
-The system MUST have `web/admin-web/vitest.config.ts` with:
+The system MUST have `web/admin/vitest.config.ts` with:
 - `test.environment: 'jsdom'`
 - `test.setupFiles: ['./tests/unit/setup.ts']`
 - `test.globals: true`
@@ -64,7 +64,7 @@ The system MUST have `web/admin-web/vitest.config.ts` with:
 
 ### Requirement: Bootstrap unit test exists
 
-The file `web/admin-web/tests/unit/AppShell.test.tsx` MUST contain 1 test:
+The file `web/admin/tests/unit/AppShell.test.tsx` MUST contain 1 test:
 - `renders 14 menu items`: render `<MemoryRouter><AppShell /></MemoryRouter>` and assert 14 `<a>` elements with the expected hrefs (`/workflow`, `/agent`, ..., `/logs`)
 
 #### Scenario: Unit test passes

@@ -1,6 +1,6 @@
 # ChatBiz Admin Web
 
-ChatBiz 企业 AI Agent 平台的管理控制台前端骨架。**当前 change（`admin-web-bootstrap`）只建骨架，不含业务逻辑** —— 14 个左侧菜单全部指向 `PlaceholderView`，等后续 change 落地。
+ChatBiz 企业 AI Agent 平台的管理控制台前端骨架。**当前 change（`admin-bootstrap`）只建骨架，不含业务逻辑** —— 14 个左侧菜单全部指向 `PlaceholderView`，等后续 change 落地。
 
 ## 技术栈
 
@@ -32,7 +32,7 @@ npx playwright install chromium
 ## 目录结构
 
 ```
-web/admin-web/
+web/admin/
 ├── index.html                  # Vite 入口
 ├── vite.config.ts              # Vite + plugin-react + tsconfig-paths
 ├── vitest.config.ts            # Vitest + jsdom + @ alias
@@ -64,7 +64,7 @@ web/admin-web/
 │   ├── setup.ts                # 引 @testing-library/jest-dom 匹配器
 │   └── AppShell.test.tsx       # 14 menu item smoke 测试
 └── e2e/
-    └── admin-web-bootstrap.spec.ts  # /mcp-tools deep-link smoke E2E
+    └── admin-bootstrap.spec.ts  # /mcp-tools deep-link smoke E2E
 ```
 
 ## 后续 change 怎么 mount 业务视图
@@ -87,8 +87,8 @@ web/admin-web/
 - `8004` `chatbiz-mcp` 后端（health check 目标，与 CLAUDE.md 端口表对齐）
 
 > **5173 冲突排查**：若启动报 `Port 5173 is already in use`，先看 `docker ps | grep 5173`。
-> 若是历史 `chatbiz-web` 容器占用，本 change 决议（design.md D10）是 **不引 admin-web docker
-> 容器**，因此可临时 `docker stop chatbiz-web` 让路；后续 V1.0 由 `admin-web-deploy` change
+> 若是历史 `chatbiz-web` 容器占用，本 change 决议（design.md D10）是 **不引 admin docker
+> 容器**，因此可临时 `docker stop chatbiz-web` 让路；后续 V1.0 由 `admin-deploy` change
 > 统一两者端口分配。
 
-后续生产部署由 `admin-web-deploy` change 负责（nginx + docker-compose）。
+后续生产部署由 `admin-deploy` change 负责（nginx + docker-compose）。

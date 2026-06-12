@@ -17,7 +17,7 @@ eng-review 12 决策里：
 - Test #2 critical path #4：**插件加载降级**必须 100% 覆盖
 - PRD §1162 / §1706：MCP 工具配置页是 V1.0 P1
 
-**必中 wedge**：admin / paul / leo / anny 能在 admin-web 直接增删 / 启停 MCP server，**不**走 SSH 改 env。
+**必中 wedge**：admin / paul / leo / anny 能在 admin 直接增删 / 启停 MCP server，**不**走 SSH 改 env。
 
 ---
 
@@ -34,8 +34,8 @@ eng-review 12 决策里：
 - 单独占端口、单独 deploy、独立 health check
 - 拒绝理由：违反 eng-review Arch #1 "egress 强制点"（admin 操作只是 CRUD 元数据，**真正**的 LLM/MCP 出口在 `services/mcp` 本身）；多一层网络 hop；MVP 阶段没人力维护两个 service
 
-**C. REST 端点挂到 admin-web 的 BFF 进程**
-- admin-web 是 Vite/React，没有 Python 进程
+**C. REST 端点挂到 admin 的 BFF 进程**
+- admin 是 Vite/React，没有 Python 进程
 - 要么引 Python BFF（= 选 B），要么直接调 audit-and-isolation（强耦合，破坏 mcp 单 service 自洽）
 - 拒绝
 
@@ -81,7 +81,7 @@ eng-review 12 决策里：
 - 精神同 eng-review Quality #1 "4 份代码从 1 份生成"
 
 **B. 引 Pydantic + 自动 codegen 到 TS**
-- 拒绝：admin-web 仓库结构未定（monorepo vs submodule），跨语言 codegen 工具要等
+- 拒绝：admin 仓库结构未定（monorepo vs submodule），跨语言 codegen 工具要等
 - 短期手工对齐 + 单元测试覆盖
 
 **C. 每处独立定义**
@@ -107,15 +107,15 @@ eng-review 12 决策里：
 ### Q6：前端状态实时刷新用 WebSocket、SSE、还是轮询？
 
 **A. SWR 5s 轮询**（已选）
-- admin-web 已有 React + Hooks 栈
+- admin 已有 React + Hooks 栈
 - 引入 `swr` 做 `revalidateInterval: 5000`
 - 简单，CDN 友好
 
 **B. WebSocket**
-- 拒绝：admin-web 没有 WS gateway，5s 轮询延迟对 admin 视角可接受
+- 拒绝：admin 没有 WS gateway，5s 轮询延迟对 admin 视角可接受
 
 **C. SSE**
-- 拒绝：admin-web 不引 EventSource 抽象
+- 拒绝：admin 不引 EventSource 抽象
 
 → **锁定 A**
 
@@ -150,16 +150,16 @@ eng-review 12 决策里：
 
 → **锁定 A**
 
-### Q9：admin-web 仓库结构是 monorepo 还是 submodule？
+### Q9：admin 仓库结构是 monorepo 还是 submodule？
 
 **A. 未知，需前置门**
-- 仓库根当时**没有** `web/admin-web/` 目录（CLAUDE.md 写"0 行源代码"）
+- 仓库根当时**没有** `web/admin/` 目录（CLAUDE.md 写"0 行源代码"）
 - prototype.html 是 `docs/` 下的 HTML
-- 决策点：本 change 在 tasks.md 写"前置 0.1 = 确认 admin-web 仓库路径"
+- 决策点：本 change 在 tasks.md 写"前置 0.1 = 确认 admin 仓库路径"
 - 否则 spec 标 [BLOCKED]
 
 **B. 现在就假设 monorepo**
-- 拒绝：可能错（如果团队决定 submodule 方案，本 change 的 `web/admin-web/` 提交会被 revert）
+- 拒绝：可能错（如果团队决定 submodule 方案，本 change 的 `web/admin/` 提交会被 revert）
 
 → **锁定 A（前置门 0.1）**
 
@@ -192,9 +192,9 @@ eng-review 12 决策里：
 
 ## Open Questions（仍未决）
 
-- OQ1：admin-web 是 monorepo 还是 submodule？→ 任务 0.1 前置门验
+- OQ1：admin 是 monorepo 还是 submodule？→ 任务 0.1 前置门验
 - OQ2：MCP server 注册元数据是否要 export 给其他 service（agent-runtime 拿 `pg_server_registrations` 决定可调 tool）？→ 当前 REST 暴露，未来 V1.5 走 `pg_notify` 推送
-- OQ3：`mcp-server-audit-trail` capability UI = N/A，但**要不要**在 admin-web 加个"操作历史"标签？→ 当前 N/A，未来 V1.5 走 `audit-and-isolation-admin-ui`
+- OQ3：`mcp-server-audit-trail` capability UI = N/A，但**要不要**在 admin 加个"操作历史"标签？→ 当前 N/A，未来 V1.5 走 `audit-and-isolation-admin-ui`
 - OQ4：admin 误删 MCP server 时的引用检查，扫 `agents.spec.tools[]` + `workflows.spec.nodes[]` 范围多大？→ 当前 stub，未来 agent / workflow service 落地后补真实扫
 
 ---

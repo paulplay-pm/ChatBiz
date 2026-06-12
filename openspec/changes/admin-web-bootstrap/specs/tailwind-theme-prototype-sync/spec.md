@@ -11,7 +11,7 @@
 
 ### Requirement: Tailwind CSS 3.4 is configured
 
-The system MUST have `web/admin-web/tailwind.config.js` + `web/admin-web/postcss.config.js`. `tailwindcss@^3.4.0` + `postcss` + `autoprefixer` MUST be in `devDependencies`. The `content` array MUST include `./index.html` + `./src/**/*.{ts,tsx}`. The system MUST have `@tailwind base; @tailwind components; @tailwind utilities;` in `src/index.css` (or equivalent entry CSS imported from `main.tsx`).
+The system MUST have `web/admin/tailwind.config.js` + `web/admin/postcss.config.js`. `tailwindcss@^3.4.0` + `postcss` + `autoprefixer` MUST be in `devDependencies`. The `content` array MUST include `./index.html` + `./src/**/*.{ts,tsx}`. The system MUST have `@tailwind base; @tailwind components; @tailwind utilities;` in `src/index.css` (or equivalent entry CSS imported from `main.tsx`).
 
 #### Scenario: Tailwind directives compiled
 - **WHEN** developer runs `pnpm build`

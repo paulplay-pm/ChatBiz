@@ -4,7 +4,7 @@
 #
 # 前置：先在本地分别 build 好：
 #   cd web/canvas    && VITE_APP_BASE=/canvas/    pnpm exec vite build
-#   cd web/admin-web && VITE_APP_BASE=/admin-web/ pnpm build
+#   cd web/admin && VITE_APP_BASE=/admin/ pnpm build
 #
 # 然后本 Dockerfile 只负责把产物打包进 nginx。
 # =====================================================================
@@ -12,7 +12,7 @@
 FROM nginx:1.27-alpine AS runtime
 COPY index.html /usr/share/nginx/html/index.html
 COPY canvas/dist /usr/share/nginx/html/canvas
-COPY admin-web/dist /usr/share/nginx/html/admin-web
+COPY admin/dist /usr/share/nginx/html/admin
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 

@@ -1,4 +1,4 @@
-# Retrospective — admin-web-bootstrap
+# Retrospective — admin-bootstrap
 
 **Cycle**: 2026-06-12
 **Author**: Claude Opus 4.8 (apply skill, fallback path)
@@ -17,7 +17,7 @@
 
 ## 2. What was hard
 
-- **5173 端口被 Docker 容器 `chatbiz-web` 占用**:跑 E2E 时 page.goto 被重定向到 `/login?redirect=...`(那容器有 login 逻辑),花了一轮 debug。最终方案是临时 `docker stop chatbiz-web` 跑 E2E、跑完起回。在 README 文档化了这条排查路径。这是仓库内"未引 docker-compose 的本 change" vs "其他历史 change 已留下 docker-compose 容器"的端口冲突,本质是 `infrastructure/docker-compose.yml` 已经把 web 容器映射到 5173,但本 change design.md(D10)明确说不引 admin-web 容器,因此 5173 由本 change 在 dev 阶段独占 — 后续 `admin-web-deploy` 应统一两者端口归属。
+- **5173 端口被 Docker 容器 `chatbiz-web` 占用**:跑 E2E 时 page.goto 被重定向到 `/login?redirect=...`(那容器有 login 逻辑),花了一轮 debug。最终方案是临时 `docker stop chatbiz-web` 跑 E2E、跑完起回。在 README 文档化了这条排查路径。这是仓库内"未引 docker-compose 的本 change" vs "其他历史 change 已留下 docker-compose 容器"的端口冲突,本质是 `infrastructure/docker-compose.yml` 已经把 web 容器映射到 5173,但本 change design.md(D10)明确说不引 admin 容器,因此 5173 由本 change 在 dev 阶段独占 — 后续 `admin-deploy` 应统一两者端口归属。
 - **Vitest 默认 include 把 `e2e/` 目录吞了**:第一次 `pnpm test` Vitest 尝试 import `e2e/*.spec.ts`,但里面用的是 `@playwright/test` 的 `test()`,运行报 "Playwright Test did not expect test() to be called here"。修复:在 `vitest.config.ts` 显式 `include: ["tests/unit/**/*.{test,spec}.{ts,tsx}"]` + `exclude: ["e2e", ...]`。plan.md 本来没列这步,是 superpowers-bridge schema "工具默认行为不可全信" 的一个具体案例。
 - **TS 对 `import "./index.css"` 的 side-effect import 不认**:`tsc --noEmit` 报 "Cannot find module ... declarations for side-effect import of './index.css'"。修复:加 `src/vite-env.d.ts` 含 `/// <reference types="vite/client" />`。plan.md 没列这步,是 Vite + TS strict 的隐式配套。
 - **superpowers skill 实际不可调用**:apply.instruction 列了 6 个 `superpowers:*` 必需 skill,但本 session skill 列表里只有 `superpowers-bridge` 名下的 openspec-*。按 instruction 的 "fall back to manual" 路径执行(详见 §4),没有 stub。
@@ -53,7 +53,7 @@
 
 - **`superpowers:brainstorming` / `superpowers:writing-plans`**
   - **What was skipped**: 整个 skill。本 cycle 走到 apply 时 brainstorm.md / plan.md 已存在(由更早的 cycle 在主 repo 写好,本 worktree 直接消费)。
-  - **Why this cycle**: 用户输入 `apply admin-web-bootstrap` 进入 apply,前置 artifacts 都已 status = done。skill 列表里也没装这两个 skill(仅装了 `_gstack-command` / `autoplan` / etc. + `openspec-*`),不存在调用路径。
+  - **Why this cycle**: 用户输入 `apply admin-bootstrap` 进入 apply,前置 artifacts 都已 status = done。skill 列表里也没装这两个 skill(仅装了 `_gstack-command` / `autoplan` / etc. + `openspec-*`),不存在调用路径。
   - **How to prevent recurrence**: `one-off — schema boundary case, no prevention possible`。schema 在 plan.instruction 也明确允许 "用户手写 plan" 的 OPT 路径,plan.md 内部已 surface "writing-plans skill fallback"。
 
 - **`superpowers:subagent-driven-development` + transitive `test-driven-development` + `requesting-code-review`**
@@ -84,7 +84,7 @@
   > **How to apply**: 任何 frontend change 写 vite.config.ts 时,在 README 附 "5173 冲突排查"段(本 change 已加,可作模板);verify checklist 加一条 "dev port 空"。
 
 - [ ] 🟡 **vitest config 默认 glob 会吞 e2e/ 的 playwright spec — 多框架共存时必须显式 include/exclude** → **Promote to memory** (type: feedback)
-  > **Why**: 本 cycle 第一次跑 `pnpm test` 直接挂在 e2e/admin-web-bootstrap.spec.ts(playwright `test()` 在 vitest 里调用报错)。下次任何 React + vitest + playwright 组合的 change,如果 plan.md 没明示就会重犯。
+  > **Why**: 本 cycle 第一次跑 `pnpm test` 直接挂在 e2e/admin-bootstrap.spec.ts(playwright `test()` 在 vitest 里调用报错)。下次任何 React + vitest + playwright 组合的 change,如果 plan.md 没明示就会重犯。
   > **How to apply**: 任何 `vitest.config.ts` 文件诞生时,默认加 `test.include: ["tests/unit/**/*.{test,spec}.{ts,tsx}"]` + `test.exclude: ["node_modules", "dist", "e2e", ...]`。
 
 - [ ] 🟡 **pnpm 10 sandbox 默认拒跑 install scripts — fresh install 后必须看 "Ignored build scripts" 警告并 allowlist** → **Promote to memory** (type: feedback)
@@ -110,6 +110,6 @@
 - [x] verify.md 已写,PASS WITH WARNINGS
 - [x] tasks.md 35/35 勾选
 - [x] worktree 已 commit `bfe621d`
-- [x] `openspec validate admin-web-bootstrap` valid
+- [x] `openspec validate admin-bootstrap` valid
 - [x] 6 个 delta capability 待 archive 时由 `openspec archive -y` sync 到 `openspec/specs/`
-- [ ] **下一步**:运行 `openspec archive -y admin-web-bootstrap`,然后用 `superpowers:finishing-a-development-branch`(或等价 PR 流程)出 PR
+- [ ] **下一步**:运行 `openspec archive -y admin-bootstrap`,然后用 `superpowers:finishing-a-development-branch`(或等价 PR 流程)出 PR

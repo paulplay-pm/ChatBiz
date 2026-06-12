@@ -4,7 +4,7 @@
 > apply.instruction 的 "fall back" 路径执行 7 项检查)。失敗的檢查須返回對應 artifact 修正後
 > 再重跑 verify。
 
-**Change**: `admin-web-bootstrap`
+**Change**: `admin-bootstrap`
 **Verified at**: `2026-06-12 16:48`
 **Verifier**: `Claude Opus 4.8 (apply skill,fallback verify)`
 
@@ -12,13 +12,13 @@
 
 ## 1. Structural Validation (`openspec validate --all --json`)
 
-- [x] 本 change `admin-web-bootstrap` `"valid": true`(独立验证 1/1 pass)
+- [x] 本 change `admin-bootstrap` `"valid": true`(独立验证 1/1 pass)
 - [ ] 全数 items `"valid": true`(37 项中 35 pass / 2 fail,**失败项与本 change 无关**)
 
 **結果**:
 
 ```text
-openspec validate admin-web-bootstrap → valid: true, issues: []
+openspec validate admin-bootstrap → valid: true, issues: []
 
 openspec validate --all → totals 37, passed 35, failed 2
   失败项均属于其他历史 change / spec,非本 change 引入:
@@ -51,7 +51,7 @@ openspec validate --all → totals 37, passed 35, failed 2
 
 ## 3. Delta Spec Sync State
 
-對每個 `openspec/changes/admin-web-bootstrap/specs/` 下的 capability,與
+對每個 `openspec/changes/admin-bootstrap/specs/` 下的 capability,與
 `openspec/specs/<capability>/spec.md` 比對:
 
 | Capability | Sync 狀態 | 備註 |
@@ -79,7 +79,7 @@ openspec validate --all → totals 37, passed 35, failed 2
 | D9 14 menu item | 14 项菜单全 visible | `side-nav-shell` § renders 14 menu items + `playwright-smoke` § unit test 14 hrefs | 一致 |
 | D7 Vitest + Playwright | 1 vitest smoke + 1 playwright smoke | `playwright-smoke` § Bootstrap unit test exists + Bootstrap E2E smoke test exists | 一致 |
 | D8 Chromium only | E2E 仅 Chromium | `playwright-smoke` § projects = [chromium] | 一致 |
-| D10 不引 docker-compose | admin-web dev mode 直跑 host vite | `vite-bootstrap` § dev server starts on 5173 | 一致 |
+| D10 不引 docker-compose | admin dev mode 直跑 host vite | `vite-bootstrap` § dev server starts on 5173 | 一致 |
 
 **漂移警告**(非阻塞):
 
@@ -95,12 +95,12 @@ openspec validate --all → totals 37, passed 35, failed 2
 ## 5. Implementation Signal
 
 - [x] Worktree 內無未 staged 的檔案
-- [x] 所有相關 commit 已在 worktree branch `worktree-admin-web-bootstrap`,待 finishing-a-development-branch PR
+- [x] 所有相關 commit 已在 worktree branch `worktree-admin-bootstrap`,待 finishing-a-development-branch PR
 
-**Commit 範圍**: `97b2723..bfe621d` (1 个实现 commit:`bfe621d feat(admin-web): bootstrap Vite 5 + React 18 + TS strict 前端骨架`)
+**Commit 範圍**: `97b2723..bfe621d` (1 个实现 commit:`bfe621d feat(admin): bootstrap Vite 5 + React 18 + TS strict 前端骨架`)
 
 ```text
-bfe621d feat(admin-web): bootstrap Vite 5 + React 18 + TS strict 前端骨架
+bfe621d feat(admin): bootstrap Vite 5 + React 18 + TS strict 前端骨架
 97b2723 mcp server                          ← 上游 main HEAD
 ```
 
@@ -132,7 +132,7 @@ ls docs/superpowers/specs/*.md 2>/dev/null
 
 ## 7. Deferred Manual Dogfood vs Automated Test Equivalence
 
-`grep -c '^- \[~\]' openspec/changes/admin-web-bootstrap/plan.md` = 0。
+`grep -c '^- \[~\]' openspec/changes/admin-bootstrap/plan.md` = 0。
 
 > plan.md **没有**任何 `[~]` deferred 标记 — 本节为空(空白即 PASS)。
 
@@ -153,5 +153,5 @@ ls docs/superpowers/specs/*.md 2>/dev/null
 **下一步**:
 
 1. 写 `retrospective.md`(本 cycle 最后一个 artifact,趁热写)
-2. `openspec archive -y admin-web-bootstrap` — sync 6 个 delta specs 到 `openspec/specs/`,移动 change 文件夹到 `archive/2026-06-12-admin-web-bootstrap/`
+2. `openspec archive -y admin-bootstrap` — sync 6 个 delta specs 到 `openspec/specs/`,移动 change 文件夹到 `archive/2026-06-12-admin-bootstrap/`
 3. 用 `superpowers:finishing-a-development-branch` 出 PR

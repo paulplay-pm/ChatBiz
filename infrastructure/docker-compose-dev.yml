@@ -165,11 +165,11 @@ services:
 
   # =========================================================================
   # Web Frontend — unified SPA container (所有前端能力共用一个容器/端口)
-  # 构建阶段会把 web/canvas 和 web/admin-web 都 build 出来，由 nginx 统一 serve。
+  # 构建阶段会把 web/canvas 和 web/admin 都 build 出来，由 nginx 统一 serve。
   # 访问：
   #   - http://localhost:5173/           portal
   #   - http://localhost:5173/canvas/    画布前端
-  #   - http://localhost:5173/admin-web/ 管理后台前端
+  #   - http://localhost:5173/admin/ 管理后台前端
   # =========================================================================
   web:
     build:

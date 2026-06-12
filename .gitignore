@@ -150,7 +150,7 @@ screenshot-*.png
 # superpowers worktree directory
 .worktrees/
 
-# admin-web 防漏排除（顶层规则覆盖 node_modules/dist；以下三个子目录额外保险）
-web/admin-web/.vite/
-web/admin-web/coverage/
-web/admin-web/playwright-report/
+# admin 防漏排除（顶层规则覆盖 node_modules/dist；以下三个子目录额外保险）
+web/admin/.vite/
+web/admin/coverage/
+web/admin/playwright-report/

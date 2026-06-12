@@ -3,9 +3,9 @@
 > **For agentic workers:** Use superpowers:subagent-driven-development
 > to implement this plan task-by-task.
 
-**Goal:** 在 admin-web 提供 MCP server 增删改查 + 启停状态管理（卡片网格 + 配置弹窗），覆盖 eng-review Test #2 critical path #4 插件加载降级；不引新微服务，不引 FastAPI，复用现有 `services/mcp` 容器（端口 8004）。
+**Goal:** 在 admin 提供 MCP server 增删改查 + 启停状态管理（卡片网格 + 配置弹窗），覆盖 eng-review Test #2 critical path #4 插件加载降级；不引新微服务，不引 FastAPI，复用现有 `services/mcp` 容器（端口 8004）。
 
-**Architecture:** `services/mcp` 容器内挂 6 个 Starlette REST 端点（GET/POST/PATCH/DELETE + connect/disconnect）+ 1 个 tools discovery 端点；元数据落 PostgreSQL `mcp_server_registrations`（source of truth），探活结果缓存 Redis 30s；admin-web 用 React + SWR 5s 轮询；所有写操作经 audit-and-isolation egress（eng-review Arch #1，工具名 `mcp_admin.<action>`）；前端 TS interface 与 Python TypedDict 字段手工对齐（Q4 trade-off 接受短期的对齐工作）。
+**Architecture:** `services/mcp` 容器内挂 6 个 Starlette REST 端点（GET/POST/PATCH/DELETE + connect/disconnect）+ 1 个 tools discovery 端点；元数据落 PostgreSQL `mcp_server_registrations`（source of truth），探活结果缓存 Redis 30s；admin 用 React + SWR 5s 轮询；所有写操作经 audit-and-isolation egress（eng-review Arch #1，工具名 `mcp_admin.<action>`）；前端 TS interface 与 Python TypedDict 字段手工对齐（Q4 trade-off 接受短期的对齐工作）。
 
 **Tech Stack:**
 - Python 3.12 (conda env `chatbiz`) + Starlette 0.46+ + SQLAlchemy 2.0 async + Alembic + Redis asyncio
@@ -492,11 +492,11 @@ Expected: 5 lines of yaml
 
 ---
 
-## Task 7.1 ★: admin-web/src/api/mcp.ts — 7 client functions
+## Task 7.1 ★: admin/src/api/mcp.ts — 7 client functions
 
 **Files:**
-- Create: `web/admin-web/src/api/mcp.ts`
-- Create: `web/admin-web/src/api/mcp.test.ts`
+- Create: `web/admin/src/api/mcp.ts`
+- Create: `web/admin/src/api/mcp.test.ts`
 
 **Step 1**: Write failing test (mock fetch)
 - 7 functions × 1 success + 1 error case = 14 cases
@@ -518,7 +518,7 @@ async function listServers(): Promise<McpServer[]> {
 
 **Step 3**: Run
 ```bash
-cd web/admin-web && pnpm vitest src/api/mcp.test.ts
+cd web/admin && pnpm vitest src/api/mcp.test.ts
 ```
 Expected: 14 passed
 
@@ -552,7 +552,7 @@ Expected: 14 passed
 
 ## Task 8.1 ★: e2e/mcp-tools.spec.ts — Playwright (critical path #4)
 **Files:**
-- Create: `web/admin-web/e2e/mcp-tools.spec.ts`
+- Create: `web/admin/e2e/mcp-tools.spec.ts`
 
 **Step 1**: Write 4 test cases
 - admin sees 3 cards with correct badges
@@ -601,7 +601,7 @@ Expected: 4 passed
 - **Step 2**: Expected: ≥100% (Python); 8/8 unit + 3/3 integration pass
 
 ## Task 9.4: Frontend coverage
-- **Step 1**: `pnpm --filter admin-web test --coverage`
+- **Step 1**: `pnpm --filter admin test --coverage`
 - **Step 2**: Expected: ≥80% (frontend not 100% per openspec/config.yaml spec rules 第 53 行)
 
 ---
@@ -675,14 +675,14 @@ Critical path #4 = 本 change 唯一直接覆盖项；其他 3 个由其他 chan
 
 | Section | Tasks | Estimated hours |
 |---|---|---|
-| 0. 前置门 | 3 | 2h (等 admin-web 就位) |
+| 0. 前置门 | 3 | 2h (等 admin 就位) |
 | 1. 契约层 | 2 | 1.5h |
 | 2. DB | 3 | 2h |
 | 3. 后端 CRUD | 4 | 4h |
 | 4. 探活 | 5 | 3h |
 | 5. 审计 | 3 | 2h |
 | 6. compose | 1 | 0.5h |
-| 7. 前端 | 8 | 6h (等 admin-web 就位后) |
+| 7. 前端 | 8 | 6h (等 admin 就位后) |
 | 8. E2E | 2 | 3h |
 | 9. 集成 | 4 | 3h |
 | 10. 收尾 | 5 | 2h |

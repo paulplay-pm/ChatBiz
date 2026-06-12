@@ -3,7 +3,7 @@
 **Frontend Scope: 含前端**（连接 / 断开 按钮 + 确认弹窗 + 状态轮询 + 状态徽章实时刷新）
 
 **Impact**（被谁消费）：
-- 被 admin 在 admin-web 卡片操作区消费（"连接" / "断开" 按钮）
+- 被 admin 在 admin 卡片操作区消费（"连接" / "断开" 按钮）
 - 状态机状态变化触发 `mcp-server-audit-trail` 写 audit-and-isolation（联动）
 
 ## ADDED Requirements
@@ -62,7 +62,7 @@ The system SHALL provide a startup hook (run in `services/mcp` container's lifes
 
 ### Requirement: Frontend shows real-time status with optimistic update
 
-The admin-web card MUST optimistically update its badge to "连接中" (yellow) on click of "连接" and to "未连接" (gray) on click of "断开", and then poll `GET /v1/mcp/servers` every 5s until the actual status matches. The polling MUST stop when the card unmounts. If the optimistic state diverges from the server state for more than 30s, the UI MUST show an error toast "状态刷新失败" and revert to the server state.
+The admin card MUST optimistically update its badge to "连接中" (yellow) on click of "连接" and to "未连接" (gray) on click of "断开", and then poll `GET /v1/mcp/servers` every 5s until the actual status matches. The polling MUST stop when the card unmounts. If the optimistic state diverges from the server state for more than 30s, the UI MUST show an error toast "状态刷新失败" and revert to the server state.
 
 #### Scenario: Connect button click
 - **WHEN** admin clicks "连接" on a `disconnected` card

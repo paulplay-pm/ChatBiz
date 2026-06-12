@@ -1,20 +1,20 @@
-# Brainstorm — admin-web-bootstrap
+# Brainstorm — admin-bootstrap
 
 > **Raw capture**：本档原样捕捉 brainstorming 决策链产物，**不**强制结构。
 > design.md 从本档抽取并重组为结构化设计文件——本档与 design.md 互补，**不**互相复制。
-> 来源：用户对话"开前置 change admin-web-bootstrap，先把前端骨架建到本仓"+ CLAUDE.md "0 行源代码"+ `docs/prototype.html` 视觉基线。
+> 来源：用户对话"开前置 change admin-bootstrap，先把前端骨架建到本仓"+ CLAUDE.md "0 行源代码"+ `docs/prototype.html` 视觉基线。
 
 ---
 
 ## 背景
 
-仓库当前 0 行源代码。`mcp-server-management-ui` change 已 plan 完整 8 阶段 + tasks 36 项，**前置门 0.1 = 验 `web/admin-web/package.json` 存在**——但当时 `web/admin-web/` 尚未就位。
+仓库当前 0 行源代码。`mcp-server-management-ui` change 已 plan 完整 8 阶段 + tasks 36 项，**前置门 0.1 = 验 `web/admin/package.json` 存在**——但当时 `web/admin/` 尚未就位。
 
 **阻塞链**：
-- `mcp-server-management-ui` task 7.1-7.8（前端组件）+ task 8.1-8.2（Playwright E2E）**必须** `web/admin-web/` 存在
-- `mcp-server-management-ui` task 0.1 前置门要求 admin-web 路径方案
+- `mcp-server-management-ui` task 7.1-7.8（前端组件）+ task 8.1-8.2（Playwright E2E）**必须** `web/admin/` 存在
+- `mcp-server-management-ui` task 0.1 前置门要求 admin 路径方案
 
-**本 change 解锁**：建 `web/admin-web/` 最小骨架（Vite + React 18 + TS strict + SWR + react-hook-form + zod + Playwright + 复用 prototype.html 主题），不引业务逻辑，**只**让骨架可被后续 change mount。
+**本 change 解锁**：建 `web/admin/` 最小骨架（Vite + React 18 + TS strict + SWR + react-hook-form + zod + Playwright + 复用 prototype.html 主题），不引业务逻辑，**只**让骨架可被后续 change mount。
 
 **关键约束**（eng-review 锁定）：
 - 前端规范：React 组件化 + TypeScript 严格 + Hooks + 状态隔离（`openspec/config.yaml` §62）
@@ -35,7 +35,7 @@
 - 启动快（~1s dev server），HMR 稳
 
 **B. Next.js 15**
-- 拒绝：本 change 不需要 SSR；admin-web 是企业内部 SPA，SSR 反而引入 Node runtime
+- 拒绝：本 change 不需要 SSR；admin 是企业内部 SPA，SSR 反而引入 Node runtime
 - eng-review §4.4 技术栈未列 Next.js
 
 **C. 纯 HTML + ESM**
@@ -54,7 +54,7 @@
 - 拒绝：与 prototype.html 视觉对齐需要重写所有 class，token 对齐工作量大
 
 **C. styled-components / emotion**
-- 拒绝：runtime CSS-in-JS 增加 bundle 体积；admin-web 不需要动态主题
+- 拒绝：runtime CSS-in-JS 增加 bundle 体积；admin 不需要动态主题
 
 → **锁定 A**
 
@@ -81,7 +81,7 @@
 - 不引 Redux/Zustand
 
 **B. Redux Toolkit**
-- 拒绝：admin-web 早期不需要复杂状态机；后续真有再加
+- 拒绝：admin 早期不需要复杂状态机；后续真有再加
 
 **C. Zustand**
 - 拒绝：SWR + Context 已能覆盖 80% 场景，引入 Zustand 多一个概念
@@ -92,7 +92,7 @@
 
 **A. 是**（已选）
 - `mcp-server-management-ui` task 7.5 已规划用 react-hook-form + zod resolver
-- zod schema 同时校验 client + server 响应（`web/admin-web/src/api/mcp.ts` 用 zod parse）
+- zod schema 同时校验 client + server 响应（`web/admin/src/api/mcp.ts` 用 zod parse）
 - 与 openspec/config.yaml §62 "TypeScript 严格" 一致（zod 给运行时类型，TS 给编译时类型）
 
 **B. Formik**
@@ -137,7 +137,7 @@
 
 **A. 是**（已选）
 - MVP 阶段只跑 Chromium（headless）
-- admin-web 是企业内部工具，不面向 C 端多浏览器
+- admin 是企业内部工具，不面向 C 端多浏览器
 - eng-review Test #1 没说多浏览器要求
 
 **B. Chromium + Firefox + WebKit**
@@ -152,21 +152,21 @@
 - 每个 menu item 跳 `/<slug>`，中央视图显示 "Coming soon" 占位卡片 + prototype.html 等价的 header
 
 **B. 只挂 MCP 工具菜单**
-- 拒绝：违反"前端规范：状态隔离"精神，admin-web 是 shell 业务 change 各自挂页面
+- 拒绝：违反"前端规范：状态隔离"精神，admin 是 shell 业务 change 各自挂页面
 
 **C. 不挂菜单，只挂中央视图**
-- 拒绝：prototype.html 有完整左侧导航 shell，admin-web 复刻才有 1:1 视觉
+- 拒绝：prototype.html 有完整左侧导航 shell，admin 复刻才有 1:1 视觉
 
 → **锁定 A**
 
 ### Q10：docker-compose 同步？
 
-**A. 不引 admin-web 容器到 compose**（已选）
-- admin-web 是 Vite dev server / 静态构建产物
-- 后续 V1.0 真正部署时再开 `admin-web-deploy` change 加 nginx 容器
-- 本 change 只产出 `web/admin-web/` 源码 + 配置文件
+**A. 不引 admin 容器到 compose**（已选）
+- admin 是 Vite dev server / 静态构建产物
+- 后续 V1.0 真正部署时再开 `admin-deploy` change 加 nginx 容器
+- 本 change 只产出 `web/admin/` 源码 + 配置文件
 
-**B. 立即加 admin-web 容器**
+**B. 立即加 admin 容器**
 - 拒绝：MVP 不需要，dev 用 `pnpm dev` 即可
 
 → **锁定 A**
@@ -193,8 +193,8 @@
 ## Open Questions
 
 - OQ1：Vite 启动时是否要用 `pnpm dev --host 0.0.0.0` 让容器外能访问？（MVP 阶段 `localhost:5173` 即可；后续 docker 化时再考虑）
-- OQ2：Tailwind 配置是放 `web/admin-web/tailwind.config.js` 还是 monorepo 根 `tailwind.config.js`？（本 change 选前者——admin-web 是独立 module）
-- OQ3：TypeScript path alias `@/*` → `web/admin-web/src/*` 是否现在就开？（开，便于后续 change 跨文件 import；用 `vite-tsconfig-paths` 插件）
+- OQ2：Tailwind 配置是放 `web/admin/tailwind.config.js` 还是 monorepo 根 `tailwind.config.js`？（本 change 选前者——admin 是独立 module）
+- OQ3：TypeScript path alias `@/*` → `web/admin/src/*` 是否现在就开？（开，便于后续 change 跨文件 import；用 `vite-tsconfig-paths` 插件）
 - OQ4：左侧导航 11 个菜单项的"权限渲染"占位怎么做？（本 change 全 visible；后续 `mcp-server-management-ui` task 7.8 会改成 role-aware）
 
 ---
@@ -203,11 +203,11 @@
 
 | 用户 | 触点 | 本 change 提供 |
 |---|---|---|
-| **paul**（财务运营） | 浏览器打开 admin-web → 看到左侧导航 → 占位中央视图 | 11 个菜单项 + "Coming soon" 占位 |
+| **paul**（财务运营） | 浏览器打开 admin → 看到左侧导航 → 占位中央视图 | 11 个菜单项 + "Coming soon" 占位 |
 | **leo**（基础服务） | 同上 | 同上 |
 | **anny**（增值服务） | 同上 | 同上 |
 
-3 个用户**不**做业务操作（业务由后续 change 落地），本 change 只**让 admin-web 在浏览器里能跑起来**。✓
+3 个用户**不**做业务操作（业务由后续 change 落地），本 change 只**让 admin 在浏览器里能跑起来**。✓
 
 ---
 
@@ -224,19 +224,19 @@
 ## 范围
 
 **本 change 包含**：
-- `web/admin-web/package.json` + pnpm-lock.yaml
-- `web/admin-web/vite.config.ts` + `tsconfig.json` (strict mode)
-- `web/admin-web/tailwind.config.js` + `postcss.config.js`
-- `web/admin-web/index.html` (入口)
-- `web/admin-web/src/main.tsx` + `App.tsx` + 路由
-- `web/admin-web/src/components/SideNav.tsx` + `AppShell.tsx`
-- `web/admin-web/src/views/PlaceholderView.tsx`（11 个 menu item 的占位视图）
-- `web/admin-web/src/api/health.ts`（与后端联调的最小 client）
-- `web/admin-web/src/types/index.ts`（共用 TS 类型）
-- `web/admin-web/tests/unit/setup.ts`（vitest 配置）
-- `web/admin-web/e2e/admin-web-bootstrap.spec.ts`（1 个 E2E：能打开 / 看到 11 个菜单 / 点 MCP 工具 → 看到占位）
-- `web/admin-web/playwright.config.ts` + `web/admin-web/vitest.config.ts`
-- `web/admin-web/.gitignore` + `web/admin-web/README.md`
+- `web/admin/package.json` + pnpm-lock.yaml
+- `web/admin/vite.config.ts` + `tsconfig.json` (strict mode)
+- `web/admin/tailwind.config.js` + `postcss.config.js`
+- `web/admin/index.html` (入口)
+- `web/admin/src/main.tsx` + `App.tsx` + 路由
+- `web/admin/src/components/SideNav.tsx` + `AppShell.tsx`
+- `web/admin/src/views/PlaceholderView.tsx`（11 个 menu item 的占位视图）
+- `web/admin/src/api/health.ts`（与后端联调的最小 client）
+- `web/admin/src/types/index.ts`（共用 TS 类型）
+- `web/admin/tests/unit/setup.ts`（vitest 配置）
+- `web/admin/e2e/admin-bootstrap.spec.ts`（1 个 E2E：能打开 / 看到 11 个菜单 / 点 MCP 工具 → 看到占位）
+- `web/admin/playwright.config.ts` + `web/admin/vitest.config.ts`
+- `web/admin/.gitignore` + `web/admin/README.md`
 
 **本 change 不包含**：
 - 任何业务逻辑（mcp 注册 / workflow 编辑 / RAG / Agent 配置）

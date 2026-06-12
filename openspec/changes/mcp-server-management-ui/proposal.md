@@ -13,9 +13,9 @@
 - **新增** MCP server 注册中心（CRUD 元数据 + 启停状态 + 探活），存 PostgreSQL（新增表 `mcp_server_registrations`，见 eng-review Quality #2 双层状态：PG 是 source of truth）。
 - **新增** 后端 API `services/mcp/` 内部挂载的 REST 端点：`GET /v1/mcp/servers`、`POST /v1/mcp/servers`、`PATCH /v1/mcp/servers/{id}`、`DELETE /v1/mcp/servers/{id}`、`POST /v1/mcp/servers/{id}:connect`、`POST /v1/mcp/servers/{id}:disconnect`、`GET /v1/mcp/servers/{id}/tools`。所有写操作**不直接 spawn 子进程**，仅把元数据写 PG + 通过现有 `McpRouter.dispatch` 探活（调 `list_advertised_tools` 走 audit-and-isolation egress）。
 - **新增** 审计：每次 connect / disconnect / 探活 / 配置修改都走 `MCP_AUDIT_BASE_URL`（eng-review Arch #1，egress 强制点，不旁路）。
-- **新增** 前端 `web/admin-web/src/views/mcp/McpToolsView.tsx` 复刻 prototype.html 的卡片网格、状态徽章、工具清单、配置弹窗、断开确认。
-- **修改** 前端路由 `web/admin-web/src/router/index.tsx` 注册 `/mcp-tools`。
-- **修改** 左侧导航 `web/admin-web/src/components/SideNav.tsx` 激活 "MCP 工具" 菜单项（已在 prototype.html:315 出现）。
+- **新增** 前端 `web/admin/src/views/mcp/McpToolsView.tsx` 复刻 prototype.html 的卡片网格、状态徽章、工具清单、配置弹窗、断开确认。
+- **修改** 前端路由 `web/admin/src/router/index.tsx` 注册 `/mcp-tools`。
+- **修改** 左侧导航 `web/admin/src/components/SideNav.tsx` 激活 "MCP 工具" 菜单项（已在 prototype.html:315 出现）。
 - **不** 引新微服务。后端加在现有 `services/mcp/` 容器内（端口 8004 不变），复用 `app/security` / `app/router` / `app/servers/*`。
 
 ## Capabilities
@@ -38,14 +38,14 @@
   - `services/mcp/app/api.py`（新）：FastAPI 子应用，挂载到现有 `Starlette` 入口（eng-review 不引新框架，复用 Starlette + uvicorn）。
   - `services/mcp/app/main.py`（改）：增加 `/v1/mcp/*` 路由。
   - `services/mcp/pyproject.toml`（改）：加 `fastapi>=0.110`（或维持 Starlette Route——决策点见 design.md）。倾向**不加 FastAPI**，保持 Starlette 单一框架。
-  - `web/admin-web/src/views/mcp/McpToolsView.tsx`（新）：卡片网格。
-  - `web/admin-web/src/api/mcp.ts`（新）：封装 REST 调用。
-  - `web/admin-web/src/router/index.tsx`（改）：加路由。
-  - `web/admin-web/src/components/SideNav.tsx`（改）：激活菜单项。
+  - `web/admin/src/views/mcp/McpToolsView.tsx`（新）：卡片网格。
+  - `web/admin/src/api/mcp.ts`（新）：封装 REST 调用。
+  - `web/admin/src/router/index.tsx`（改）：加路由。
+  - `web/admin/src/components/SideNav.tsx`（改）：激活菜单项。
 - **数据库**：新增 1 张表 `mcp_server_registrations`（id / name UNIQUE / transport enum{stdio,sse,http} / command / args jsonb / env jsonb / security_config jsonb / status enum{disconnected,connecting,connected,error} / last_health_check_at / last_error / created_at / updated_at）。需新增 `services/mcp/alembic/` + `services/mcp-migrate` 一次性容器（`openspec/config.yaml` apply 规则第 81 行）。
 - **依赖**：现 `services/mcp` 已连 audit-and-isolation（8004 内的 `MCP_AUDIT_BASE_URL` env 已配），本 change 复用同一 env，不引新依赖。
 - **端口**：`services/mcp` 容器已占 8004，宿主 8004→容器 8004 不变（CLAUDE.md 端口表行已注册）。**不**占新端口。
-- **docker-compose**：本 change 改 `infrastructure/docker-compose.yml` 在 `chatbiz-mcp` service 下加 `<service>-migrate` 子 service（apply 规则第 81 行）；admin-web service 早就注册在 compose 里，本次**不**加。
+- **docker-compose**：本 change 改 `infrastructure/docker-compose.yml` 在 `chatbiz-mcp` service 下加 `<service>-migrate` 子 service（apply 规则第 81 行）；admin service 早就注册在 compose 里，本次**不**加。
 - **eng-review 决策关联**：
   - **Arch #1**：所有 connect / disconnect / 探活操作走 audit-and-isolation egress，**不**直连 MCP 子进程。
   - **Arch #5**：MVP 已含 3 server（filesystem/fetch/postgres），本 change 是**管理面**而非新增 server。

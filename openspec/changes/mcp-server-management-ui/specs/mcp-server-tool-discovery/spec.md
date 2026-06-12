@@ -3,7 +3,7 @@
 **Frontend Scope: 含前端**（卡片副标题 "工具: ..." + 配置弹窗的 tools 列表）
 
 **Impact**（被谁消费）：
-- 被 admin 在 admin-web 卡片副标题消费（直观看到 server 暴露哪些 tool）
+- 被 admin 在 admin 卡片副标题消费（直观看到 server 暴露哪些 tool）
 - 被配置弹窗的 "工具清单" 区域消费
 - 未来被 Agent 编辑器消费（"勾选哪些 tool 给 Agent"）
 
@@ -29,7 +29,7 @@ The response MUST be cached in Redis with key `mcp:tools:{id}` and TTL 60s (`MCP
 
 ### Requirement: Frontend shows truncated tools list in card
 
-The admin-web card MUST show up to 4 tool names in the "工具:" line, comma-separated. If there are more than 4 tools, the card MUST append `+N more` (e.g. "工具: read_file, write_file, list_dir, search +2 more"). The full tool list MUST be shown in the configuration modal.
+The admin card MUST show up to 4 tool names in the "工具:" line, comma-separated. If there are more than 4 tools, the card MUST append `+N more` (e.g. "工具: read_file, write_file, list_dir, search +2 more"). The full tool list MUST be shown in the configuration modal.
 
 #### Scenario: Server with 4 tools
 - **WHEN** a `filesystem` server card is rendered with 4 tools
@@ -41,7 +41,7 @@ The admin-web card MUST show up to 4 tool names in the "工具:" line, comma-sep
 
 ### Requirement: Configuration modal shows full tool list with descriptions
 
-The admin-web configuration modal MUST render a "工具清单" section listing every tool with its name and a one-line description. The list MUST be loaded lazily on modal open (not on card render) and MUST show a loading spinner while `GET /v1/mcp/servers/{id}/tools` is in flight. If the API returns 503, the section MUST show "工具发现失败：<error_message>" in red.
+The admin configuration modal MUST render a "工具清单" section listing every tool with its name and a one-line description. The list MUST be loaded lazily on modal open (not on card render) and MUST show a loading spinner while `GET /v1/mcp/servers/{id}/tools` is in flight. If the API returns 503, the section MUST show "工具发现失败：<error_message>" in red.
 
 #### Scenario: Modal opens with 4 tools
 - **WHEN** admin opens the configuration modal for a `filesystem` server
