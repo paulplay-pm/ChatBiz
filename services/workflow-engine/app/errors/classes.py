@@ -100,6 +100,30 @@ class UnauthorizedApprovalAccess(SecurityError):
     error_class = "security"
 
 
+class WorkflowCycleError(ChatBizError):
+    """Boundary #1 (eng-review Quality #3): canvas drag-loop prevention.
+
+    Raised when ``services/workflow-engine/app/errors/cycle_detection.py``
+    finds a cycle in the workflow DAG. The ``cycle_edges`` list is
+    serialised into ``error_message`` so the API response carries the
+    exact edges that form the loop (helps reviewers locate it without
+    server-side logs).
+
+    Mapped to HTTP 422 by the middleware; ``error_class`` stays
+    ``"user"`` to keep the 4-boundary contract flat (canvas is a user
+    action; the cycle is a validation failure of that action).
+    """
+
+    error_class = "user"
+
+    def __init__(self, cycle_edges: list[tuple[str, str]]) -> None:
+        # Re-render as JSON-ish so the message survives logging and the
+        # middleware round-trip without losing structure.
+        msg = f"workflow contains cycle: {list(cycle_edges)}"
+        super().__init__(msg)
+        self.cycle_edges = list(cycle_edges)
+
+
 __all__ = [
     "ChatBizError",
     "SecurityError",
@@ -111,4 +135,5 @@ __all__ = [
     "ApprovalNotFound",
     "ApprovalAlreadyResponded",
     "UnauthorizedApprovalAccess",
+    "WorkflowCycleError",
 ]
