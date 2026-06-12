@@ -29,6 +29,7 @@ import asyncio
 import httpx
 
 from app.config import get_settings
+from app.llm.retry import RetryWithIdempotency
 
 
 _client: httpx.AsyncClient | None = None
