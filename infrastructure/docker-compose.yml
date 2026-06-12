@@ -182,6 +182,46 @@ sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)
         condition: service_healthy
 
   # ---------------------------------------------------------------------------
+  # MCP integration service (filesystem / fetch / postgres)
+  # ---------------------------------------------------------------------------
+  mcp:
+    build:
+      context: ../services/mcp
+      dockerfile: Dockerfile
+    container_name: chatbiz-mcp
+    restart: unless-stopped
+    environment:
+      MCP_HOST: "0.0.0.0"
+      MCP_PORT: "8080"
+      MCP_SSE_PATH: "/sse"
+      MCP_MESSAGE_PATH: "/messages"
+      MCP_AUDIT_BASE_URL: http://audit-and-isolation:8080
+      # Filesystem server allowlist.  Add project directories as needed.
+      MCP_FS_ALLOWED_DIRS: ${MCP_FS_ALLOWED_DIRS:-/tmp}
+      # Fetch server URL allowlist.  Empty = fetch tools reject every URL.
+      MCP_FETCH_ALLOWED_DOMAINS: ${MCP_FETCH_ALLOWED_DOMAINS:-}
+      MCP_FETCH_MAX_BYTES: ${MCP_FETCH_MAX_BYTES:-1048576}
+      # Postgres MCP server (optional at boot; required when pg_* tools are used).
+      MCP_PG_READONLY_USER: ${MCP_PG_READONLY_USER:-}
+      MCP_PG_READONLY_PASSWORD: ${MCP_PG_READONLY_PASSWORD:-}
+      MCP_PG_DSN: ${MCP_PG_DSN:-}
+      MCP_PG_QUERY_TIMEOUT: ${MCP_PG_QUERY_TIMEOUT:-30}
+      MCP_PG_MAX_ROWS: ${MCP_PG_MAX_ROWS:-1000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      ENVIRONMENT: ${ENVIRONMENT:-local}
+    depends_on:
+      audit-and-isolation:
+        condition: service_healthy
+    ports:
+      - "8004:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=2).status==200 else sys.exit(1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------
   # workflow-engine service
   # ---------------------------------------------------------------------------
   workflow-engine:

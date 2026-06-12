@@ -93,7 +93,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Source of truth = `docs/architecture.md`**(注意小写 a)+ `docs/prd.md` + `~/.gstack/projects/paulplay-pm-ChatBiz/paulwang-main-design-20260609-230548.md`。任何 spec 跟其中之一冲突,先 surface,再回到源头改。
 - 所有 spec/change 走 `openspec/` schemas。不要在 repo 根创建 ad-hoc 设计文档。
 - 默认 schema = **`superpowers-bridge`**(`openspec/config.yaml` 设的)。schema 内部依赖 superpowers plugin 的 `brainstorming` skill。
-- `openspec/` 整个目录在 `.gitignore` 第 181 行(下推到本机配置)。如果要 schema/spec 改动入库,改 `.gitignore` 加 `!openspec/schemas/` 之类白名单,且**先问用户**。
+- `openspec/`(含 `config.yaml`、`schemas/`、活跃和已 archive 的 changes)整个目录都已入库。改 `openspec/config.yaml` / 新增 schema 走正常 git 流程,不需要 `!` 白名单。
 - AI-tool 配置目录(`.claude/`、`.codex/`、`.opencode/`)都在 `.gitignore` —— 是 per-developer,不是团队的。
 - 仓库根 `CLAUDE.md` 是这个文件 —— 跟 `openspec/config.yaml` 配合使用,**两者都遵循**。
 
@@ -120,3 +120,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### OpenSpec 命令命名空间
 
 OpenSpec CLI 用 `openspec-*`(`openspec-propose` / `openspec-explore` / `openspec-apply-change` / `openspec-archive-change`)。upstream `superpowers-bridge` README 引用 `/opsx:*` —— 这些 slash command 跟已装的 CLI 不是 1:1 映射。**优先用已装 CLI 的实际命令名**。
+
+### 端口分配表
+
+新 service 上线时**必须**从本表选端口。新占端口前先更新本表,再写 `infrastructure/docker-compose.yml`(与 `openspec/config.yaml` 的 `apply` 规则配套)。
+
+| 端口 | 服务 | 状态 | 备注 |
+|---|---|---|---|
+| 8000 | credential | 已分配 | `chatbiz-credential` |
+| 8001 | workflow-engine | 已分配 | `chatbiz-workflow-engine` |
+| 8002 | knowledge-base | 保留 | 等 knowledge-base service 上线 |
+| 8003 | agent-runtime | 保留 | 等 agent-runtime service 上线 |
+| 8004 | mcp | 已分配 | `chatbiz-mcp`,MCP filesystem/fetch/postgres 三 server 统一入口 |
+| 8005+ | (未来) | 可用 | 新 service 从 8005 开始往后分配 |
+| 8080 | audit-and-isolation | 已分配 | `chatbiz-audit-isolation`,数据隔离网关 (egress 强制点) |
+| 5432 | postgres | 已分配 | 共享基础设施,见 `x-pg-env` |
+| 6379 | redis | 已分配 | 共享基础设施 |
+
+冲突检测规则:本表"已分配"行的端口在 compose 改写前查表;命中保留位要先跟 change 沟通挪位;命中未来分配区可直接用并在 PR 描述里登记。

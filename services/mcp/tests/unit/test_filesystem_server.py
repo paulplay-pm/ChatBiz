@@ -422,14 +422,46 @@ def test_read_file_denied_audits_and_raises(fs_server, tmp_path):
         assert route.called
 
 
+def test_handler_fs_prefixes_and_bare_names(fs_server, allowed_dir):
+    """The sync ``HANDLER`` used by the central router accepts both ``fs_*``
+    prefixes and bare tool names."""
+    import json
+    from servers import filesystem
+
+    allowed, f = allowed_dir
+    target = allowed / "handler.txt"
+
+    # fs_* prefix
+    result = filesystem.HANDLER("fs_write_file", {"path": str(target), "content": "x"})
+    assert result["bytes"] == 1
+
+    # bare name
+    text = filesystem.HANDLER("read_file", {"path": str(target)})["content"]
+    assert text == "x"
+
+    entries = filesystem.HANDLER("fs_list_dir", {"path": str(allowed)})["entries"]
+    assert "handler.txt" in entries
+
+    matches = filesystem.HANDLER("fs_search", {"path": str(allowed), "pattern": "*.txt"})[
+        "matches"
+    ]
+    assert any(str(target) == m for m in matches)
+
+
 def test_dispatch_unknown_tool_raises(fs_server):
     """Calling ``_dispatch`` with an unknown tool name MUST raise
     ``ValueError`` (defensive against future regressions)."""
     import asyncio
 
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(ValueError, match="unknown tool"):
         asyncio.run(fs_server._dispatch("nope", {"path": "/x"}))
-    assert "unknown tool" in str(exc_info.value)
+
+
+def test_handler_unknown_tool(fs_server):
+    from servers import filesystem
+
+    with pytest.raises(ValueError, match="unknown filesystem tool"):
+        filesystem.HANDLER("fs_unknown", {"path": "/x"})
 
 
 def test_security_policy_from_env_only_commas_raises(monkeypatch):

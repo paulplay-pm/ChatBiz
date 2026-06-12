@@ -35,6 +35,8 @@ from app.security import (
     McpSecurityPolicy,
 )
 from app.servers.fetch import (
+    HANDLER,
+    TOOL_NAMES,
     build_server,
     fetch_html,
     fetch_json,
@@ -471,8 +473,53 @@ async def test_make_audit_call_swallows_network_failure():
 
 
 # ---------------------------------------------------------------------------
-# 9. Module-level helpers + list_tools surface
+# 10. HANDLER adapter (used by the central router)
 # ---------------------------------------------------------------------------
+
+
+def test_handler_fetch_url(policy, monkeypatch):
+    monkeypatch.setenv("MCP_FETCH_ALLOWED_DOMAINS", ALLOWED_HOST)
+    monkeypatch.setenv("MCP_FETCH_MAX_BYTES", "1024")
+    with respx.mock(base_url=ALLOWED_BASE_URL) as router:
+        router.get("/path").mock(return_value=httpx.Response(200, content=b"hello"))
+        with _DNSGuard("93.184.216.34"):
+            result = HANDLER("fetch_url", {"url": ALLOWED_URL})
+    assert result["status"] == 200
+    assert result["body"] == "hello"
+
+
+def test_handler_fetch_html(policy, monkeypatch):
+    monkeypatch.setenv("MCP_FETCH_ALLOWED_DOMAINS", ALLOWED_HOST)
+    monkeypatch.setenv("MCP_FETCH_MAX_BYTES", "1024")
+    with respx.mock(base_url=ALLOWED_BASE_URL) as router:
+        router.get("/path").mock(return_value=httpx.Response(200, content=b"<p>hi</p>"))
+        with _DNSGuard("93.184.216.34"):
+            result = HANDLER("fetch_html", {"url": ALLOWED_URL})
+    assert result["text"] == "hi"
+
+
+def test_handler_fetch_json(policy, monkeypatch):
+    monkeypatch.setenv("MCP_FETCH_ALLOWED_DOMAINS", ALLOWED_HOST)
+    monkeypatch.setenv("MCP_FETCH_MAX_BYTES", "1024")
+    with respx.mock(base_url=ALLOWED_BASE_URL) as router:
+        router.get("/path").mock(return_value=httpx.Response(200, content=b'{"a": 1}'))
+        with _DNSGuard("93.184.216.34"):
+            result = HANDLER("fetch_json", {"url": ALLOWED_URL})
+    assert result == {"a": 1}
+
+
+def test_handler_prefix_branch_then_falls_through(policy):
+    """A ``fetch_*`` name not in TOOL_NAMES enters the rewrite branch,
+    gets re-prefixed (no-op), then falls through to the unknown-tool
+    ValueError — covering the two early branches in HANDLER."""
+    with pytest.raises(ValueError, match="unknown fetch tool"):
+        HANDLER("fetch_url_extra", {"url": ALLOWED_URL})
+
+
+def test_handler_rejects_unknown_tool(policy):
+    with pytest.raises(ValueError, match="unknown fetch tool"):
+        HANDLER("fetch_unknown", {"url": ALLOWED_URL})
+
 
 
 def test_build_policy_helper(monkeypatch):

@@ -68,6 +68,18 @@ rules:
     - 4 个 critical path 必须在 verify 阶段 100% 覆盖：paul 财务月报 e2e / 网关 PII 拦截 e2e / 人工审批中断续接 e2e / 插件降级 e2e
     - 性能验证：数据隔离网关 P99 < 500ms（100 RPS 压测）
     - LLM eval：50 个 paul 财务月报场景输出质量基线
+  apply:
+    # 新 service 上线必做（也适用于"重写"或"拆分"出的新 service 块）
+    # 与 CLAUDE.md "端口分配表" 配套
+    - MUST: 服务容器在 infrastructure/docker-compose.yml 注册；格式与 credential/audit-and-isolation/workflow-engine/mcp 保持一致
+    - MUST: 容器名约定 chatbiz-<service>；network 用 compose 内置 DNS（http://<service>:<port>），不引 host 网络
+    - MUST: 健康检查用 HTTP GET <port>/healthz（HEALTHCHECK 与 docker-compose healthcheck 同步）
+    - MUST: 端口从 CLAUDE.md 端口分配表选用；如新占端口，先更新端口表再写 compose
+    - MUST: 涉及数据库的服务同时添加 <service>-migrate 一次性容器（restart: "no", command: alembic upgrade head），主 service depends_on 链 service_completed_successfully
+    - MUST: 环境变量用 ${VAR:-default} 语法，便于本地与生产覆盖
+    - MUST: 容器内 cmd 使用 python -m app.<entrypoint> 风格
+    - MUST: 新 service 单测覆盖率 100%、至少 1 个集成测试；未达标不允许 apply
+    - MUST: 引用 eng-review Arch #1 的 egress 强制点（任何 LLM/外部 HTTP 出口必须走 audit-and-isolation）
 
 # Eng-review locked decisions
 # 12 finding 全部 approved（2026-06-10）。spec/change 作者必须先看这一节再下笔，避免重复讨论。

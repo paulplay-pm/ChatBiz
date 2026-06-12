@@ -279,6 +279,30 @@ class TestEndToEndDispatch:
             assert isinstance(payload, dict)
 
     @pytest.mark.asyncio
+    async def test_call_tool_success_envelope(self) -> None:
+        """A successful handler return is wrapped in a ``TextContent`` payload."""
+        from mcp.types import CallToolRequest
+
+        def good_fs(tool_name: str, args: dict[str, Any]) -> dict[str, Any]:
+            return {"ok": True, "echoed": args}
+
+        custom_router = McpRouter(
+            filesystem_handler=good_fs,
+            fetch_handler=lambda *_: {},
+            postgres_handler=lambda *_: {},
+            audit_archive=FakeAuditArchive(),
+        )
+        server = make_server(custom_router)
+        handler = server.request_handlers[CallToolRequest]
+        req = CallToolRequest(
+            method="tools/call",
+            params={"name": "fs_anything", "arguments": {"k": "v"}},
+        )
+        result = await handler(req)
+        payload = json.loads(result.root.content[0].text)
+        assert payload == {"ok": True, "echoed": {"k": "v"}}
+
+    @pytest.mark.asyncio
     async def test_call_tool_unknown_prefix_surfaces_runtime_envelope(
         self, server: Any
     ) -> None:

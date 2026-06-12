@@ -28,6 +28,7 @@ from httpx import Response
 from mcp.types import CallToolRequest, ListToolsRequest, Tool
 
 from app.servers.postgres import (
+    HANDLER,
     McpSecurityError,
     McpTimeoutError,
     _assert_readonly,
@@ -698,6 +699,46 @@ class TestCallToolDispatch:
         payload = mock_audit.build_payload.call_args.kwargs
         assert payload["error_class"] == "timeout"
         assert payload["ok"] is False
+
+
+class TestHandlerAdapter:
+    """Direct coverage for the sync ``HANDLER`` used by the central router."""
+
+    def test_pg_execute_query(self, fake_pool: MagicMock):
+        fake_pool.acquire.return_value.__aenter__.return_value.fetch = AsyncMock(
+            return_value=[{"id": 1}]
+        )
+        _set_pool(fake_pool)
+        result = HANDLER("pg_execute_query", {"sql": "SELECT id FROM users"})
+        assert result["rows"] == [{"id": 1}]
+
+    def test_pg_list_tables(self, fake_pool: MagicMock):
+        fake_pool.acquire.return_value.__aenter__.return_value.fetch = AsyncMock(
+            return_value=[{"table_name": "users"}]
+        )
+        _set_pool(fake_pool)
+        result = HANDLER("pg_list_tables", {"schema": "public"})
+        assert result["tables"] == ["users"]
+
+    def test_pg_describe_table(self, fake_pool: MagicMock):
+        fake_pool.acquire.return_value.__aenter__.return_value.fetch = AsyncMock(
+            return_value=[{"column_name": "id", "data_type": "int", "is_nullable": "NO"}]
+        )
+        _set_pool(fake_pool)
+        result = HANDLER("pg_describe_table", {"table_name": "users", "schema": "public"})
+        assert result["columns"][0]["column_name"] == "id"
+
+    def test_bare_tool_names(self, fake_pool: MagicMock):
+        fake_pool.acquire.return_value.__aenter__.return_value.fetch = AsyncMock(
+            return_value=[]
+        )
+        _set_pool(fake_pool)
+        result = HANDLER("list_tables", {})
+        assert result["tables"] == []
+
+    def test_unknown_tool(self):
+        with pytest.raises(ValueError, match="unknown postgres tool"):
+            HANDLER("pg_unknown", {})
 
 
 # ---------------------------------------------------------------------------
