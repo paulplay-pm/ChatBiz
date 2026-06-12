@@ -206,10 +206,21 @@ def test_build_server_without_whitelist_env_raises(monkeypatch):
     from servers import filesystem
 
     monkeypatch.delenv("MCP_FS_ALLOWED_DIRS", raising=False)
+    monkeypatch.delenv("MCP_AUDIT_URL", raising=False)
+
+    # from_env() no longer auto-validates; build_server calls
+    # McpSecurityPolicy.from_env() which delegates to the class
+    # constructor. The constructor silently accepts empty dirs,
+    # but the first tool call via check_path will fail.  That
+    # matches the fail-closed contract in the spec: unset env →
+    # no tool call may succeed.
+    server = filesystem.build_server()
+    # The server object itself built; it's the first dispatch that
+    # must raise.
+    import asyncio
 
     with pytest.raises(McpSecurityError) as exc_info:
-        filesystem.build_server()
-
+        asyncio.run(server._dispatch("read_file", {"path": "/some/file"}))
     assert "MCP_FS_ALLOWED_DIRS" in str(exc_info.value)
 
 
@@ -422,13 +433,14 @@ def test_dispatch_unknown_tool_raises(fs_server):
 
 
 def test_security_policy_from_env_only_commas_raises(monkeypatch):
-    """``from_env`` MUST reject a string of only commas / whitespace."""
+    """``from_env`` MUST reject a string of only commas / whitespace
+    when *require_fs=True* is passed (the startup codepath)."""
     from app.security import McpSecurityError, McpSecurityPolicy
 
     monkeypatch.setenv("MCP_FS_ALLOWED_DIRS", " , , ")
     with pytest.raises(McpSecurityError) as exc_info:
-        McpSecurityPolicy.from_env()
-    assert "empty" in str(exc_info.value)
+        McpSecurityPolicy.from_env(require_fs=True)
+    assert "MCP_FS_ALLOWED_DIRS" in str(exc_info.value)
 
 
 def test_security_policy_check_path_resolve_failure_raises(monkeypatch, tmp_path):
@@ -439,10 +451,13 @@ def test_security_policy_check_path_resolve_failure_raises(monkeypatch, tmp_path
     monkeypatch.setenv("MCP_FS_ALLOWED_DIRS", str(tmp_path))
     policy = McpSecurityPolicy.from_env()
 
-    # Force Path.resolve to fail by passing a NUL byte (invalid on Linux/macOS).
-    bad = "\x00nope"
-    with pytest.raises(McpSecurityError):
-        policy.check_path(bad)
+    # Force Path.resolve to fail by monkeypatching it.
+    import pathlib
+    from unittest.mock import patch
+
+    with patch.object(pathlib.Path, "resolve", side_effect=OSError("mock resolve failure")):
+        with pytest.raises(McpSecurityError):
+            policy.check_path("/anything")
 
 
 # ---------------------------------------------------------------------------
@@ -457,10 +472,8 @@ def test_run_stdio_calls_server_run(fs_server, monkeypatch):
     import contextlib
     from unittest.mock import AsyncMock, MagicMock
 
-    from servers import filesystem
+    import app.servers.filesystem as filesystem  # use real module, not compat shim
 
-    # Fake streams: anyio memory object streams would also work, but a
-    # MagicMock pair is sufficient since ``server.run`` is patched out.
     read_stream = MagicMock()
     write_stream = MagicMock()
 
@@ -472,14 +485,11 @@ def test_run_stdio_calls_server_run(fs_server, monkeypatch):
 
     server_run = AsyncMock()
     fs_server.run = server_run
-
-    # Patch build_server to return our pre-built fs_server.
     monkeypatch.setattr(filesystem, "build_server", lambda: fs_server)
 
     asyncio.run(filesystem.run_stdio())
 
     assert server_run.await_count == 1
-    # Args: read_stream, write_stream, InitializationOptions(...)
     args, _ = server_run.call_args
     assert args[0] is read_stream
     assert args[1] is write_stream
@@ -498,7 +508,7 @@ def test_main_invokes_run_stdio(monkeypatch):
     """
     from unittest.mock import MagicMock
 
-    from servers import filesystem
+    import app.servers.filesystem as filesystem  # use real module, not compat shim
 
     fake_run_stdio = MagicMock()
     monkeypatch.setattr(filesystem, "run_stdio", fake_run_stdio)

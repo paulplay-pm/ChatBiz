@@ -77,6 +77,11 @@ AUDIT_ARCHIVE_PATH = "/v1/audit/archive"
 DEFAULT_AUDIT_BASE_URL = "http://127.0.0.1:8080"
 
 
+# Re-export from app.audit for callers (e.g. fetch server) that used to
+# import make_audit_call from here.
+from app.audit import make_audit_call  # noqa: E402, F401
+
+
 # ---------------------------------------------------------------------------
 # egress helper
 # ---------------------------------------------------------------------------

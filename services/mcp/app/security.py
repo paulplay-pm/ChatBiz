@@ -42,6 +42,7 @@ from __future__ import annotations
 import ipaddress
 import logging
 import os
+import socket  # imported so that patchers like _DNSGuard work
 import sys
 from pathlib import Path
 from urllib.parse import urlparse
@@ -213,17 +214,24 @@ class McpSecurityPolicy:
             if max_response_bytes is not None
             else _int_env("MCP_FETCH_MAX_BYTES", self.DEFAULT_FETCH_MAX_BYTES)
         )
+        self.max_response_bytes = self.fetch_max_bytes  # alias for fetch server compat
 
     # -- construction helpers ------------------------------------------------
 
     @classmethod
-    def from_env(cls) -> "McpSecurityPolicy":
+    def from_env(cls, *, require_fs: bool = False, require_fetch: bool = False) -> "McpSecurityPolicy":
         """Construct a policy from the current process environment.
 
-        Server implementations call this at startup; tests monkeypatch
-        env vars and use it as a small public factory.
+        Server implementations call this at startup to build a policy
+        instance. When *require_fs* or *require_fetch* are True the
+        helper also calls :meth:`validate_config` so that a missing
+        mandatory env var raises immediately (vs failing at the first
+        tool call).
         """
-        return cls()
+        policy = cls()
+        if require_fs or require_fetch:
+            policy.validate_config(require_fs=require_fs, require_fetch=require_fetch)
+        return policy
 
     # -- public API ----------------------------------------------------------
 
