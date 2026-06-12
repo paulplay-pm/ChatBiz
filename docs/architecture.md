@@ -885,6 +885,60 @@ LangGraph 与 LangChain 是**互补关系**：
 └─────────────────────────────────────────────────────────┘
 ```
 
+#### 4.3.Y PII 规则集(数据隔离网关详设)
+
+> eng-review 2026-06-10 锁定的 Arch #1 数据隔离网关 = egress 强制点的具体 PII
+> 处理设计。`§4.3.X`(eng-review 预留段,留给 T3 记忆系统使用)与
+> `§4.3.Y`(本段)互不冲突。本段是 eng-review Test #2 critical path "data
+> isolation gateway interception (PII redaction)" 的设计文档对应。
+
+**职责与边界**:`services/audit-and-isolation/` 是数据隔离网关本体,所有
+LLM 调用必须经过它(运行期通过 `app/auth.py` 的 credential service token
+验证;编译期通过 `services/gateway-scanner/` 静态扫描阻止直连 import)。
+本段描述 PII 检测与脱敏的设计,**不**包括审计与凭证管理(那些是 §4.3.5
+的子部分)。
+
+**PII 6 类正则**(`app/pii/rules.py::RULES` 权威实现):
+
+| 类别 | 正则 | 占位符 | 还原策略 |
+|------|------|--------|---------|
+| 中国大陆身份证 | `\d{17}[\dXx]` + 校验位算法 | `[ID_xxxx]` | 通过 trace_id 在 Redis 查回 |
+| 中国大陆手机号 | `1[3-9]\d{9}` | `[PHONE_xxxx]` | 同上 |
+| 银行卡号 | 13-19 位数字 + Luhn 校验 | `[BANK_xxxx]` | 同上 |
+| 电子邮箱 | RFC 5322 简化 | `[EMAIL_xxxx]` | 同上 |
+| 统一社会信用代码 | `\d{2}[0-9A-Z]{16}[\dA-Z]{2}` | `[USCC_xxxx]` | 同上 |
+| 营收金额 | 数字 + `万/亿/千/百/元/¥/$` | `[AMOUNT_xxxx]` | 同上 |
+
+**策略选择 —— mask-only + 可逆**(已实现,见 `app/pii/{redactor,reverser}.py`):
+
+- **不**采用 block 档。block 会拒服务,在 paul 月报场景(财务报表含手机号 /
+  员工编号)下不可用。eng-review 报告未锁定 block 档。
+- **不**采用 log-only 档。log-only 等同放行,无法满足合规要求。
+- **mask + 可逆**:占位符 `[类型_xxxx]` 在响应侧通过相同 trace_id 在 Redis
+  查回原文。Redis key TTL 30min(per-trace 自动过期)。
+
+**与 trace 关联**:每条 PII 替换与 `trace_id` 绑定,反向映射存
+Redis `pii:rev:{trace_id}` 30min TTL。响应侧用相同 `trace_id` 调用
+`reverser.restore(text, trace_id)` 还原。
+
+**fail-open 行为**:`settings.pii_fail_open=True` 时,若 PII 检测器抛异常,
+请求**放行原文**并 WARN 日志(不阻断 LLM 调用)。理由:检测器异常不应让
+整个 LLM 通道挂掉(eng-review Arch #1 标 P0)。
+
+**auth 边界**:本段只覆盖 PII 处理。运行期 token 验证由 `app/auth.py`
+credential service 路径承担,属于 §4.3.5 凭证未授权的 security 边界
+(eng-review Quality #3 锁定),不属于本段。
+
+**eng-review 决策**:
+- Arch #1(数据隔离网关 = egress 强制点)
+- Test #2 critical path 之一(data isolation gateway interception)
+- Quality #3(security 边界 — 凭证未授权在 T11 错误边界实现,PII 拦截在本 spec)
+
+**spec 与实现对应**:
+- spec: `openspec/changes/gateway-egress-enforcement-p0/specs/`
+- 实现: `services/audit-and-isolation/app/pii/{rules,detector,redactor,reverser}.py`
+- 测试: `services/audit-and-isolation/tests/integration/test_pii_*.py`(8 个子场景)
+
 ### 4.4 技术栈选型
 
 | 层级 | 技术选型 | 选型理由 |
