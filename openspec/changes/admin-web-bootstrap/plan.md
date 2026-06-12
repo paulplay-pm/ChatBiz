@@ -3,7 +3,7 @@
 > **For agentic workers:** Use superpowers:subagent-driven-development
 > to implement this plan task-by-task.
 
-**Goal:** 在 `apps/admin-web/` 建最小前端骨架（Vite 5 + React 18 + TS strict + Tailwind 3.4 + Router 6 + SWR + 14 menu item + PlaceholderView + 1 vitest + 1 playwright），**不**引业务逻辑，**不**引鉴权，**不**引 docker-compose 容器。完成后 `mcp-server-management-ui` 的 task 7.1-7.8 + 8.1-8.2 解 BLOCKED。
+**Goal:** 在 `web/admin-web/` 建最小前端骨架（Vite 5 + React 18 + TS strict + Tailwind 3.4 + Router 6 + SWR + 14 menu item + PlaceholderView + 1 vitest + 1 playwright），**不**引业务逻辑，**不**引鉴权，**不**引 docker-compose 容器。完成后 `mcp-server-management-ui` 的 task 7.1-7.8 + 8.1-8.2 解 BLOCKED。
 
 **Architecture:** Vite 5 + React 18 + TypeScript strict + Tailwind 3.4（色板复用 `docs/prototype.html`） + React Router 6（14 路由 + `/` redirect） + SWR（health 探活） + 14 个 menu item SideNav + PlaceholderView（未实现路由的占位）。**不**引业务逻辑，**不**引鉴权。视觉 1:1 复用 prototype.html。
 
@@ -32,19 +32,19 @@
 ## Task 1.1 ★: pnpm init + Vite + React TS template
 
 **Files:**
-- Create: `apps/admin-web/package.json`
-- Create: `apps/admin-web/tsconfig.json`
-- Create: `apps/admin-web/tsconfig.node.json`
-- Create: `apps/admin-web/vite.config.ts`
-- Create: `apps/admin-web/index.html`
-- Create: `apps/admin-web/src/main.tsx` (placeholder)
-- Create: `apps/admin-web/src/App.tsx` (placeholder)
-- Create: `apps/admin-web/.gitignore`
+- Create: `web/admin-web/package.json`
+- Create: `web/admin-web/tsconfig.json`
+- Create: `web/admin-web/tsconfig.node.json`
+- Create: `web/admin-web/vite.config.ts`
+- Create: `web/admin-web/index.html`
+- Create: `web/admin-web/src/main.tsx` (placeholder)
+- Create: `web/admin-web/src/App.tsx` (placeholder)
+- Create: `web/admin-web/.gitignore`
 
 **Step 1**: Bootstrap project
 ```bash
-mkdir -p apps/admin-web
-cd apps/admin-web
+mkdir -p web/admin-web
+cd web/admin-web
 pnpm init
 ```
 
@@ -153,14 +153,14 @@ playwright-report/
 
 **Step 9**: Verify
 ```bash
-cd apps/admin-web && pnpm tsc --noEmit
+cd web/admin-web && pnpm tsc --noEmit
 ```
 Expected: exit 0
 
 **Step 10**: Commit
 ```bash
 cd /Users/paulwang/work/ChatBiz
-git add apps/admin-web/{package.json,pnpm-lock.yaml,tsconfig.json,tsconfig.node.json,vite.config.ts,index.html,src/main.tsx,.gitignore}
+git add web/admin-web/{package.json,pnpm-lock.yaml,tsconfig.json,tsconfig.node.json,vite.config.ts,index.html,src/main.tsx,.gitignore}
 git commit -m "feat(admin-web): bootstrap Vite 5 + React 18 + TS strict"
 ```
 
@@ -182,7 +182,7 @@ git commit -m "feat(admin-web): bootstrap Vite 5 + React 18 + TS strict"
 ---
 
 ## Task 3.1 ★: Tailwind init
-- **Step 1**: `cd apps/admin-web && pnpm dlx tailwindcss init -p`
+- **Step 1**: `cd web/admin-web && pnpm dlx tailwindcss init -p`
 - **Step 2**: Verify `tailwind.config.js` + `postcss.config.js` exist
 - **Step 3**: Edit `tailwind.config.js`:
 ```js
@@ -210,7 +210,7 @@ export default {
 - **Step 4**: Commit
 
 ## Task 3.2: src/index.css with Tailwind directives
-- **Step 1**: Create `apps/admin-web/src/index.css`:
+- **Step 1**: Create `web/admin-web/src/index.css`:
 ```css
 @tailwind base;
 @tailwind components;
@@ -232,7 +232,7 @@ export default {
 ---
 
 ## Task 4.1 ★: SideNav.tsx
-**Files:** Create `apps/admin-web/src/components/SideNav.tsx`
+**Files:** Create `web/admin-web/src/components/SideNav.tsx`
 
 **Step 1**: Write component
 ```tsx
@@ -297,7 +297,7 @@ export function SideNav(): JSX.Element {
 **Step 3**: Commit
 
 ## Task 4.2 ★: AppShell.tsx
-**Files:** Create `apps/admin-web/src/components/AppShell.tsx`
+**Files:** Create `web/admin-web/src/components/AppShell.tsx`
 
 **Step 1**: Write component
 ```tsx
@@ -331,7 +331,7 @@ export function AppShell(): JSX.Element {
 **Step 2**: Commit (combined with 4.3 once HealthIndicator exists)
 
 ## Task 4.3 ★: HealthIndicator.tsx + main.tsx wiring
-**Files:** Create `apps/admin-web/src/components/HealthIndicator.tsx`, modify `src/main.tsx` + `src/App.tsx`
+**Files:** Create `web/admin-web/src/components/HealthIndicator.tsx`, modify `src/main.tsx` + `src/App.tsx`
 
 **Step 1**: Create `health.ts` (task 6.2)
 
@@ -392,7 +392,7 @@ createRoot(root).render(
 ## Task 5.1: react-router-dom install (done in 1.1 step 2)
 
 ## Task 5.2 ★: PlaceholderView.tsx
-**Files:** Create `apps/admin-web/src/views/PlaceholderView.tsx`
+**Files:** Create `web/admin-web/src/views/PlaceholderView.tsx`
 
 **Step 1**: Write component
 ```tsx
@@ -415,7 +415,7 @@ export function PlaceholderView({ menuItemName, changeName }: PlaceholderViewPro
 **Step 2**: Commit
 
 ## Task 5.3 ★: router/index.tsx
-**Files:** Create `apps/admin-web/src/router/index.tsx`
+**Files:** Create `web/admin-web/src/router/index.tsx`
 
 **Step 1**: Write router
 ```tsx
@@ -472,7 +472,7 @@ export const router = createBrowserRouter(routes);
 
 ## Task 6.1: swr install (done in 1.1 step 2)
 ## Task 6.2 ★: api/health.ts
-**Files:** Create `apps/admin-web/src/api/health.ts`
+**Files:** Create `web/admin-web/src/api/health.ts`
 
 **Step 1**: Write
 ```ts
@@ -509,7 +509,7 @@ export function useHealth(baseUrl: string = "http://localhost:8004"): { data?: H
 ---
 
 ## Task 7.1 ★: types/index.ts
-**Files:** Create `apps/admin-web/src/types/index.ts`
+**Files:** Create `web/admin-web/src/types/index.ts`
 
 **Step 1**: Write
 ```ts
@@ -528,7 +528,7 @@ export interface MenuItem {
 
 ## Task 7.2: .gitignore (done in 1.1 step 8)
 ## Task 7.3 ★: README.md
-**Files:** Create `apps/admin-web/README.md`
+**Files:** Create `web/admin-web/README.md`
 
 **Step 1**: Write README
 ```markdown
@@ -562,7 +562,7 @@ export interface MenuItem {
 
 ## Task 8.1: vitest deps (done in 1.1 step 2)
 ## Task 8.2 ★: vitest.config.ts
-**Files:** Create `apps/admin-web/vitest.config.ts`
+**Files:** Create `web/admin-web/vitest.config.ts`
 
 **Step 1**: Write
 ```ts
@@ -583,7 +583,7 @@ export default defineConfig({
 **Step 2**: Commit
 
 ## Task 8.3 ★: tests/unit/setup.ts
-**Files:** Create `apps/admin-web/tests/unit/setup.ts`
+**Files:** Create `web/admin-web/tests/unit/setup.ts`
 
 **Step 1**: Write
 ```ts
@@ -593,7 +593,7 @@ import "@testing-library/jest-dom";
 **Step 2**: Commit
 
 ## Task 8.4 ★: tests/unit/AppShell.test.tsx
-**Files:** Create `apps/admin-web/tests/unit/AppShell.test.tsx`
+**Files:** Create `web/admin-web/tests/unit/AppShell.test.tsx`
 
 **Step 1**: Write
 ```tsx
@@ -628,7 +628,7 @@ describe("AppShell", () => {
 ## Task 8.5: @playwright/test install (done in 1.1 step 2)
 
 ## Task 8.6 ★: playwright.config.ts
-**Files:** Create `apps/admin-web/playwright.config.ts`
+**Files:** Create `web/admin-web/playwright.config.ts`
 
 **Step 1**: Write
 ```ts
@@ -658,7 +658,7 @@ export default defineConfig({
 **Step 2**: Commit
 
 ## Task 8.7 ★: e2e/admin-web-bootstrap.spec.ts
-**Files:** Create `apps/admin-web/e2e/admin-web-bootstrap.spec.ts`
+**Files:** Create `web/admin-web/e2e/admin-web-bootstrap.spec.ts`
 
 **Step 1**: Write
 ```ts
@@ -680,14 +680,14 @@ test("Open /mcp-tools and verify SideNav + Placeholder", async ({ page }) => {
 ---
 
 ## Task 9.1: full verify
-- **Step 1**: `cd apps/admin-web && pnpm tsc --noEmit` → exit 0
+- **Step 1**: `cd web/admin-web && pnpm tsc --noEmit` → exit 0
 - **Step 2**: `pnpm build` → exit 0
 - **Step 3**: `pnpm test` → 1/1
 - **Step 4**: `pnpm e2e` → 1/1
 - **Step 5**: All four exit 0
 
 ## Task 9.2: repo-root .gitignore
-- **Step 1**: Edit `/Users/paulwang/work/ChatBiz/.gitignore` add `apps/admin-web/{node_modules,dist,.vite,coverage,test-results,playwright-report}/`
+- **Step 1**: Edit `/Users/paulwang/work/ChatBiz/.gitignore` add `web/admin-web/{node_modules,dist,.vite,coverage,test-results,playwright-report}/`
 - **Step 2**: Verify `git status` doesn't list those
 - **Step 3**: Commit
 

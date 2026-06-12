@@ -153,13 +153,13 @@ eng-review 12 决策里：
 ### Q9：admin-web 仓库结构是 monorepo 还是 submodule？
 
 **A. 未知，需前置门**
-- 仓库根**没有** `apps/` 目录（CLAUDE.md 写"0 行源代码"）
+- 仓库根当时**没有** `web/admin-web/` 目录（CLAUDE.md 写"0 行源代码"）
 - prototype.html 是 `docs/` 下的 HTML
 - 决策点：本 change 在 tasks.md 写"前置 0.1 = 确认 admin-web 仓库路径"
 - 否则 spec 标 [BLOCKED]
 
 **B. 现在就假设 monorepo**
-- 拒绝：可能错（如果团队决定 submodule 方案，本 change 的 `apps/admin-web/` 提交会被 revert）
+- 拒绝：可能错（如果团队决定 submodule 方案，本 change 的 `web/admin-web/` 提交会被 revert）
 
 → **锁定 A（前置门 0.1）**
 

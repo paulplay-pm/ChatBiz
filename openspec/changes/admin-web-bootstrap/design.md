@@ -2,7 +2,7 @@
 
 ## Context
 
-仓库当前 0 行源代码。`mcp-server-management-ui` change 落地完整 8 阶段（brainstorm / proposal / design / specs / tasks / plan）+ tasks 36 项，**前置门 0.1 验 `apps/admin-web/package.json` 存在**——但 `apps/` 目录**不存在**。该 change 的 task 7.1-7.8（前端组件）+ task 8.1-8.2（Playwright E2E）共 10 个 task **强依赖** `apps/admin-web/` 存在。
+仓库当前 0 行源代码。`mcp-server-management-ui` change 落地完整 8 阶段（brainstorm / proposal / design / specs / tasks / plan）+ tasks 36 项，**前置门 0.1 验 `web/admin-web/package.json` 存在**——但当时 `web/admin-web/` 尚未就位。该 change 的 task 7.1-7.8（前端组件）+ task 8.1-8.2（Playwright E2E）共 10 个 task **强依赖** `web/admin-web/` 存在。
 
 本 change 解 `mcp-server-management-ui` 的 BLOCKED——**只**建前端骨架（Vite + React 18 + TS strict + SWR + 11 个菜单 static 占位 + 1 个 Playwright smoke E2E），**不**引业务逻辑，**不**引鉴权，**不**引 docker-compose 容器。
 
@@ -19,7 +19,7 @@
 ## Goals / Non-Goals
 
 **Goals：**
-- `apps/admin-web/` 目录存在 + `pnpm install` 成功 + `pnpm dev` 启动 Vite 5 dev server 在 `localhost:5173`
+- `web/admin-web/` 目录存在 + `pnpm install` 成功 + `pnpm dev` 启动 Vite 5 dev server 在 `localhost:5173`
 - 11 个 menu item 在 SideNav 显示，prototype.html 视觉 1:1
 - 点击任一未实现 menu item → 中央显示 "Coming soon — 由 <后续 change> 落地" 占位卡片
 - `pnpm test`（vitest）通过 ≥1 个 smoke 测试
@@ -180,7 +180,7 @@
 **Context**：admin-web 的部署形态。
 
 **选项**：
-- A. **（已选）** 本 change 不引容器；admin-web 留作 `apps/admin-web/` 源码 + 配置；`pnpm dev` 即可 dev；后续 V1.0 由 `admin-web-deploy` change 加 nginx 容器。
+- A. **（已选）** 本 change 不引容器；admin-web 留作 `web/admin-web/` 源码 + 配置；`pnpm dev` 即可 dev；后续 V1.0 由 `admin-web-deploy` change 加 nginx 容器。
 - B. 立即加 admin-web nginx 容器：拒绝——MVP 不需要；本 change scope 收敛。
 
 **结论**：选 A。
@@ -213,14 +213,14 @@
 - **[Risk] Tailwind config 与 prototype.html 色板不完全 1:1** → Mitigation：D2 列了完整色板映射表；task 1.4 配 visual regression 暂不写（V1.0 写）。
 - **[Risk] ESLint 报警（如 react-hooks/exhaustive-deps）** → Mitigation：用 Vite 默认 + react/recommended + react-hooks 规则，0 错才能 commit。
 - **[Risk] admin-web 与 prototype.html 视觉漂移** → Mitigation：task 7.1-7.8 后续 change 落地时复用本骨架 SideNav，不重写。
-- **[Risk] 路径 alias `@/*` 与 mcp-server-management-ui 的 `apps/admin-web/src/types/mcp.ts` 引用冲突** → Mitigation：所有跨文件 import 走 `@/types/...`（不要相对路径），由 ESLint 规则强制。
+- **[Risk] 路径 alias `@/*` 与 mcp-server-management-ui 的 `web/admin-web/src/types/mcp.ts` 引用冲突** → Mitigation：所有跨文件 import 走 `@/types/...`（不要相对路径），由 ESLint 规则强制。
 
 ## Migration Plan
 
 **无历史数据可迁**——0 行源代码，admin-web 从无到有。
 
 **Deploy steps**（dev 环境）：
-1. `cd apps/admin-web && pnpm install`
+1. `cd web/admin-web && pnpm install`
 2. `pnpm dev` → http://localhost:5173 看到 SideNav + 占位
 3. `pnpm test` → 1/1 vitest pass
 4. `pnpm e2e` → 1/1 playwright pass
@@ -232,7 +232,7 @@
 ## Open Questions
 
 - OQ1：Vite dev server 是否需要 `--host 0.0.0.0` 让 docker 容器外访问？**当前决定**：不需要，dev 用 `localhost:5173` 即可。后续 V1.0 docker 化时再考虑。
-- OQ2：Tailwind config 放 `apps/admin-web/tailwind.config.js` 还是仓库根？**当前决定**：前者——admin-web 是独立 module。
+- OQ2：Tailwind config 放 `web/admin-web/tailwind.config.js` 还是仓库根？**当前决定**：前者——admin-web 是独立 module。
 - OQ3：TypeScript path alias `@/*` vs `~/*`？**当前决定**：`@/*`（Vite + Next.js 业界主流）。
 - OQ4：左侧导航 14 个 menu item 立即都 visible 还是只 visible 已实现？**当前决定**：全 visible（本 change 全部占位）；后续 change 改 role-aware。
 - OQ5：`AppShell` 用 `useState` 控制 mobile drawer 还是 CSS-only？**当前决定**：CSS-only（`lg:hidden` + `lg:block`），admin-web 桌面优先。

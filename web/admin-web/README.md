@@ -32,7 +32,7 @@ npx playwright install chromium
 ## 目录结构
 
 ```
-apps/admin-web/
+web/admin-web/
 ├── index.html                  # Vite 入口
 ├── vite.config.ts              # Vite + plugin-react + tsconfig-paths
 ├── vitest.config.ts            # Vitest + jsdom + @ alias

@@ -126,7 +126,7 @@
 - **[Risk] 探活在 100 RPS 高并发下打爆 router** → Mitigation：eng-review Perf #1 缓存 30s（`MCP_TOOL_CACHE_TTL`）；探活并发上限 5（asyncio.Semaphore）。
 - **[Risk] `McpRouter.list_advertised_tools` 调 3 个 server（fs/fetch/pg）的 HANDLE 是混合调用，不区分 server** → Mitigation：本 change 探活时**只调目标 server 的 HANDLER**（不调全 router），见 `tasks.md` task 4.3。
 - **[Risk] `services/mcp` 容器重启时，正在 connecting 的请求悬挂** → Mitigation：状态机设 30s `connecting → error` 超时（DB 侧 cron 或 API 端拉起时检查 `updated_at < now - 30s`）。
-- **[Risk] admin-web 不在本 change scope（前端仓库），但需要改 `SideNav.tsx` + `router/index.tsx`** → Mitigation：开**两个** change 入口（`mcp-server-management-ui` 主 + `admin-web-nav-update` 微），或者本 change 在 `apps/admin-web/` 提交，依赖前置：`admin-web` 仓库已 git submodule 或 monorepo。**当前仓库结构**：`apps/` 目录**不在 git 跟踪**（CLAUDE.md 提示 admin-web 尚未搭建）。**决策点**：本 change 在 tasks.md 写"前置：确认 `apps/admin-web/` 已 init"，否则 spec 不 apply。
+- **[Risk] admin-web 不在本 change scope（前端仓库），但需要改 `SideNav.tsx` + `router/index.tsx`** → Mitigation：开**两个** change 入口（`mcp-server-management-ui` 主 + `admin-web-nav-update` 微），或者本 change 在 `web/admin-web/` 提交，依赖前置：`admin-web` 仓库已 git submodule 或 monorepo。**当前仓库结构**：`web/admin-web/` 目录在 `admin-web-bootstrap` 前**尚未就位**（CLAUDE.md 提示 admin-web 尚未搭建）。**决策点**：本 change 在 tasks.md 写"前置：确认 `web/admin-web/` 已 init"，否则 spec 不 apply。
 
 ## Migration Plan
 
@@ -145,6 +145,6 @@
 
 ## Open Questions
 
-- OQ1：admin-web 是 monorepo 还是 submodule？现状：仓库根**没有** `apps/` 目录（CLAUDE.md 写"0 行源代码"），prototype.html 是 `docs/` 下的 HTML。前端代码仓库路径未定。**行动**：本 change 在 `tasks.md` 写"前置任务 = 等 admin-web 仓库就位"，否则 spec 标 `[BLOCKED]`。
+- OQ1：admin-web 是 monorepo 还是 submodule？现状：仓库根当时**没有** `web/admin-web/` 目录（CLAUDE.md 写"0 行源代码"），prototype.html 是 `docs/` 下的 HTML。前端代码仓库路径未定。**行动**：本 change 在 `tasks.md` 写"前置任务 = 等 admin-web 仓库就位"，否则 spec 标 `[BLOCKED]`。
 - OQ2：MCP server 注册元数据是否要 export 给其他 service（agent-runtime 拿 `pg_server_registrations` 决定可调 tool）？**当前决定**：是，本 change 暴露 `GET /v1/mcp/servers` REST，agent-runtime 通过 audit-and-isolation / mcp 网关间接拿。**未来**：可能要 `pg_notify` 推送给 agent-runtime，V1.5 再做。
 - OQ3：`mcp-server-audit-trail` capability 声明 `Frontend Scope: N/A`（被 audit-and-isolation 消费，UI 由后续 change），**还是要**做审计面板（让 admin 看见"谁改了 MCP server 配置"）？**当前决定**：N/A，admin 视角只看"现在哪些 server 在线 / 离线"，不看历史。**未来**：V1.5 走 `audit-and-isolation-admin-ui` 落地。

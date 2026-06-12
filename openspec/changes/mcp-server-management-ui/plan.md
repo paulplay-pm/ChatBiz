@@ -495,8 +495,8 @@ Expected: 5 lines of yaml
 ## Task 7.1 ★: admin-web/src/api/mcp.ts — 7 client functions
 
 **Files:**
-- Create: `apps/admin-web/src/api/mcp.ts`
-- Create: `apps/admin-web/src/api/mcp.test.ts`
+- Create: `web/admin-web/src/api/mcp.ts`
+- Create: `web/admin-web/src/api/mcp.test.ts`
 
 **Step 1**: Write failing test (mock fetch)
 - 7 functions × 1 success + 1 error case = 14 cases
@@ -518,7 +518,7 @@ async function listServers(): Promise<McpServer[]> {
 
 **Step 3**: Run
 ```bash
-cd apps/admin-web && pnpm vitest src/api/mcp.test.ts
+cd web/admin-web && pnpm vitest src/api/mcp.test.ts
 ```
 Expected: 14 passed
 
@@ -552,7 +552,7 @@ Expected: 14 passed
 
 ## Task 8.1 ★: e2e/mcp-tools.spec.ts — Playwright (critical path #4)
 **Files:**
-- Create: `apps/admin-web/e2e/mcp-tools.spec.ts`
+- Create: `web/admin-web/e2e/mcp-tools.spec.ts`
 
 **Step 1**: Write 4 test cases
 - admin sees 3 cards with correct badges

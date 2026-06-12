@@ -4,8 +4,8 @@
 
 ## 0. 前置门
 
-- [ ] 0.1 确认 `apps/admin-web/` 仓库路径（monorepo 还是 submodule）并 init 到本仓库根——若为 submodule 则本 change 在子模块仓提交；若为 monorepo 则本 change 在 `apps/admin-web/` 目录内提交。**否则 [BLOCKED]**。验：仓库根 `apps/admin-web/package.json` 存在。<br/>**[2026-06-12 更新]** 由 `admin-web-bootstrap` change（archive 后）落地 `apps/admin-web/` monorepo 子目录 — 含 Vite 5 + React 18 + TS strict + Tailwind + Router + SWR + Vitest + Playwright 骨架。本 change apply 时验：`ls apps/admin-web/package.json` 存在 + `pnpm --filter @chatbiz/admin-web install` 0 错。
-- [ ] 0.2 确认 admin-web 已装 React 18 + TypeScript 严格 + SWR；若未装则先开一个前置 change `admin-web-bootstrap`。验：`apps/admin-web/package.json` 包含 `react`, `typescript`, `swr`。
+- [ ] 0.1 确认 `web/admin-web/` 仓库路径（monorepo 还是 submodule）并 init 到本仓库根——若为 submodule 则本 change 在子模块仓提交；若为 monorepo 则本 change 在 `web/admin-web/` 目录内提交。**否则 [BLOCKED]**。验：仓库根 `web/admin-web/package.json` 存在。<br/>**[2026-06-12 更新]** 由 `admin-web-bootstrap` change（archive 后）落地 `web/admin-web/` monorepo 子目录 — 含 Vite 5 + React 18 + TS strict + Tailwind + Router + SWR + Vitest + Playwright 骨架。本 change apply 时验：`ls web/admin-web/package.json` 存在 + `pnpm --filter @chatbiz/admin-web install` 0 错。
+- [ ] 0.2 确认 admin-web 已装 React 18 + TypeScript 严格 + SWR；若未装则先开一个前置 change `admin-web-bootstrap`。验：`web/admin-web/package.json` 包含 `react`, `typescript`, `swr`。
 - [ ] 0.3 拉 `mcp-server-integration-mvp` 已 archive 的 `services/mcp/` 代码到 worktree。验：`services/mcp/app/main.py` 存在且 import 不报错。
 
 ## 1. 契约层（Node Contract 类比，先 schema 后代码）
@@ -47,19 +47,19 @@
 
 ## 7. 前端（mcp-server-registry + mcp-server-lifecycle + mcp-server-tool-discovery capabilities）
 
-- [ ] 7.1 在 `apps/admin-web/src/api/mcp.ts` 写 TS 客户端：`listServers()` / `createServer(payload)` / `updateServer(id, payload)` / `deleteServer(id)` / `connectServer(id)` / `disconnectServer(id)` / `listServerTools(id)`，每个返回 `Promise<...>` + 用 Zod 校验响应。**编码规范**：TypeScript strict + Hooks + 状态隔离。**安全清单**：所有错误必须归类为 `McpError` 子类（`Security` / `User` / `Runtime`），不暴露 stack。验：`tsc --noEmit` 0 错。
-- [ ] 7.2 在 `apps/admin-web/src/types/mcp.ts` 写 TS interface `McpServer` / `McpTool` / `McpServerStatus` enum + Zod schema，**与 `services/mcp/app/registry_types.py` 字段一一对应**（手工对齐，**不**自动生成——admin-web 在另一个仓库或 monorepo，跨语言生成要等 codegen 工具就位）。**安全清单**：env 字段在 TS 端类型为 `Record<string, string>` 但 UI 上对 key 含 `*KEY|*TOKEN|*SECRET` 的值渲染为 `***REDACTED***`。验：手 import 跑通。
-- [ ] 7.3 在 `apps/admin-web/src/views/mcp/McpToolsView.tsx` 写主视图：复制 prototype.html:4112-4164 的卡片网格、状态徽章、工具行、按钮布局。用 SWR `useSWR('/v1/mcp/servers', listServers, {refreshInterval: 5000})`。**编码规范**：组件用 function component + Hooks；不引 class component；不引 Redux。**安全清单**：按钮 disabled 时不响应 click；模态关闭清空表单 state。验：手打开 `/mcp-tools` 看到 3 卡片（开发环境 mock）。
-- [ ] 7.4 在 `apps/admin-web/src/components/mcp/McpServerCard.tsx` 写卡片组件：复用 prototype.html 视觉（图标 + 标题 + 副标题 + 状态徽章 + Server/Transport 行 + 工具行 + 配置/断开按钮）。**安全清单**：状态徽章用 4 个色值（green/gray/yellow/red）+ WCAG AA 对比度。验：Storybook 跑通 4 个状态变体。
-- [ ] 7.5 在 `apps/admin-web/src/components/mcp/McpServerForm.tsx` 写弹窗表单：fields 见 spec mcp-server-registry `前端 form`。表单用 `react-hook-form` + `zod` resolver。**安全清单**：transport = `connected` 时 disable command/env 字段。验：手填表提交成功。
-- [ ] 7.6 在 `apps/admin-web/src/components/mcp/DisconnectConfirmModal.tsx` 写确认弹窗：标题"确认断开 <name> 吗？" + Cancel / 断开 按钮。**安全清单**：默认焦点在 Cancel（防误触）。验：Storybook 跑通。
-- [ ] 7.7 在 `apps/admin-web/src/router/index.tsx` 注册 `/mcp-tools` 路由 + lazy import `McpToolsView`。**安全清单**：route guard 检查 `useUser().roles.includes('mcp.admin')`，无权限跳 `/403`。验：`tsc --noEmit` 0 错。
-- [ ] 7.8 在 `apps/admin-web/src/components/SideNav.tsx` 激活 "MCP 工具" 菜单项（prototype.html:315 已有）。**安全清单**：菜单项对无 `mcp.admin` 角色用户隐藏。验：手切角色看菜单变化。
+- [ ] 7.1 在 `web/admin-web/src/api/mcp.ts` 写 TS 客户端：`listServers()` / `createServer(payload)` / `updateServer(id, payload)` / `deleteServer(id)` / `connectServer(id)` / `disconnectServer(id)` / `listServerTools(id)`，每个返回 `Promise<...>` + 用 Zod 校验响应。**编码规范**：TypeScript strict + Hooks + 状态隔离。**安全清单**：所有错误必须归类为 `McpError` 子类（`Security` / `User` / `Runtime`），不暴露 stack。验：`tsc --noEmit` 0 错。
+- [ ] 7.2 在 `web/admin-web/src/types/mcp.ts` 写 TS interface `McpServer` / `McpTool` / `McpServerStatus` enum + Zod schema，**与 `services/mcp/app/registry_types.py` 字段一一对应**（手工对齐，**不**自动生成——admin-web 在另一个仓库或 monorepo，跨语言生成要等 codegen 工具就位）。**安全清单**：env 字段在 TS 端类型为 `Record<string, string>` 但 UI 上对 key 含 `*KEY|*TOKEN|*SECRET` 的值渲染为 `***REDACTED***`。验：手 import 跑通。
+- [ ] 7.3 在 `web/admin-web/src/views/mcp/McpToolsView.tsx` 写主视图：复制 prototype.html:4112-4164 的卡片网格、状态徽章、工具行、按钮布局。用 SWR `useSWR('/v1/mcp/servers', listServers, {refreshInterval: 5000})`。**编码规范**：组件用 function component + Hooks；不引 class component；不引 Redux。**安全清单**：按钮 disabled 时不响应 click；模态关闭清空表单 state。验：手打开 `/mcp-tools` 看到 3 卡片（开发环境 mock）。
+- [ ] 7.4 在 `web/admin-web/src/components/mcp/McpServerCard.tsx` 写卡片组件：复用 prototype.html 视觉（图标 + 标题 + 副标题 + 状态徽章 + Server/Transport 行 + 工具行 + 配置/断开按钮）。**安全清单**：状态徽章用 4 个色值（green/gray/yellow/red）+ WCAG AA 对比度。验：Storybook 跑通 4 个状态变体。
+- [ ] 7.5 在 `web/admin-web/src/components/mcp/McpServerForm.tsx` 写弹窗表单：fields 见 spec mcp-server-registry `前端 form`。表单用 `react-hook-form` + `zod` resolver。**安全清单**：transport = `connected` 时 disable command/env 字段。验：手填表提交成功。
+- [ ] 7.6 在 `web/admin-web/src/components/mcp/DisconnectConfirmModal.tsx` 写确认弹窗：标题"确认断开 <name> 吗？" + Cancel / 断开 按钮。**安全清单**：默认焦点在 Cancel（防误触）。验：Storybook 跑通。
+- [ ] 7.7 在 `web/admin-web/src/router/index.tsx` 注册 `/mcp-tools` 路由 + lazy import `McpToolsView`。**安全清单**：route guard 检查 `useUser().roles.includes('mcp.admin')`，无权限跳 `/403`。验：`tsc --noEmit` 0 错。
+- [ ] 7.8 在 `web/admin-web/src/components/SideNav.tsx` 激活 "MCP 工具" 菜单项（prototype.html:315 已有）。**安全清单**：菜单项对无 `mcp.admin` 角色用户隐藏。验：手切角色看菜单变化。
 
 ## 8. E2E 测试（Playwright，critical path #4 插件加载降级）
 
-- [ ] 8.1 写 `apps/admin-web/e2e/mcp-tools.spec.ts`：4 个场景——① admin 看到 3 卡片徽章正确 ② 点击"连接" 5s 内徽章变绿 ③ 故意删 env 触发 error，徽章变红 + tooltip 显示 last_error ④ 删除被引用的 server 返 409 弹窗。**安全清单**：E2E 用真实后端（testcontainers 起 `chatbiz-mcp` + PG + audit-and-isolation mock），不 mock 网络层。验：`pnpm playwright test e2e/mcp-tools.spec.ts` 4/4 pass。
-- [ ] 8.2 在 `apps/admin-web/playwright.config.ts` 加 `mcp-tools` project，依赖 admin-web dev server。验：`pnpm playwright test --project=mcp-tools` 单独跑通。
+- [ ] 8.1 写 `web/admin-web/e2e/mcp-tools.spec.ts`：4 个场景——① admin 看到 3 卡片徽章正确 ② 点击"连接" 5s 内徽章变绿 ③ 故意删 env 触发 error，徽章变红 + tooltip 显示 last_error ④ 删除被引用的 server 返 409 弹窗。**安全清单**：E2E 用真实后端（testcontainers 起 `chatbiz-mcp` + PG + audit-and-isolation mock），不 mock 网络层。验：`pnpm playwright test e2e/mcp-tools.spec.ts` 4/4 pass。
+- [ ] 8.2 在 `web/admin-web/playwright.config.ts` 加 `mcp-tools` project，依赖 admin-web dev server。验：`pnpm playwright test --project=mcp-tools` 单独跑通。
 
 ## 9. 集成 / 端到端验证
 

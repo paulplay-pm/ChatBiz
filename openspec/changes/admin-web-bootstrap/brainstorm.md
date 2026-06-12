@@ -8,13 +8,13 @@
 
 ## 背景
 
-仓库当前 0 行源代码。`mcp-server-management-ui` change 已 plan 完整 8 阶段 + tasks 36 项，**前置门 0.1 = 验 `apps/admin-web/package.json` 存在**——但 `apps/` 目录**不存在**。
+仓库当前 0 行源代码。`mcp-server-management-ui` change 已 plan 完整 8 阶段 + tasks 36 项，**前置门 0.1 = 验 `web/admin-web/package.json` 存在**——但当时 `web/admin-web/` 尚未就位。
 
 **阻塞链**：
-- `mcp-server-management-ui` task 7.1-7.8（前端组件）+ task 8.1-8.2（Playwright E2E）**必须** `apps/admin-web/` 存在
+- `mcp-server-management-ui` task 7.1-7.8（前端组件）+ task 8.1-8.2（Playwright E2E）**必须** `web/admin-web/` 存在
 - `mcp-server-management-ui` task 0.1 前置门要求 admin-web 路径方案
 
-**本 change 解锁**：建 `apps/admin-web/` 最小骨架（Vite + React 18 + TS strict + SWR + react-hook-form + zod + Playwright + 复用 prototype.html 主题），不引业务逻辑，**只**让骨架可被后续 change mount。
+**本 change 解锁**：建 `web/admin-web/` 最小骨架（Vite + React 18 + TS strict + SWR + react-hook-form + zod + Playwright + 复用 prototype.html 主题），不引业务逻辑，**只**让骨架可被后续 change mount。
 
 **关键约束**（eng-review 锁定）：
 - 前端规范：React 组件化 + TypeScript 严格 + Hooks + 状态隔离（`openspec/config.yaml` §62）
@@ -92,7 +92,7 @@
 
 **A. 是**（已选）
 - `mcp-server-management-ui` task 7.5 已规划用 react-hook-form + zod resolver
-- zod schema 同时校验 client + server 响应（`apps/admin-web/src/api/mcp.ts` 用 zod parse）
+- zod schema 同时校验 client + server 响应（`web/admin-web/src/api/mcp.ts` 用 zod parse）
 - 与 openspec/config.yaml §62 "TypeScript 严格" 一致（zod 给运行时类型，TS 给编译时类型）
 
 **B. Formik**
@@ -164,7 +164,7 @@
 **A. 不引 admin-web 容器到 compose**（已选）
 - admin-web 是 Vite dev server / 静态构建产物
 - 后续 V1.0 真正部署时再开 `admin-web-deploy` change 加 nginx 容器
-- 本 change 只产出 `apps/admin-web/` 源码 + 配置文件
+- 本 change 只产出 `web/admin-web/` 源码 + 配置文件
 
 **B. 立即加 admin-web 容器**
 - 拒绝：MVP 不需要，dev 用 `pnpm dev` 即可
@@ -193,8 +193,8 @@
 ## Open Questions
 
 - OQ1：Vite 启动时是否要用 `pnpm dev --host 0.0.0.0` 让容器外能访问？（MVP 阶段 `localhost:5173` 即可；后续 docker 化时再考虑）
-- OQ2：Tailwind 配置是放 `apps/admin-web/tailwind.config.js` 还是 monorepo 根 `tailwind.config.js`？（本 change 选前者——admin-web 是独立 module）
-- OQ3：TypeScript path alias `@/*` → `apps/admin-web/src/*` 是否现在就开？（开，便于后续 change 跨文件 import；用 `vite-tsconfig-paths` 插件）
+- OQ2：Tailwind 配置是放 `web/admin-web/tailwind.config.js` 还是 monorepo 根 `tailwind.config.js`？（本 change 选前者——admin-web 是独立 module）
+- OQ3：TypeScript path alias `@/*` → `web/admin-web/src/*` 是否现在就开？（开，便于后续 change 跨文件 import；用 `vite-tsconfig-paths` 插件）
 - OQ4：左侧导航 11 个菜单项的"权限渲染"占位怎么做？（本 change 全 visible；后续 `mcp-server-management-ui` task 7.8 会改成 role-aware）
 
 ---
@@ -224,19 +224,19 @@
 ## 范围
 
 **本 change 包含**：
-- `apps/admin-web/package.json` + pnpm-lock.yaml
-- `apps/admin-web/vite.config.ts` + `tsconfig.json` (strict mode)
-- `apps/admin-web/tailwind.config.js` + `postcss.config.js`
-- `apps/admin-web/index.html` (入口)
-- `apps/admin-web/src/main.tsx` + `App.tsx` + 路由
-- `apps/admin-web/src/components/SideNav.tsx` + `AppShell.tsx`
-- `apps/admin-web/src/views/PlaceholderView.tsx`（11 个 menu item 的占位视图）
-- `apps/admin-web/src/api/health.ts`（与后端联调的最小 client）
-- `apps/admin-web/src/types/index.ts`（共用 TS 类型）
-- `apps/admin-web/tests/unit/setup.ts`（vitest 配置）
-- `apps/admin-web/e2e/admin-web-bootstrap.spec.ts`（1 个 E2E：能打开 / 看到 11 个菜单 / 点 MCP 工具 → 看到占位）
-- `apps/admin-web/playwright.config.ts` + `apps/admin-web/vitest.config.ts`
-- `apps/admin-web/.gitignore` + `apps/admin-web/README.md`
+- `web/admin-web/package.json` + pnpm-lock.yaml
+- `web/admin-web/vite.config.ts` + `tsconfig.json` (strict mode)
+- `web/admin-web/tailwind.config.js` + `postcss.config.js`
+- `web/admin-web/index.html` (入口)
+- `web/admin-web/src/main.tsx` + `App.tsx` + 路由
+- `web/admin-web/src/components/SideNav.tsx` + `AppShell.tsx`
+- `web/admin-web/src/views/PlaceholderView.tsx`（11 个 menu item 的占位视图）
+- `web/admin-web/src/api/health.ts`（与后端联调的最小 client）
+- `web/admin-web/src/types/index.ts`（共用 TS 类型）
+- `web/admin-web/tests/unit/setup.ts`（vitest 配置）
+- `web/admin-web/e2e/admin-web-bootstrap.spec.ts`（1 个 E2E：能打开 / 看到 11 个菜单 / 点 MCP 工具 → 看到占位）
+- `web/admin-web/playwright.config.ts` + `web/admin-web/vitest.config.ts`
+- `web/admin-web/.gitignore` + `web/admin-web/README.md`
 
 **本 change 不包含**：
 - 任何业务逻辑（mcp 注册 / workflow 编辑 / RAG / Agent 配置）
