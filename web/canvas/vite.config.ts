@@ -5,7 +5,9 @@ import { devIam } from './vite-plugin-dev-iam';
 
 export default defineConfig(() => {
   const workflowEngineTarget = process.env.VITE_API_BASE || 'http://localhost:8001';
+  const appBase = process.env.VITE_APP_BASE || '/';
   return {
+    base: appBase,
     plugins: [react(), devIam()],
     resolve: {
       alias: { '@': path.resolve(__dirname, 'src') },

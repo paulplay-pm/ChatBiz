@@ -165,37 +165,23 @@ services:
 
   # =========================================================================
   # Web Frontend — unified SPA container (所有前端能力共用一个容器/端口)
+  # 构建阶段会把 web/canvas 和 web/admin-web 都 build 出来，由 nginx 统一 serve。
+  # 访问：
+  #   - http://localhost:5173/           portal
+  #   - http://localhost:5173/canvas/    画布前端
+  #   - http://localhost:5173/admin-web/ 管理后台前端
   # =========================================================================
   web:
-    image: node:22-alpine
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+      target: runtime
     container_name: chatbiz-web
     restart: unless-stopped
-    healthcheck:
-      disable: true
-    environment:
-      VITE_DEV_TOKEN: dev-canvas-user
-      VITE_API_BASE: http://workflow-engine:8001
-      VITE_WORKSPACE: default
-    working_dir: /app/canvas
-    volumes:
-      - ../web/canvas:/app/canvas
     depends_on:
       - workflow-engine
     ports:
-      - "5173:5173"
-    command:
-      - sh
-      - -c
-      - |
-        cd /app/canvas
-        corepack enable
-        if [ ! -d node_modules/.pnpm ]; then
-          echo "Installing node_modules..."
-          pnpm install --frozen-lockfile --ignore-scripts
-        fi
-        echo "Starting Vite..."
-        # 直接调用 pnpm-hoisted vite 二进制，避免 npx 重新下载
-        exec node node_modules/.pnpm/vite@5.4.21_@types+node@24.13.1/node_modules/vite/bin/vite.js --host 0.0.0.0
+      - "5173:80"
 
 volumes:
   pycache-credential:
