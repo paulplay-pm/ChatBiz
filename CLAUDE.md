@@ -95,6 +95,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 默认 schema = **`superpowers-bridge`**(`openspec/config.yaml` 设的)。schema 内部依赖 superpowers plugin 的 `brainstorming` skill。
 - `openspec/`(含 `config.yaml`、`schemas/`、活跃和已 archive 的 changes)整个目录都已入库。改 `openspec/config.yaml` / 新增 schema 走正常 git 流程,不需要 `!` 白名单。
 - AI-tool 配置目录(`.claude/`、`.codex/`、`.opencode/`)都在 `.gitignore` —— 是 per-developer,不是团队的。
+- **worktree 目录**: 所有 git worktree **必须**放到 `/Users/paulwang/work/ChatBiz/.worktrees/` 下,不再使用默认的 `.claude/worktrees/`。创建方式：
+  ```bash
+  git worktree add /Users/paulwang/work/ChatBiz/.worktrees/<change-name> -b worktree-<change-name>
+  cd /Users/paulwang/work/ChatBiz/.worktrees/<change-name>
+  ```
+  或者通过 `EnterWorktree` / Claude 工具时显式指定 `path=/Users/paulwang/work/ChatBiz/.worktrees/<change-name>`。
 - 仓库根 `CLAUDE.md` 是这个文件 —— 跟 `openspec/config.yaml` 配合使用,**两者都遵循**。
 
 ## Working here (按当前阶段给指南)
