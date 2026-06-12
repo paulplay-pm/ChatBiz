@@ -22,6 +22,13 @@
   - [4.1 整体架构](#41-整体架构)
   - [4.2 核心设计决策](#42-核心设计决策)
   - [4.3 关键组件详细设计](#43-关键组件详细设计)
+    - [4.3.1 可视化工作流引擎](#431-可视化工作流引擎)
+    - [4.3.2 Agent 运行时](#432-agent-运行时)
+    - [4.3.3 记忆管理系统](#433-记忆管理系统)
+    - [4.3.X 4 层记忆系统详细设计](#43x-4-层记忆系统详细设计eng-review-arch-3-锁定)
+    - [4.3.4 工具与扩展系统](#434-工具与扩展系统)
+    - [4.3.5 企业安全与权限](#435-企业安全与权限)
+    - [4.3.Y PII 规则集(数据隔离网关详设)](#43y-pii-规则集数据隔离网关详设)
   - [4.4 技术栈选型](#44-技术栈选型)
   - [4.5 部署架构](#45-部署架构)
 - [五、参考资料](#五参考资料)
@@ -818,6 +825,91 @@ LangGraph 与 LangChain 是**互补关系**：
 │  └─────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────┘
 ```
+
+#### 4.3.X 4 层记忆系统详细设计(eng-review Arch #3 锁定)
+
+> eng-review 2026-06-10 锁定的 Arch #3 把"4 层记忆"从 §4.2 概要升到 §4.3 详细
+> 设计。本段是 §4.3.3 简要图的**详细设计补充**:每层的 call sites / 写入策略 /
+> 读取策略 / 容量预估 + Memory Middleware 实现 + 与 Agent/Workflow runtime
+> 集成点。**本段不动 §4.3.3(已有简要图),也不实现 4 层代码(后续 spec 实施)**。
+
+**L1 工作记忆 (Working Memory)** — `[EXISTING]`
+
+- **存储**:in-context(LLM prompt 内),无外部持久化
+- **生命周期**:单次 LLM 调用 / 单次 workflow step 内
+- **call site**:LangGraph StateGraph 的 state 字段 / `langgraph.runtime.context`——所有 LangGraph agent / workflow node 透传
+- **写入策略**:每次 node 执行后自动累积到 state;LangGraph 自带 state propagation
+- **读取策略**:下个 node 的 `state` 参数;无显式 retrieval
+- **容量上限**:由 LLM context window 限制(8K-128K tokens),无明确存储数字;超限由 LangGraph `trim_messages` 工具自动截断
+
+**L2 短期记忆 (Short-term Memory)** — `[FUTURE-IMPLEMENTATION: see openspec/changes/<l2-spec>/]`
+
+- **存储**:Redis,key prefix `chatbiz:mem:short:{user_id}:{session_id}`
+- **生命周期**:session 结束 + 24h(eng-review 默认 24h;env 可配)
+- **call site**:`agent-runtime` 完成 1 个 user turn 后 / `workflow-engine` 完成 1 个 step 后
+- **写入策略**:append-only,最近 50 轮对话历史(env 可配);超 50 触发 LLM 摘要
+- **读取策略**:新 session 启动时拉最近 50 轮作为 initial context;**不**做语义检索
+- **容量预估**:50 user × 10 turns/天 × 2KB/turn × 30 天 = **30MB**(全公司,30 天保留),Redis 9.0 GB 内存绰绰有余
+
+**L3 长期记忆 (Long-term Memory)** — `[FUTURE-IMPLEMENTATION: see openspec/changes/<l3-spec>/]`
+
+- **存储**:PostgreSQL + `pgvector` 扩展(本段决策 D2:4 层中 1-3 层都用 PG,简化部署;不**用独立 Milvus),表 `chatbiz_memory_long`
+- **生命周期**:永久(用户偏好/历史事实),不主动删除
+- **call site**:`agent-runtime` 检测到用户偏好(明确表达"我喜欢...")/ 历史事实("上次你说...")
+- **写入策略**:每次 user turn 末尾,LLM 提取 1-3 条记忆候选 + 可选 user 确认;写 PG + embedding
+- **读取策略**:每个新 turn 启动时,embedding 检索 top-K=5(默认)相关记忆,注入 context
+- **容量预估**:1000 user × 100 memory/人 × 1KB/memory = **100MB**(全公司,3 年保留),PG 5GB 表空间
+
+**L4 语义记忆 (Semantic Memory)** — `[FUTURE-IMPLEMENTATION: see openspec/changes/<l4-spec>/]`
+
+- **存储**:Milvus(`chatbiz_knowledge` collection),eng-review §4.4 技术栈锁定
+- **生命周期**:文档入知识库时建索引,删除文档时同步删索引
+- **call site**:`knowledge-base` 服务,RAG 检索;paul 月报工作流的"知识检索"节点
+- **写入策略**:文档上传 → chunk(512 token,overlap 50)→ embedding → upsert Milvus
+- **读取策略**:向量相似度 top-K=10(默认),rerank top-3 + metadata filter(用户部门、文档时间)
+- **容量预估**:eng-review Perf #2 #3 锁定 **100GB / 1B chunks × 1KB/chunk**
+- **PII 处理**:**引用 §4.3.Y PII 规则集**,文档上传前先 PII 扫描(继承 `gateway-egress-enforcement-p0` PII policy),mask 后的版本进 Milvus
+
+**Memory Middleware** — `[FUTURE-IMPLEMENTATION: see openspec/changes/<middleware-spec>/]`
+
+- **API**:
+  - `read(query: str) -> List[MemoryHit]`:4 层透明合并,按相关性排序返回
+  - `write(memory: MemoryItem) -> None`:agent/runtime 调,中间件决定写 L2 / L3
+- **溢出淘汰**:
+  - L2 超 50 轮 → LLM 摘要成 1-3 条,摘要结果写 L3
+  - L3 永久保留;L4 随文档生命周期
+- **fail-open 行为**:某层写入失败时,降级到"读剩余 3 层"+ WARN 日志(不阻断 Agent/Workflow runtime)
+
+**Call sites 与 Agent/Workflow runtime 集成**
+
+| Layer | Status | 实现位置(spec / 现有代码) |
+|---|---|---|
+| L1 working | `[EXISTING]` | LangGraph state propagation(eng-review §4.3.2 锁定) |
+| L2 short-term | `[FUTURE-IMPLEMENTATION]` | openspec/changes/<l2-spec>/ + services/agent-runtime/ (TBD) |
+| L3 long-term | `[FUTURE-IMPLEMENTATION]` | openspec/changes/<l3-spec>/ + services/agent-runtime/ (TBD) |
+| L4 semantic | `[FUTURE-IMPLEMENTATION]` | openspec/changes/<l4-spec>/ + services/knowledge-base/ (TBD) |
+| Middleware | `[FUTURE-IMPLEMENTATION]` | openspec/changes/<middleware-spec>/ + services/memory/ (TBD) |
+
+**eng-review 决策引用**:
+- Arch #3(4 层记忆从 §4.2 升到 §4.3 详细设计)
+- Perf #2 #3(100GB / 1B chunks / 3 年 retention)
+
+**交叉引用**:
+- §4.3.3(简要 4 层图,本段是它的详细设计补充)
+- §4.3.Y(PII 规则集,L4 文档上传前 PII 扫描)
+- §4.4 技术栈(Milvus / pgvector / Redis 7+ / PostgreSQL 16+)
+
+**下游 spec 引用清单**:
+- T2 Node Contract:"知识检索"节点引用 L4 semantic memory
+- T7 Workflow + Chatflow:state machine 引用 L1 working memory
+- T11 4 错误边界:L1 写入失败 → user boundary;L4 检索失败 → runtime boundary
+- T12 5 存储预估:引用 L2 30MB / L3 100MB / L4 100GB 数字
+- (新)L2 短期记忆 spec
+- (新)L3 长期记忆 spec
+- (新)L4 语义记忆 spec
+- (新)Memory Middleware spec
+
+**eng-review 之外的决策**(本段 D3-D8):L2 LLM 摘要策略 / L3 pgvector(不独立 Milvus)/ L4 cosine 相似度(不 cross-encoder rerank,MVP)/ Middleware fail-open 降级。
 
 #### 4.3.4 工具与扩展系统
 

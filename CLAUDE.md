@@ -41,6 +41,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 [FUTURE-IMPLEMENTATION] `docs/architecture.md` §4.3.Y PII 规则集段落即将在 `gateway-egress-enforcement-p0` apply 阶段补全,引用 `services/audit-and-isolation/app/pii/{rules,detector,redactor,reverser}.py` 作为权威实现。
 
+[FUTURE-IMPLEMENTATION] `docs/architecture.md` §4.3.X 4 层记忆系统详细设计即将在 `memory-system-four-layers` apply 阶段补全,引用 §4.3.3 简要图 + §4.3.Y PII 规则集 + §4.4 技术栈;4 层中 L1 working 已在 LangGraph 实现,L2/L3/L4/Middleware 由后续 4 个独立 spec 实施。
+
 ## 已锁定的工程决策(eng-review 2026-06-10,12 finding 全部 approved)
 
 来自 design doc `## GSTACK REVIEW REPORT`,**不要再重新讨论**:
