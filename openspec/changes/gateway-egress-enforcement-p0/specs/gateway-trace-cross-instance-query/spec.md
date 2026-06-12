@@ -2,8 +2,7 @@
 
 ### Requirement: 必须暴露 `GET /v1/traces/{trace_id}` 跨实例查询端点
 
-`services/audit-and-isolation/app/api/traces.py` 必须实现 `GET /v1/traces/{trace_id}` 端点,从 Redis(`trace:cache:*` namespace,db 0,5min TTL)优先查询 → PG `audit_log` 表降级 → 404(都无)。端点必须支持跨实例查询:实例 A 写入的 trace 必须能被实例 B 查到。
-
+MUST `services/audit-and-isolation/app/api/traces.py` 必须实现 `GET /v1/traces/{trace_id}` 端点,从 Redis(`trace:cache:*` namespace,db 0,5min TTL)优先查询 → PG `audit_log` 表降级 → 404(都无)。端点必须支持跨实例查询:实例 A 写入的 trace 必须能被实例 B 查到。
 #### Scenario: Redis 命中
 - **WHEN** 调用 `GET /v1/traces/{trace_id}`,Redis 中存在 `trace:cache:{trace_id}` key
 - **THEN** 端点返回该 trace 关联的所有事件(从 `audit_log` 行还原),按 `created_at` 升序,P99 < 100ms
@@ -20,17 +19,18 @@
 - **WHEN** 实例 A 写入 audit_log(trace_id=X),实例 B 收到 `GET /v1/traces/X` 请求
 - **THEN** 实例 B 从 PG 查到(Redis 在 5min 内也命中),返回完整事件列表
 
+
 ### Requirement: trace 端点必须使用独立的 Redis namespace 避免污染 canvas realtime
 
-trace 缓存必须使用 `trace:cache:*` key prefix 与 Redis db 0,与 `services/audit-and-isolation` 现有的 PII 反向映射(per-trace,30min TTL)共用 db 0 但不同 prefix。`web/canvas/` 实时状态若未来使用 Redis,必须用 db 1 隔离(D2.2 锁定)。
-
+MUST trace 缓存必须使用 `trace:cache:*` key prefix 与 Redis db 0,与 `services/audit-and-isolation` 现有的 PII 反向映射(per-trace,30min TTL)共用 db 0 但不同 prefix。`web/canvas/` 实时状态若未来使用 Redis,必须用 db 1 隔离(D2.2 锁定)。
 #### Scenario: namespace 隔离
 - **WHEN** trace 缓存写入 `trace:cache:{trace_id}` key
 - **THEN** PII 反向映射的 `pii:rev:{trace_id}` key 不受影响,eviction policy 分别配置
 
+
 ### Requirement: trace_id 格式必须兼容现有透传模式
 
-调用方传 `X-Trace-Id` 时,网关必须复用,不再生成;缺失时网关必须生成 UUIDv7 作为兜底。生成器实现在 `services/audit-and-isolation/app/trace/id_gen.py`(DC3 决策)。
+MUST 调用方传 `X-Trace-Id` 时,网关必须复用,不再生成;缺失时网关必须生成 UUIDv7 作为兜底。生成器实现在 `services/audit-and-isolation/app/trace/id_gen.py`(DC3 决策)。
 
 #### Scenario: 透传已有 trace_id
 - **WHEN** 请求携带 `X-Trace-Id` 头(格式合法)
