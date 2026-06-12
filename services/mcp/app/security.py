@@ -44,7 +44,6 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Iterable
 from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
@@ -286,7 +285,6 @@ class McpSecurityPolicy:
 
 
 __all__ = [
-    "DEFAULT_FETCH_MAX_BYTES",
     "McpError",
     "McpParseError",
     "McpResponseTooLargeError",
