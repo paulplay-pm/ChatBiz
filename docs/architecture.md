@@ -29,6 +29,7 @@
     - [4.3.4 工具与扩展系统](#434-工具与扩展系统)
     - [4.3.5 企业安全与权限](#435-企业安全与权限)
     - [4.3.Y PII 规则集(数据隔离网关详设)](#43y-pii-规则集数据隔离网关详设)
+    - [4.3.Z 4 错误边界(eng-review Quality #3 锁定)](#43z-4-错误边界eng-review-quality-3-锁定)
   - [4.4 技术栈选型](#44-技术栈选型)
   - [4.5 部署架构](#45-部署架构)
 - [五、参考资料](#五参考资料)
@@ -1030,6 +1031,96 @@ credential service 路径承担,属于 §4.3.5 凭证未授权的 security 边�
 - spec: `openspec/changes/gateway-egress-enforcement-p0/specs/`
 - 实现: `services/audit-and-isolation/app/pii/{rules,detector,redactor,reverser}.py`
 - 测试: `services/audit-and-isolation/tests/integration/test_pii_*.py`(8 个子场景)
+
+#### 4.3.Z 4 错误边界(eng-review Quality #3 锁定)
+
+> eng-review 2026-06-10 锁定的 Quality #3 明确"4 错误边界明说 + 加 Error
+> handling section to design doc"。本段是 §4.3 设计补充:把 4 边界契约
+> 显式化,**不动既有错误类**(80% 已散落实现)。`Boundary #4` 是 `§4.3.5`
+> 企业安全的子集。
+
+**4 边界总览**
+
+| 边界 | 触发条件 | 错误类 | HTTP | 状态 |
+|---|---|---|---|---|
+| **#1 canvas drag-loop** | workflow JSON 含 A→B→A 循环 | `WorkflowCycleError`(`workflow-engine/app/errors/classes.py`,本 spec 新增) | 422 | `[NEW]` |
+| **#2 runtime** | 上游 LLM 5xx / timeout / 限流 | `Upstream5xx` / `UpstreamTimeout` / `UpstreamRateLimited`(`audit-and-isolation/app/errors.py`)+ `WorkflowRuntimeError`(`workflow-engine`) | 502 / 504 / 429 | `[EXISTING]` |
+| **#3 user** | 节点 config 缺字段 / 未定义变量 | `UserError`(`workflow-engine`)| 400 | `[EXISTING]` |
+| **#4 security** | 调用方 service token 缺失 / 失效 / 越权 | `AuthFailed`(`audit-and-isolation/app/auth.py`)+ `SecurityError`(`workflow-engine`)| 401 / 403 | `[EXISTING]` |
+
+**Boundary #1 canvas drag-loop**(eng-review Quality #3 锁定)
+
+- **触发条件**:workflow JSON 含 A→B→A 循环
+- **检测**:`services/workflow-engine/app/errors/cycle_detection.py::detect_cycle()`(NetworkX `find_cycle()`),返回 cycle edges 列表
+- **错误类**:`WorkflowCycleError`,**独立类**(`error_class = "user"`,不继承 `UserError`),构造函数 `__init__(self, cycle_edges: list[tuple[str, str]]) -> None`
+- **错误消息**:`"workflow contains cycle: [(n1, n2), (n2, n1), ...]"`,便于 reviewer 定位
+- **HTTP 状态**:422 Unprocessable Entity
+- **触发位置**:`POST /v1/workflows`(workflow 启动)—— canvas save 端(PUT /v1/canvas/{id})**留 V1.0+**
+- **middleware 集成**:`WorkflowCycleError` 继承 `ChatBizError`,**走既有 `chatbiz_error_handler`**(无需新 handler)—— 因 `error_class="user"` 触发 `status = 422` 自动分支
+- **测试**:`services/workflow-engine/tests/unit/test_errors_classes.py` 新增 5 个 test
+
+**Boundary #2 runtime**(eng-review 锁定 LLM 5xx / timeout / 限额)
+
+- **触发条件**:上游 LLM provider 返回 5xx / 超时 / 429
+- **错误类**(7-class audit-and-isolation 异常):
+  - `Upstream5xx` → HTTP 502
+  - `UpstreamTimeout` → HTTP 504
+  - `UpstreamRateLimited` → HTTP 429
+  - 详见 `services/audit-and-isolation/app/errors.py`
+- **workflow-engine 侧**:`WorkflowRuntimeError`(HTTP 502/504)
+- **重试策略**:1 次 5xx 自动重试(已有 `client.py`);T6 perf contract 限流
+- **响应体**:`{error_class: "runtime", error_message, request_id}`
+
+**Boundary #3 user**(eng-review 锁定参数不全 / 未定义变量)
+
+- **触发条件**:workflow 节点 config 缺字段 / 引用未定义变量
+- **错误类**:`UserError`(`workflow-engine/app/errors/classes.py`)+ 子类 `NodeTypeNotRegisteredError` / `ApprovalNotFound` / `ApprovalAlreadyResponded`
+- **HTTP 状态**:400(由 middleware `error_class == "user"` 映射到 422,见下注)
+- **触发位置**:workflow_definition 启动阶段 + workflow 节点执行时(jinja 模板渲染)
+- **响应体**:`{error_class: "user", error_message, request_id}`
+
+**Boundary #4 security**(eng-review 锁定未授权凭证)
+
+- **触发条件**:调用方 service token 缺失 / 失效 / 越权
+- **错误类**:
+  - `AuthFailed`(`services/audit-and-isolation/app/auth.py`)→ HTTP 401
+  - `SecurityError`(`workflow-engine`)+ 子类 `UnauthorizedApprovalAccess`→ HTTP 403
+- **PII 处理**:错误响应体 **MUST NOT** 含凭证明文(eng-review 锁定"主密钥 / 凭证明文 MUST NOT 入 log / audit")
+- **触发位置**:每次 audit-and-isolation `/v1/chat/completions` 请求 + workflow-engine 审批节点
+- **响应体**:`{error_class: "security", error_message, request_id}`
+
+**统一错误响应体格式**
+
+所有 4 边界由 `services/workflow-engine/app/errors/middleware.py::chatbiz_error_handler` 与 `services/audit-and-isolation/app/api/chat.py` 统一为:
+
+```json
+{
+  "error_class": "user | security | runtime | internal",
+  "error_message": "<human-readable description>",
+  "request_id": "<X-Request-Id header or generated UUID>"
+}
+```
+
+- `request_id` 优先取 `X-Request-Id` header,缺失则 `str(uuid.uuid4())`
+- HTTP 状态映射:`error_class == "user"` → 422 / `"security"` → 403 / `"runtime"` → 502 / 其他 → 500
+
+**eng-review 决策引用**:
+- Quality #3(4 边界明说 + design doc section)
+
+**交叉引用**:
+- `§4.3.5 企业安全与权限`(Boundary #4 是其子集)
+- `services/workflow-engine/app/errors/classes.py`(Boundary #1 / #3 / #4 错误类)
+- `services/audit-and-isolation/app/errors.py`(Boundary #2 7-class 异常)
+- `services/audit-and-isolation/app/auth.py::AuthFailed`(Boundary #4 audit 侧)
+- `services/workflow-engine/app/errors/middleware.py::chatbiz_error_handler`(统一响应)
+
+**下游 spec 引用清单**:
+- T2 Node Contract:每个 node 的执行错误映射到 4 边界
+- T4 测试架构:4 边界 + 4 critical path 100% 覆盖
+- (新) `services/error_handling/` 统一 package 留 **V1.0+** —— `[FUTURE-IMPLEMENTATION]`
+- (新) Boundary #1 canvas save 端(PUT /v1/canvas/{id})校验留 **V1.0+** —— `[FUTURE-IMPLEMENTATION]`
+
+**eng-review 之外的决策**(本 spec D1-D9):Boundary #1 独立类(不继承 UserError)/ 422 Unprocessable Entity 状态 / 既有 middleware 不动 / cycle edges 列表含在 error_message。
 
 ### 4.4 技术栈选型
 
