@@ -2,11 +2,11 @@ import useSWR from "swr";
 import type { HealthResponse } from "@/types";
 
 /**
- * useHealth — 探 `services/mcp` (端口 8004) 健康。
- * - SWR 5s 轮询
- * - 网络失败 / 非 2xx fallback 为 `{ status: "down" }`，永不抛
- *
- * 后续 change 可以传不同 baseUrl 复用同一 hook 探别的 service。
+ * useHealth — probe mcp service health.
+ * - Default: relative path `/healthz`, proxied by nginx to chatbiz-mcp:8080.
+ * - Dev fallback: VITE_ADMIN_HEALTH_DIRECT=1 → direct host 8004.
+ * - SWR 5s polling
+ * - Network/non-2xx → fallback `{ status: "down" }`, never throws
  */
 async function fetcher(url: string): Promise<HealthResponse> {
   try {
@@ -32,13 +32,22 @@ async function fetcher(url: string): Promise<HealthResponse> {
   }
 }
 
-export function useHealth(baseUrl = "http://localhost:8004"): {
+export function useHealth(baseUrl?: string): {
   data: HealthResponse | undefined;
 } {
-  const { data } = useSWR<HealthResponse>(`${baseUrl}/healthz`, fetcher, {
-    refreshInterval: 5_000,
-    revalidateOnFocus: false,
-    shouldRetryOnError: false,
-  });
+  const effectiveBase =
+    baseUrl ??
+    (import.meta.env.VITE_ADMIN_HEALTH_DIRECT === "1"
+      ? "http://localhost:8004"
+      : "");
+  const { data } = useSWR<HealthResponse>(
+    `${effectiveBase}/healthz`,
+    fetcher,
+    {
+      refreshInterval: 5_000,
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  );
   return { data };
 }
