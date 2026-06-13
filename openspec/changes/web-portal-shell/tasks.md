@@ -6,13 +6,13 @@
 
 ## 2. portal 子应用脚手架
 
-- [ ] 2.1 创建 `web/portal/package.json`(react 18 + react-dom + react-router-dom 6 + tailwindcss 3.4 + postcss + autoprefixer + typescript 5.4 + vite 5 + @tanstack/react-query 5 + vitest 1 + @testing-library/react 16 + @testing-library/jest-dom + @testing-library/user-event + @playwright/test 1 + jsdom 24) — 验证:`pnpm --dir web/portal install` exit 0
-- [ ] 2.2 创建 `web/portal/tsconfig.json`(`strict: true` + `noUncheckedIndexedAccess: true` + `noImplicitAny: true` + `noUnusedLocals: true` + `noUnusedParameters: true` + `paths: { "@/*": ["src/*"] }`) — 验证:`pnpm --dir web/portal exec tsc --noEmit` 跑通(空 src)
-- [ ] 2.3 创建 `web/portal/tailwind.config.js`(prototype 完整 brand/ink 调色板 + DM Sans + Space Mono) — 验证:与 `docs/prototype.html:7-40` 头部的 `tailwind.config` 块逐位一致
-- [ ] 2.4 创建 `web/portal/postcss.config.js` + `web/portal/index.html` + `web/portal/vite.config.ts`(`base: '/portal/'` + dev port 5174) — 验证:`pnpm --dir web/portal exec vite build` exit 0,产物在 `web/portal/dist/`
-- [ ] 2.5 创建 `web/portal/src/main.tsx` + `web/portal/src/App.tsx` + `web/portal/src/index.css`(ReactDOM + QueryClientProvider + BrowserRouter basename='/portal' + ToastProvider + `.glass` 工具类 + Google Fonts 引入) — 验证:`tsc --noEmit && vite build` 跑通,产物含 `<div id="root">` + `<script type="module" src="/assets/index-*.js">`
-- [ ] 2.6 创建 `web/portal/src/vite-env.d.ts`(`/// <reference types="vite/client" />`) — 验证:`tsc --noEmit` 跑通
-- [ ] 2.7 创建 `web/portal/vitest.config.ts` + `web/portal/playwright.config.ts` — 验证:`pnpm --dir web/portal exec vitest run` 跑通(空 spec)+ `pnpm --dir web/portal exec playwright --version` 报版本
+- [x] 2.1 创建 `web/portal/package.json`(react 18 + react-dom + react-router-dom 6 + tailwindcss 3.4 + postcss + autoprefixer + typescript 5.4 + vite 5 + @tanstack/react-query 5 + vitest 1 + @testing-library/react 16 + @testing-library/jest-dom + @testing-library/user-event + @playwright/test 1 + jsdom 24) — 验证:`pnpm --dir web/portal install` exit 0
+- [x] 2.2 创建 `web/portal/tsconfig.json`(`strict: true` + `noUncheckedIndexedAccess: true` + `noImplicitAny: true` + `noUnusedLocals: true` + `noUnusedParameters: true` + `paths: { "@/*": ["src/*"] }`) — 验证:`pnpm --dir web/portal exec tsc --noEmit` 跑通(空 src)
+- [x] 2.3 创建 `web/portal/tailwind.config.js`(prototype 完整 brand/ink 调色板 + DM Sans + Space Mono) — 验证:与 `docs/prototype.html:7-40` 头部的 `tailwind.config` 块逐位一致
+- [x] 2.4 创建 `web/portal/postcss.config.js` + `web/portal/index.html` + `web/portal/vite.config.ts`(`base: '/portal/'` + dev port 5174) — 验证:`pnpm --dir web/portal exec vite build` exit 0,产物在 `web/portal/dist/`
+- [x] 2.5 创建 `web/portal/src/main.tsx` + `web/portal/src/App.tsx` + `web/portal/src/index.css`(ReactDOM + QueryClientProvider + BrowserRouter basename='/portal' + ToastProvider + `.glass` 工具类 + Google Fonts 引入) — 验证:`tsc --noEmit && vite build` 跑通,产物含 `<div id="root">` + `<script type="module" src="/assets/index-*.js">`
+- [x] 2.6 创建 `web/portal/src/vite-env.d.ts`(`/// <reference types="vite/client" />`) — 验证:`tsc --noEmit` 跑通
+- [x] 2.7 创建 `web/portal/vitest.config.ts` + `web/portal/playwright.config.ts` — 验证:`pnpm --dir web/portal exec vitest run` 跑通(空 spec)+ `pnpm --dir web/portal exec playwright --version` 报版本
 
 ## 3. portal Primitives 原语库
 
