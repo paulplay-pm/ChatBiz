@@ -103,9 +103,35 @@ sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)
       dockerfile: Dockerfile
     container_name: chatbiz-credential-migrate
     restart: "no"
-    command: ["alembic", "upgrade", "head"]
+    command:
+      - bash
+      - -c
+      - |
+        set -euo pipefail
+        export PYTHONPATH="/home/credential/.local/lib/python3.12/site-packages:/app"
+        cd /tmp
+        alembic -c /app/alembic.ini upgrade head
+        python - <<'PY'
+        import asyncio, os, secrets, uuid
+        from sqlalchemy import text
+        from sqlalchemy.ext.asyncio import create_async_engine
+        async def main():
+            engine = create_async_engine(os.environ["DATABASE_URL"])
+            async with engine.begin() as conn:
+                active = (await conn.execute(
+                    text("SELECT count(*) FROM encryption_keys WHERE status IN ('ACTIVE', 'active')")
+                )).scalar_one()
+                if active == 0:
+                    await conn.execute(
+                        text("INSERT INTO encryption_keys (key_id, encrypted_key, status) VALUES (:key_id, :encrypted_key, 'ACTIVE')"),
+                        {"key_id": uuid.uuid4(), "encrypted_key": secrets.token_bytes(32)},
+                    )
+            await engine.dispose()
+        asyncio.run(main())
+        PY
     environment:
       DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/credential
+      PYTHONPATH: /home/credential/.local/lib/python3.12/site-packages:/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -177,6 +203,7 @@ sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)
     command: ["alembic", "upgrade", "head"]
     environment:
       DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/audit_isolation
+      PYTHONPATH: /home/audit/.local/lib/python3.12/site-packages:/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -277,6 +304,7 @@ sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)
     command: ["alembic", "upgrade", "head"]
     environment:
       DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/workflow_engine
+      PYTHONPATH: /home/wf/.local/lib/python3.12/site-packages:/app
     depends_on:
       postgres:
         condition: service_healthy

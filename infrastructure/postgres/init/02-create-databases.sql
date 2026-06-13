@@ -12,24 +12,21 @@
 -- non-existent databases, so we must CREATE them here before the
 -- `depends_on: service_healthy` chain lets those migrate containers run.
 --
--- Note: we use a DO block guarded by `SELECT 1 FROM pg_database` so
--- re-running this script (e.g. after a manual `psql -f`) is idempotent.
+-- Note: Postgres 16+ rejects `CREATE DATABASE` inside a function/PL/pgSQL
+-- block. We use psql `\gexec` instead — the SELECT result is sent back
+-- to psql as a statement and executed at the top level, which Postgres
+-- 16 allows. The `WHERE NOT EXISTS (...)` guard keeps it idempotent.
 -- =============================================================================
 
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'audit_isolation') THEN
-        EXECUTE 'CREATE DATABASE audit_isolation';
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'workflow_engine') THEN
-        EXECUTE 'CREATE DATABASE workflow_engine';
-    END IF;
-END
-$$;
+SELECT 'CREATE DATABASE audit_isolation'
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'audit_isolation')\gexec
 
--- Grant chatbiz role full privileges on the new databases. The DO block
--- above created them as the postgres superuser, so we need to assign
--- ownership to the chatbiz role explicitly.
+SELECT 'CREATE DATABASE workflow_engine'
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'workflow_engine')\gexec
+
+-- Grant chatbiz role full privileges on the new databases. The SELECT
+-- statements above created them as the postgres superuser, so we need to
+-- assign ownership to the chatbiz role explicitly.
 \connect audit_isolation
 GRANT ALL PRIVILEGES ON DATABASE audit_isolation TO chatbiz;
 GRANT ALL ON SCHEMA public TO chatbiz;
