@@ -3,13 +3,16 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TopBar } from '@/components/TopBar';
 import { Sidebar } from '@/components/Sidebar';
+import { ToastProvider } from 'ui/primitives/Toast';
 
 describe('TopBar', () => {
   it('renders the ChatBiz brand', () => {
     render(
-      <MemoryRouter>
-        <TopBar />
-      </MemoryRouter>
+      <ToastProvider>
+        <MemoryRouter>
+          <TopBar />
+        </MemoryRouter>
+      </ToastProvider>
     );
     // ChatBiz as heading text
     const h = screen.getByText('ChatBiz');
@@ -20,9 +23,11 @@ describe('TopBar', () => {
 describe('Sidebar', () => {
   it('renders navigation items', () => {
     render(
-      <MemoryRouter>
-        <Sidebar />
-      </MemoryRouter>
+      <ToastProvider>
+        <MemoryRouter>
+          <Sidebar />
+        </MemoryRouter>
+      </ToastProvider>
     );
     expect(screen.getByText('工作流')).toBeDefined();
   });
@@ -31,10 +36,12 @@ describe('Sidebar', () => {
 describe('AppLayout', () => {
   it('renders layout structure', () => {
     render(
-      <MemoryRouter>
-        <TopBar />
-        <Sidebar />
-      </MemoryRouter>
+      <ToastProvider>
+        <MemoryRouter>
+          <TopBar />
+          <Sidebar />
+        </MemoryRouter>
+      </ToastProvider>
     );
     // TopBar has ChatBiz
     expect(screen.getAllByText('ChatBiz').length).toBeGreaterThanOrEqual(1);

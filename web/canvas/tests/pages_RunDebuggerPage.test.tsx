@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
+import { ToastProvider } from 'ui/primitives/Toast';
 
 // Polyfill EventSource for jsdom
 beforeAll(() => {
@@ -46,9 +47,9 @@ const wrapper = ({ children }: { children: React.ReactNode }) => {
   const qc = new QueryClient();
   return React.createElement(QueryClientProvider, { client: qc },
     React.createElement(MemoryRouter, { initialEntries: ['/runs/r1'] },
-      React.createElement(Routes, null,
-        React.createElement(Route, { path: '/runs/:runId', element: children as any })),
-    ));
+      React.createElement(ToastProvider, null,
+        React.createElement(Routes, null,
+          React.createElement(Route, { path: '/runs/:runId', element: children as any })))));
 };
 
 describe('RunDebuggerPage', () => {

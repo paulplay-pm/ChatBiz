@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import CanvasPage from '@/pages/CanvasPage';
+import { ToastProvider } from 'ui/primitives/Toast';
 
 vi.mock('@/lib/apiClient', () => ({
   api: {
@@ -16,7 +17,8 @@ vi.mock('@/lib/apiClient', () => ({
 const wrapper = ({ children }: { children: React.ReactNode }) => {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return React.createElement(QueryClientProvider, { client: qc },
-    React.createElement(MemoryRouter, { initialEntries: ['/workflows/w1/edit'] }, children));
+    React.createElement(MemoryRouter, { initialEntries: ['/workflows/w1/edit'] },
+      React.createElement(ToastProvider, null, children)));
 };
 
 describe('CanvasPage', () => {

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { ApprovalInlineCard } from '@/components/chatflow/ApprovalInlineCard';
 import { useAuthStore } from '@/store/useAuthStore';
+import { ToastProvider } from 'ui/primitives/Toast';
 
 vi.mock('@/lib/apiClient', () => ({
   api: { post: vi.fn() },
@@ -13,7 +14,8 @@ vi.mock('@/lib/apiClient', () => ({
 const wrapper = ({ children }: { children: React.ReactNode }) => {
   const qc = new QueryClient();
   return React.createElement(QueryClientProvider, { client: qc },
-    React.createElement(MemoryRouter, null, children));
+    React.createElement(MemoryRouter, null,
+      React.createElement(ToastProvider, null, children)));
 };
 
 describe('ApprovalInlineCard', () => {
