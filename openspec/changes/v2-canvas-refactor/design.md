@@ -234,6 +234,7 @@ web/
       Sidebar.tsx
       SidebarItem.tsx
       SidebarSection.tsx
+      RequireAuth.tsx                 # 抽自 web/portal/src/components/RequireAuth.tsx
     index.ts                           # barrel export
 
   portal/
@@ -365,7 +366,7 @@ V2 改: `useAuthStore` 改读 `localStorage['chatbiz.auth']` 标记(沿用 V1 po
 - **R1**: canvas 22 .tsx 中有 7+ 处 `useForm` / `Form.useForm` 等 antd 专属 API,删 antd 后需重写为 react-hook-form / 原生 form(选择原生,跟 V1 portal 一致)
 - **R2**: ConfigPanel 用 `@rjsf/core` 是非 antd,但可能配套 `antd` theme provider;删 antd 后 rjsf 主题失效 → 需替换为 rjsf 默认主题或自定义 tailwind
 - **R3**: TopBar 可能用了 `@ant-design/icons`(search / bell / user 图标)→ 需替换为 inline SVG / lucide-react / heroicons(三选一,V1 portal 没用 icons,V2 选 inline SVG)
-- **R4**: Zustand `useAuthStore` 改成 `localStorage['chatbiz.auth']` 标记,跟 V1 portal + canvas-auth 契约一致;若 canvas-auth spec 有冲突,以 canvas-auth 为准(CLAUDE.md source-of-truth 顺序)
+- **R4**: Zustand `useAuthStore` 改成 `localStorage['chatbiz.auth']` 标记,跟 V1 portal + canvas-auth 契约一致;**T6 实施时先读 `openspec/specs/canvas-auth/spec.md` 验证 localStorage key 一致**;若不一致,以 canvas-auth 为准并 surface 冲突(CLAUDE.md source-of-truth 顺序)
 - **R5**: `web/canvas/tailwind.config.js` 原本可能存在但内容跟 portal 不一致 → T8 覆盖为 portal 逐位一致版
 - **R6**: `web/Dockerfile` 加 `COPY portal/dist` 可能在 V1 portal 部署时缺 `portal/dist/` 目录 → T8 验证 `vite build` 跑通
 - **R7**: 集成 e2e 在 web/portal `playwright.config.ts` 跑还是新建 `web/integration/playwright.config.ts`?选 portal(V1 portal playwright 配置已就绪)
