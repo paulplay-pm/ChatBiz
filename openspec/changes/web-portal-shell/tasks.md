@@ -27,12 +27,12 @@
 
 ## 4. portal 主框架页面
 
-- [ ] 4.1 创建 `web/portal/src/pages/LoginPage.tsx`(username 任意非空 + 任意密码 + 提交写 `localStorage['chatbiz.auth']` + 跳 `/portal/`) — 验证:`vitest LoginPage.test.tsx` 1 个 case(提交后 localStorage 含 chatbiz.auth)通过
-- [ ] 4.2 创建 `web/portal/src/components/AppLayout.tsx`(固定顶部 glass header + 左侧 Sidebar + 右侧 `<Outlet/>` + sidebar 点击调 `onSelect`) — 验证:`vitest AppLayout.test.tsx` 3 个 slot 渲染通过
-- [ ] 4.3 创建 `web/portal/src/pages/ComingSoonPage.tsx`(读 `useSearchParams` 拿 `from` query + 查 MENU 渲染 label) — 验证:`vitest ComingSoonPage.test.tsx` 3 个 case(from 已知 / from 未知 / 无 from)通过
-- [ ] 4.4 创建 `web/portal/src/pages/DashboardPage.tsx`(4 个 MetricCard + 1 个 quick action 按钮) — 验证:`vitest DashboardPage.test.tsx` 2 个 case(4 metric / 1 quick action)通过
-- [ ] 4.5 创建 `web/portal/src/router/index.tsx`(React Router 6 + `/login` + `/` + `/coming-soon` + 通配 fallback) — 验证:`vitest router.test.tsx` 5 个 route resolve 正确通过
-- [ ] 4.6 修改 `web/portal/src/App.tsx` 使用 `PortalRouter`(替换占位) — 验证:`tsc --noEmit && vite build` 跑通
+- [x] 4.1 创建 `web/portal/src/pages/LoginPage.tsx`(username 任意非空 + 任意密码 + 提交写 `localStorage['chatbiz.auth']` + 跳 `/portal/`) — 验证:`vitest LoginPage.test.tsx` 1 个 case(提交后 localStorage 含 chatbiz.auth)通过
+- [x] 4.2 创建 `web/portal/src/components/AppLayout.tsx`(固定顶部 glass header + 左侧 Sidebar + 右侧 `<Outlet/>` + sidebar 点击调 `onSelect`) — 验证:`vitest AppLayout.test.tsx` 3 个 slot 渲染通过
+- [x] 4.3 创建 `web/portal/src/pages/ComingSoonPage.tsx`(读 `useSearchParams` 拿 `from` query + 查 MENU 渲染 label) — 验证:`vitest ComingSoonPage.test.tsx` 3 个 case(from 已知 / from 未知 / 无 from)通过
+- [x] 4.4 创建 `web/portal/src/pages/DashboardPage.tsx`(4 个 MetricCard + 1 个 quick action 按钮) — 验证:`vitest DashboardPage.test.tsx` 2 个 case(4 metric / 1 quick action)通过
+- [x] 4.5 创建 `web/portal/src/router/index.tsx`(React Router 6 + `/login` + `/` + `/coming-soon` + 通配 fallback) — 验证:`vitest router.test.tsx` 5 个 route resolve 正确通过
+- [x] 4.6 修改 `web/portal/src/App.tsx` 使用 `PortalRouter`(替换占位) — 验证:`tsc --noEmit && vite build` 跑通
 
 ## 5. portal e2e + 文档
 
