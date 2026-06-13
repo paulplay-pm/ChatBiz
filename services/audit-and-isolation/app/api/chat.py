@@ -78,6 +78,80 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _maybe_echo_bypass(body: dict, header, user_id: str) -> Response | None:
+    """Integration-test echo bypass (eng-review Arch #1 compatible).
+
+    When ``get_settings().environment == "integration"`` AND the request
+    model is the test-only sentinel ``"echo-test"``, return a deterministic
+    OpenAI-compatible response without going through the routing table,
+    PII redactor, or upstream provider. Still:
+
+    * Authenticated (the regular service-token check runs first).
+    * Audit-logged via the same outbox the real path uses — this is
+      the critical assertion: integration tests verify the audit log
+      row is written, not skipped.
+
+    Production with ``environment == "production"`` (the default) bypasses
+    this path entirely; the ``echo-test`` model name is not in the routing
+    table so it returns 400 ``RoutingError`` from step 4.
+    """
+    if get_settings().environment != "integration":
+        return None
+    if body.get("model") != "echo-test":
+        return None
+
+    # Build OpenAI-shaped response with the last user message echoed back.
+    last_user_msg = ""
+    for msg in reversed(body.get("messages", [])):
+        if msg.get("role") == "user" and isinstance(msg.get("content"), str):
+            last_user_msg = msg["content"]
+            break
+    content = f"ECHO: {last_user_msg}" if last_user_msg else "ECHO: <empty>"
+    resp_body = {
+        "id": f"echo-{header.trace_id}",
+        "object": "chat.completion",
+        "created": int(time.time()),
+        "model": "echo-test",
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": content},
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": {
+            "prompt_tokens": sum(len(m.get("content", "")) for m in body.get("messages", [])),
+            "completion_tokens": len(content),
+            "total_tokens": sum(len(m.get("content", "")) for m in body.get("messages", [])) + len(content),
+        },
+    }
+    # Audit log: same shape as the real path. Note: bypass skips PII
+    # because there is no real LLM traffic to redact. The integration
+    # env intentionally opts out of PII for echo.
+    audit = AuditLog(
+        trace_id=header.trace_id,
+        user_id=user_id,
+        workflow_id=body.get("workflow_id"),
+        model="echo-test",
+        model_kind=header.model_kind.value,
+        bypass_isolation=header.bypass_isolation,
+        pii_detected_types=[],
+        pii_redacted_count=0,
+        prompt_hash=prompt_hash(body.get("messages", [])),
+        token_input=resp_body["usage"]["prompt_tokens"],
+        token_output=resp_body["usage"]["completion_tokens"],
+        latency_ms=0,
+        upstream_status=200,
+        error_class=None,
+    )
+    get_outbox().enqueue(audit)
+    return Response(
+        content=orjson.dumps(resp_body),
+        media_type="application/json",
+        status_code=200,
+    )
+
+
 @router.post("/chat/completions")
 async def chat_completions(
     request: Request,
@@ -110,6 +184,11 @@ async def chat_completions(
         body = orjson.loads(body_bytes)
     except orjson.JSONDecodeError as e:
         raise HTTPException(422, f"invalid JSON: {e}")
+
+    # 3.5. Integration-test echo bypass (env-gated; production unaffected)
+    echo_response = _maybe_echo_bypass(body, header, user_id)
+    if echo_response is not None:
+        return echo_response
 
     # 4. 路由解析
     try:
