@@ -1,8 +1,8 @@
 ## 1. Worktree + 基线
 
-- [ ] 1.1 创建 worktree: `git worktree add .worktrees/web-portal-shell -b worktree-web-portal-shell` + 验证 `git status` 干净
-- [ ] 1.2 在 worktree 内,跑 `openspec validate web-portal-shell` 确认 4 个 artifacts 通过(brainstorm + proposal + design + 3 个新 spec) — 验证:命令 exit 0
-- [ ] 1.3 创建 `openspec/changes/web-portal-shell/checklist/tailwind-config-parity.md` checklist 模板(V1 仅 portal 1 份,V2 / V3 集成时复用)
+- [x] 1.1 创建 worktree: `git worktree add .worktrees/web-portal-shell -b worktree-web-portal-shell` + 验证 `git status` 干净
+- [x] 1.2 在 worktree 内,跑 `openspec validate web-portal-shell` 确认 4 个 artifacts 通过(brainstorm + proposal + design + 3 个新 spec) — 验证:命令 exit 0
+- [x] 1.3 创建 `openspec/changes/web-portal-shell/checklist/tailwind-config-parity.md` checklist 模板(V1 仅 portal 1 份,V2 / V3 集成时复用)
 
 ## 2. portal 子应用脚手架
 
