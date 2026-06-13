@@ -9,7 +9,7 @@ Run with the docker-compose stack up:
 
     .venv/bin/locust -f locust/locustfile.py --headless \
         -u 100 -r 10 --run-time 60s \
-        --host http://localhost:8000
+        --host http://localhost:8005
 
 The test seeds one credential, then drives a constant 100 RPS of
 `POST /api/v1/credentials/{id}/use` against it for 60 seconds. Each
