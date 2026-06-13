@@ -1,3 +1,2 @@
-export default function App() {
-  return <div data-testid="app-placeholder">portal scaffold ok</div>;
-}
+import { PortalRouter } from './router';
+export default function App() { return <PortalRouter />; }
