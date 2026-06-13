@@ -1708,3 +1708,51 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 3. **CSS @import 用 `ui/index.css`**,不用 `chatbiz-ui/index.css`
 4. **`MenuStatus` 不在 barrel re-export**,要 import 时 `from 'ui/primitives/SidebarItem'`(type)
 
+---
+
+## T3 状态(已发现关键 regression)
+
+### T3 实测结果
+- `tsc --noEmit` → ✅ PASS (0 error)
+- `vitest run` → ✅ 33/33 全过
+- `vite build` → ✅ 成功(但 bundle 207.11 KB,vs V1 main 201.39 KB,+5.7 KB)
+- `playwright test` → ❌ **2/2 fail**(V1 main 跑同样 e2e 是 2/2 pass)
+
+### 已知 regression: prod-build React Router 双实例
+
+**症状**:
+- Vite preview 加载 `index-CFlCR7E-.js` 后 React 抛 `wy (Navigate)` 的 `at(!1)` invariant
+- dev mode (`vite`) 正常,URL `http://localhost:5174/portal/login` redirect 正常
+- 仅 prod build(production 优化后)有 5.7 KB 冗余,触发 dual-React-Router
+
+**Root cause**(待深入):
+- T2 改 `from '@/components/primitives/Toast'` → `from 'ui/primitives/Toast'`
+- Vite 的 prod build 把 `ui/primitives/Toast` 解析到一个 module-id,与原 `@/components/primitives/Toast` 不同
+- esbuild 树摇/内联行为变化,导致 react-router-dom 部分被双打包
+- 经检查:node_modules 物理上只有 1 份 react-router-dom(单一 .pnpm/ 副本)
+- 是 Vite 内部优化器在处理 path alias vs `@/` alias 时的差异
+
+**验证(已做)**:
+- 484bed1 (移除 chatbiz-ui dep) 不是根因
+- 67145e2 (alias `ui` 仍存在) 不影响
+- T2 commit 66534b6 本身就有问题(在 484bed1 之前 e2e 也 fail)
+- main 分支 V1 e2e 2/2 pass 用 201 KB bundle,worktree 207 KB e2e fail
+
+**影响范围**:
+- canvas (T3) 也会踩同样的坑(若 T3 走相同的 ui/primitives/* alias 模式)
+- admin (V3) 同上
+
+**下一步(下次 session)**:
+1. 调查 Vite 5.4.21 + path alias + esbuild 的 module-id 行为
+2. 候选 fix:
+   - 用 `vite-tsconfig-paths` 统一 tsconfig + vite 的 path
+   - 改用 file: dep + barrel import(但 T1 review 已否决)
+   - 在 `vite.config` 显式 `optimizeDeps.include: ['react-router-dom']`
+   - 升级到 Vite 6(若行为差异)
+3. canvas (T3) 实施时同步验证 e2e,若同问题: 走 T2 路径但先修 Vite 行为
+
+**当前 T3 结论**:
+- V2 T1+T2 落地但 e2e regression 留待 fix
+- V2 T3 依赖 fix 完成后才能跑 T4-T8
+- 本 session 提前结束在 T3 验证
+
