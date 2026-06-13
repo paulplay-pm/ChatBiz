@@ -54,15 +54,17 @@
 
 ---
 
-## Task 1: 抽 `web/ui/` 骨架(11 primitives + tailwind config + index.css + package.json)
+## Task 1: 抽 `web/ui/` 骨架(11 primitives + tailwind config + index.css + package.json) — ✅ DONE (commit f65d475)
 
 **Files:**
-- Create: `web/ui/package.json`
-- Create: `web/ui/tailwind.config.js`
-- Create: `web/ui/tsconfig.json`
-- Create: `web/ui/index.css`
-- Create: `web/ui/primitives/{Button,Card,MetricCard,StatusDot,Input,Form,Modal,Toast,Sidebar,SidebarItem,SidebarSection,RequireAuth}.tsx`
-- Create: `web/ui/index.ts`(barrel export)
+- Create: `web/ui/package.json` ✅
+- Create: `web/ui/tailwind.config.js` ✅
+- Create: `web/ui/tsconfig.json` ✅
+- Create: `web/ui/index.css` ✅
+- Create: `web/ui/primitives/{Button,Card,MetricCard,StatusDot,Input,Form,Modal,Toast,Sidebar,SidebarItem,SidebarSection,RequireAuth}.tsx` ✅ (12 文件,含 RequireAuth)
+- Create: `web/ui/index.ts`(barrel export) ✅
+
+> **T1 完成备注**: 11 primitives + RequireAuth 平移自 V1 portal;`MenuStatus` / `MenuItem` / `MenuSection` 类型内联到 `SidebarItem.tsx` / `SidebarSection.tsx`(避免 `@/data/menu` 私有路径依赖);barrel re-export 12 组件 + 2 类型;tsc 0 error;Spec/Code 评审通过(必要 trade-off 已记录)。
 
 - [ ] **Step 1: 写 `web/ui/package.json`**
 
