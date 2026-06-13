@@ -49,7 +49,7 @@ docker compose -f docker-compose.yml up -d
 
 # 3. 验证
 docker compose ps
-curl http://localhost:8000/healthz   # credential
+curl http://localhost:8005/healthz   # credential
 curl http://localhost:8080/healthz   # audit-and-isolation
 curl http://localhost:8001/healthz   # workflow-engine
 

@@ -133,12 +133,13 @@ OpenSpec CLI 用 `openspec-*`(`openspec-propose` / `openspec-explore` / `openspe
 
 | 端口 | 服务 | 状态 | 备注 |
 |---|---|---|---|
-| 8000 | credential | 已分配 | `chatbiz-credential` |
+| 8000 | (历史:credential) | 已迁移到 8005 (2026-06-13) | 见 change `credential-port-8005-migration`; audit 追踪保留, 不重新分配 |
 | 8001 | workflow-engine | 已分配 | `chatbiz-workflow-engine` |
 | 8002 | knowledge-base | 保留 | 等 knowledge-base service 上线 |
 | 8003 | agent-runtime | 保留 | 等 agent-runtime service 上线 |
 | 8004 | mcp | 已分配 | `chatbiz-mcp`,MCP filesystem/fetch/postgres 三 server 统一入口 |
-| 8005+ | (未来) | 可用 | 新 service 从 8005 开始往后分配 |
+| 8005 | credential | 已分配 | `chatbiz-credential` (migrated from 8000) |
+| 8006+ | (未来) | 可用 | 新 service 从 8006 开始往后分配 (8005 已用) |
 | 8080 | audit-and-isolation | 已分配 | `chatbiz-audit-isolation`,数据隔离网关 (egress 强制点) |
 | 5432 | postgres | 已分配 | 共享基础设施,见 `x-pg-env` |
 | 6379 | redis | 已分配 | 共享基础设施 |
