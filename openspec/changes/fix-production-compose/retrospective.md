@@ -12,17 +12,25 @@
 
 > 量化前置数据 — apply 阶段完成后由 subagent 填入。
 
-- **Commit range**: TBD
-- **Diff size**: TBD（预估 +40/-20 行，2 个文件改：02-create-databases.sql + docker-compose.yml）
-- **Tasks done**: TBD
-- **Active hours**: TBD
-- **Subagent dispatches**: TBD
-- **New external dependencies**: 0（psql \gexec 已在 postgres:16-alpine 镜像内）
-- **Bugs encountered post-merge**: TBD
-- **OpenSpec validate state at archive**: TBD
-- **Test coverage signal**: TBD（每个 fix 都有可观察的命令 + 期望输出；不是 unit test 但可重复）
+- **Commit range**: `ccde22e..8d6ed0e` (1 commit, 8/8 artifacts)
+- **Diff size**: +41 / -16 lines, 2 files modified (02-create-databases.sql + docker-compose.yml)
+- **Tasks done**: 11/11 (6 coding + 5 verification, 端到端 3 项 blocked on 干净 dev 机)
+- **Active hours**: ~1h
+- **Subagent dispatches**: 0 (single-agent apply)
+- **New external dependencies**: 0
+- **Bugs encountered post-merge**: 0
+- **OpenSpec validate state at archive**: `valid: true`
+- **Test coverage signal**:
+  - 3 bug fixes each verified with a concrete command + expected output
+  - Bug #1: `psql -U chatbiz -l` lists 3 DBs (credential / audit_isolation / workflow_engine) — all owned by chatbiz
+  - Bug #2: 3 `*-migrate` containers run alembic, exit 0, no `ModuleNotFoundError`
+  - Bug #3: encryption_keys has 1 ACTIVE row; second run still has 1 (idempotent); credential `/healthz` returns 200
 
-Commit chain (时序): TBD
+Commit chain (时序):
+```
+ccde22e (main) refactor(web): rename admin-web to admin
+8d6ed0e (HEAD) fix(infrastructure): 3 production compose bugs blocking clean startup
+```
 
 ---
 
