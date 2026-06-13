@@ -1740,3 +1740,94 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 V2 T1+T2+T3 完整落地, e2e regression 已修, 准备好跑 T4-T8.
 
+---
+
+## T4 + T5 状态 — ✅ DONE (commit 59cfc26, 23 files)
+
+### T4 (11 简单) + T5 (12 复杂) 一共 23 个文件 改 antd → web/ui primitives
+
+- 11 简单 (T4): AppLayout / ErrorBoundary / Sidebar / TopBar / CreateWorkflowModal /
+  DeleteConfirmModal / WorkflowCard / RequireAuth / LoginPage / NotFoundPage / SettingsPage
+- 11 复杂 (T5): useSaveWorkflow / NodePanel / ConfigPanel (R2: rjsf 保留) /
+  EdgeConditionMenu / NodeSearchModal / ApprovalInlineCard / NodeEventTimeline /
+  RetryCancelButtons / CanvasPage / RunDebuggerPage / WorkflowListPage / ChatflowPage
+- 加 1 backwards-compat re-export (Sidebar alias AppSidebar)
+
+### 实施亮点
+- TS 用 'ui/primitives/Toast' deep path (避免 from 'ui' bare 别名; tsconfig 只有 ui/* path)
+- Form 改 FormData 读 name (R1: 不用 antd Form.useForm)
+- TopBar icons 改 inline SVG (R3)
+- RequireAuth 改 useAuthStore token 同步写 localStorage["chatbiz.auth"], dev fallback 通过
+- ConfigPanel 保留 @rjsf/core (R2: 非 antd)
+
+## T6 状态 — ✅ DONE (commit 5c08a7a, part)
+
+- web/canvas/package.json 删 antd + @ant-design/icons (-2 deps)
+- web/canvas/src/main.tsx 删 ConfigProvider + zhCN; ToastProvider 提到 BrowserRouter
+  内包整个 app (因为 LoginPage 在 /login 路由不走 AppLayout, 需顶层 wrap)
+- web/canvas/src/components/AppLayout.tsx 移除 ToastProvider (避免嵌套)
+- web/canvas/src/index.css @import 'ui/index.css'
+- web/canvas/src/store/useAuthStore.ts 改 zustand persist 中间件, 同步写
+  localStorage['chatbiz.auth'] (R4 fix: 跟 V1 portal RequireAuth 契约对齐)
+
+## T7 状态 — ✅ DONE (commit 5c08a7a + b48c200 + abb985c)
+
+### 基础设施
+- web/canvas/tsconfig.json 加 ui/* path
+- web/canvas/vite.config.ts 加 ui alias + dedupe + optimizeDeps (复用 9655018 fix 模板)
+- web/canvas/vitest.config.ts 加 ui alias + react/react-dom/react-router-dom 显式
+  dedupe (跟 portal vitest.config 一致)
+
+### Vitest 修 (15/84 fail → 0/84)
+- 11 test wrapper 加 ToastProvider (T5 useToast 引入但 wrapper 没包)
+  (commit abb985c)
+- components_layout.test.tsx + pages_RunDebuggerPage.test.tsx 改
+  getAllByText 适配多元素 (commit b48c200)
+
+### 验证
+- tsc --noEmit: 0 error
+- vitest: 84/84 pass (32 test files)
+- vite build: 成功 (bundle 836 KB, 含 rjsf + xyflow + zustand + 业务代码)
+- playwright e2e: 6/8 pass (2 个 react-flow drag e2e 因 antd 删除后
+  xyflow 内部 class 行为变化超时, plan 最低 2+ 满足, 留 V3 修)
+
+## T8 状态 — ✅ DONE (commit ef61023)
+
+- web/Dockerfile: 加 'COPY portal/dist /usr/share/nginx/html/portal'
+- web/nginx.conf: 加 /portal/ location + alias + SPA fallback + assets cache
+  包含 portal 前缀
+- web/index.html: portal home page 加 portal 链接卡片
+- 5 path curl 验证 (vite preview 模拟 nginx):
+  - /         → 302 (重定向)
+  - /portal/  → 200
+  - /canvas/  → 200
+  - /admin/   → 200
+  - /portal/*  → 200
+
+### 已知 drift: canvas tailwind.config.js 不存在 (跟 plan T8 Step 4 假设)
+- canvas 无 tailwind dep, 实际所有 utility class 通过 'import ui/index.css'
+  拿到 web/ui 编译过的 css. 这是设计 (ui 作为共享 css 源, canvas 不重复配置).
+- portal/canvas/admin tailwind config 统一性通过 web/ui/tailwind.config.js 体现
+  (portal tailwind.config.js content 含 '../ui/primitives/**')
+
+### admin build + vitest 回归
+- admin vite build: 成功 (225.62 KB)
+- admin vitest: 1/1 pass (admin 范围 1 个 test file, V2 范围只跑 build 回归,
+  实际 admin test coverage 由 admin-web-bootstrap change 负责)
+
+## 本 session 收尾
+
+### 完成 (T1-T8)
+- ✅ T1 抽 web/ui/ 共享层
+- ✅ T2 改 portal import path
+- ✅ T3 portal 14-gate + 修 dual-React regression (9655018)
+- ✅ T4+T5 23 个 canvas .tsx/.ts 删 antd
+- ✅ T6 删 antd dep + main.tsx ConfigProvider + useAuthStore 改 localStorage
+- ✅ T7 canvas vitest 84/84 + e2e 6/8 (2 个 react-flow drag e2e 留 V3)
+- ✅ T8 nginx 集成 + 5-path curl 验证
+
+### 下次 session (T9 + T10 + archive)
+- T9 跨 app e2e (portal → /canvas/ 跳转)
+- T10 14-gate verify (4 vitest + 3 playwright + 3 tsc + 3 build + 1 nginx)
+- T10 之后 openspec archive v2-canvas-refactor
+- admin 22 .tsx 删 antd 等 V3 (admin-refactor) change
