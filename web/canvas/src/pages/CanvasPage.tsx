@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { ReactFlow, Background, Controls, MiniMap, ReactFlowProvider, useReactFlow, Connection } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Button, message } from 'antd';
-import { SaveOutlined, PartitionOutlined } from '@ant-design/icons';
+import { Button } from 'ui/primitives/Button';
+import { useToast } from 'ui/primitives/Toast';
 import { useParams, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
 import { useCanvasEditStore } from '@/store/useCanvasEditStore';
@@ -17,9 +17,26 @@ import { detectCycle } from '@/components/canvas/DragLoopDetector';
 import { autoLayout } from '@/components/canvas/AutoLayout';
 import { api } from '@/lib/apiClient';
 
+const IconSave = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+    <polyline points="17 21 17 13 7 13 7 21" />
+    <polyline points="7 3 7 8 15 8" />
+  </svg>
+);
+const IconPartition = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="3" width="7" height="7" />
+    <rect x="14" y="3" width="7" height="7" />
+    <rect x="3" y="14" width="7" height="7" />
+    <rect x="14" y="14" width="7" height="7" />
+  </svg>
+);
+
 function CanvasPageInner() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const toast = useToast();
   const {
     workflowId, nodes, edges, dirty,
     setInitial, addNode, addEdge, removeNode, removeEdge,
@@ -30,15 +47,8 @@ function CanvasPageInner() {
   const [edgeMenu, setEdgeMenu] = useState<{ edgeId: string; value: string } | null>(null);
   const saveMutation = useSaveWorkflow();
 
-  // Track which edges are selected. ReactFlow is in controlled mode (we own
-  // edges), so it does not maintain its own selection state — it just emits
-  // select changes through onEdgesChange. We track them here and merge them
-  // into rfEdges so the Backspace delete handler can find the selected ones.
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<Set<string>>(new Set());
 
-  // Map our store's CanvasNode/CanvasEdge to React Flow's {id, type, position, data}/{id, source, target} shape.
-  // Without this mapping, React Flow can't render edges (it needs source/target, not from/to) and
-  // node components can't read their config (data.config vs top-level config).
   const rfNodes = useMemo(
     () => nodes.map((n) => ({
       id: n.id,
@@ -61,7 +71,6 @@ function CanvasPageInner() {
 
   useUndoRedo();
 
-  // Load workflow on mount
   useEffect(() => {
     if (!id) return;
     if (workflowId === id) return; // already loaded
@@ -69,12 +78,11 @@ function CanvasPageInner() {
       const wf = r.data;
       setInitial(wf.id, wf.version, wf.definition_json.nodes || [], wf.definition_json.edges || []);
     }).catch(() => {
-      message.error('加载工作流失败');
+      toast.error('加载工作流失败');
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // / shortcut to open search modal
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === '/' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
@@ -86,7 +94,6 @@ function CanvasPageInner() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  // Global save shortcut (dispatched by useUndoRedo on Cmd+S)
   useEffect(() => {
     const handler = () => saveMutation.mutate(undefined, {
       onSuccess: (data: any) => {
@@ -99,7 +106,6 @@ function CanvasPageInner() {
     return () => window.removeEventListener('chatbiz-save-workflow', handler);
   }, [saveMutation, workflowId, navigate]);
 
-  // beforeunload guard for unsaved changes
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
       if (dirty) {
@@ -115,7 +121,7 @@ function CanvasPageInner() {
     (connection: Connection) => {
       if (!connection.source || !connection.target) return;
       if (connection.source === connection.target) {
-        message.warning('节点不能连接自身');
+        toast.warn('节点不能连接自身');
         return;
       }
       const allNodeIds = [
@@ -129,12 +135,12 @@ function CanvasPageInner() {
       ];
       const cycle = detectCycle(allNodeIds, edgeList);
       if (cycle) {
-        message.warning(`工作流存在循环: ${cycle.join(' → ')}`);
+        toast.warn(`工作流存在循环: ${cycle.join(' → ')}`);
         return;
       }
       addEdge({ id: uuidv4(), from: connection.source, to: connection.target });
     },
-    [nodes, edges, addEdge],
+    [nodes, edges, addEdge, toast],
   );
 
   const onDrop = useCallback(
@@ -162,8 +168,8 @@ function CanvasPageInner() {
   const onLayout = useCallback(() => {
     const layouted = autoLayout(nodes, edges);
     useCanvasEditStore.setState({ nodes: layouted, dirty: true });
-    message.success('已自动布局');
-  }, [nodes, edges]);
+    toast.info('已自动布局');
+  }, [nodes, edges, toast]);
 
   const onSave = useCallback(() => {
     saveMutation.mutate(undefined, {
@@ -176,9 +182,9 @@ function CanvasPageInner() {
   }, [saveMutation, workflowId, navigate]);
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 64px)' }}>
+    <div className="flex h-[calc(100vh-64px)]">
       <NodePanel />
-      <div style={{ flex: 1, position: 'relative' }} onDrop={onDrop} onDragOver={onDragOver}>
+      <div className="flex-1 relative" onDrop={onDrop} onDragOver={onDragOver}>
         <ReactFlow
           nodes={rfNodes as any}
           edges={rfEdges as any}
@@ -236,19 +242,24 @@ function CanvasPageInner() {
           <Controls />
           <MiniMap />
         </ReactFlow>
-        <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 8, zIndex: 10 }}>
-          <Button icon={<PartitionOutlined />} onClick={onLayout}>自动布局</Button>
-          <Button
-            type="primary"
-            icon={<SaveOutlined />}
-            onClick={onSave}
-            loading={saveMutation.isPending}
-          >
-            保存{dirty ? ' *' : ''}
+        <div className="absolute top-3 right-3 flex gap-2 z-10">
+          <Button variant="secondary" size="sm" onClick={onLayout}>
+            <span className="inline-flex items-center gap-1"><IconPartition /> 自动布局</span>
           </Button>
+          <span>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={onSave}
+            >
+              <span className="inline-flex items-center gap-1">
+                <IconSave /> 保存{dirty ? ' *' : ''}
+              </span>
+            </Button>
+          </span>
         </div>
       </div>
-      <div style={{ width: 360, borderLeft: '1px solid #f0f0f0', background: '#fff' }}>
+      <div className="w-[360px] border-l border-ink-200 bg-white">
         <ConfigPanel />
       </div>
       <NodeSearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Form, Input, Button, Card, message } from 'antd';
+import { Form, Input, Button } from 'ui/index';
+import { useToast } from 'ui/primitives/Toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '@/lib/apiClient';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -9,37 +10,53 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const setAuth = useAuthStore((s) => s.setAuth);
+  const toast = useToast();
 
-  const onFinish = async (values: { username: string; password: string }) => {
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const form = e.currentTarget as HTMLFormElement;
+    const fd = new FormData(form);
+    const username = String(fd.get('username') ?? '');
+    const password = String(fd.get('password') ?? '');
     setLoading(true);
     try {
-      const r = await api.post('/api/auth/login', values);
+      const r = await api.post('/api/auth/login', { username, password });
       setAuth(r.data.token, r.data.user);
-      message.success(`欢迎,${r.data.user.name}`);
+      toast.info(`欢迎,${r.data.user.name}`);
       const redirect = params.get('redirect') || '/workflows';
       navigate(redirect, { replace: true });
-    } catch (e: any) {
-      message.error(e.response?.data?.error_message || '登录失败');
+    } catch (err: unknown) {
+      const e2 = err as { response?: { data?: { error_message?: string } } };
+      toast.error(e2.response?.data?.error_message || '登录失败');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#f0f2f5' }}>
-      <Card title="ChatBiz 登录" style={{ width: 360 }}>
-        <Form layout="vertical" onFinish={onFinish}>
-          <Form.Item label="用户名" name="username" rules={[{ required: true, message: '用户名必填' }]}>
-            <Input placeholder="任意非空 username(dev mode)" autoFocus />
-          </Form.Item>
-          <Form.Item label="密码" name="password">
-            <Input.Password placeholder="任意密码(dev mode)" />
-          </Form.Item>
-          <Button type="primary" htmlType="submit" loading={loading} block>
-            登录
-          </Button>
+    <div className="min-h-screen flex items-center justify-center bg-ink-50">
+      <div className="bg-white rounded-xl p-8 w-96 node-shadow border border-ink-200">
+        <h1 className="text-2xl font-semibold text-ink-900 mb-6">ChatBiz 登录</h1>
+        <Form onSubmit={onSubmit}>
+          <div>
+            <label className="block text-sm font-medium text-ink-700 mb-1">用户名</label>
+            <Input name="username" placeholder="任意非空 username(dev mode)" />
+          </div>
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-ink-700 mb-1">密码</label>
+            <Input
+              name="password"
+              type="password"
+              placeholder="任意密码(dev mode)"
+            />
+          </div>
+          <span>
+            <Button variant="primary" type="submit">
+              {loading ? '登录中…' : '登录'}
+            </Button>
+          </span>
         </Form>
-      </Card>
+      </div>
     </div>
   );
 }

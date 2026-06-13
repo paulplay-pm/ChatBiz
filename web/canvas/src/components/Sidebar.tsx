@@ -1,39 +1,39 @@
-import { Layout, Menu } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
-import {
-  AppstoreOutlined, NodeIndexOutlined, DatabaseOutlined, ApiOutlined, SettingOutlined,
-} from '@ant-design/icons';
 import { useUIStore } from '@/store/useUIStore';
+import { MenuItem, MenuSection, Sidebar } from 'ui/index';
 
-const items = [
-  { key: '/workflows', icon: <NodeIndexOutlined />, label: '工作流' },
-  { key: '/chatflow', icon: <AppstoreOutlined />, label: '对话' },
-  { key: '/knowledge', icon: <DatabaseOutlined />, label: '知识库' },
-  { key: '/plugins', icon: <ApiOutlined />, label: '插件' },
-  { key: '/settings', icon: <SettingOutlined />, label: '系统设置' },
+const items: MenuItem[] = [
+  { id: 'workflows', label: '工作流', icon: 'fas fa-project-diagram', section: 'workflow', status: 'ready', href: '/workflows' },
+  { id: 'chatflow', label: '对话', icon: 'fas fa-comments', section: 'workflow', status: 'ready', href: '/chatflow' },
+  { id: 'knowledge', label: '知识库', icon: 'fas fa-book', section: 'knowledge', status: 'ready', href: '/knowledge' },
+  { id: 'plugins', label: '插件', icon: 'fas fa-plug', section: 'system', status: 'ready', href: '/plugins' },
+  { id: 'settings', label: '系统设置', icon: 'fas fa-gear', section: 'system', status: 'ready', href: '/settings' },
+];
+const sections: MenuSection[] = [
+  { id: 'workflow', title: '工作流' },
+  { id: 'knowledge', title: '知识库' },
+  { id: 'system', title: '系统设置' },
 ];
 
-export function Sidebar() {
+export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { sidebarCollapsed } = useUIStore();
-
+  const activeId = items.find((i) => location.pathname.startsWith(i.href))?.id || 'workflows';
   return (
-    <Layout.Sider
-      width={220}
-      collapsed={sidebarCollapsed}
-      collapsedWidth={64}
-      style={{ background: '#001529' }}
-      breakpoint="md"
-    >
-      <Menu
-        theme="dark"
-        mode="inline"
-        selectedKeys={[items.find((i) => location.pathname.startsWith(i.key))?.key || '/workflows']}
+    <div className={`flex flex-col h-full border-r border-ink-200 bg-white transition-all ${sidebarCollapsed ? 'w-16' : 'w-60'}`}>
+      <Sidebar
         items={items}
-        onClick={({ key }) => navigate(key)}
-        style={{ marginTop: 16 }}
+        sections={sections}
+        activeId={activeId}
+        onSelect={(id) => {
+          const it = items.find((x) => x.id === id);
+          if (it) navigate(it.href);
+        }}
       />
-    </Layout.Sider>
+    </div>
   );
 }
+
+// Backwards-compatible named export for tests that import the old name.
+export { AppSidebar as Sidebar };

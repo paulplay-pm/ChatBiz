@@ -1,6 +1,5 @@
-import { Card, Tag, Button, Space, Tooltip } from 'antd';
-import { StarOutlined, StarFilled, DeleteOutlined, EditOutlined, ShareAltOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { Card, Button, StatusDot } from 'ui/index';
 import { Workflow, useToggleFavorite } from '@/hooks/useWorkflows';
 
 interface Props {
@@ -15,32 +14,55 @@ export function WorkflowCard({ workflow, onDelete }: Props) {
   const mode = workflow.definition_json?.mode ?? 'workflow';
   const sharing = workflow.definition_json?.sharing ?? 'private';
 
+  const tagBase = 'inline-block rounded px-2 py-0.5 text-xs';
+  const tagColors: Record<string, string> = {
+    blue: 'bg-blue-100 text-blue-700',
+    green: 'bg-green-100 text-green-700',
+    gray: 'bg-ink-100 text-ink-700',
+  };
+
   return (
     <Card
-      hoverable
-      title={workflow.name}
-      extra={
-        <Space onClick={(e) => e.stopPropagation()}>
-          <Button
-            type="text"
-            icon={isFavorite ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined />}
-            onClick={() => toggle.mutate({ id: workflow.id, favorite: !isFavorite })}
-          />
-          <Button type="text" icon={<EditOutlined />} onClick={() => navigate(`/workflows/${workflow.id}/edit`)} />
-          <Button type="text" danger icon={<DeleteOutlined />} onClick={() => onDelete(workflow.id)} />
-        </Space>
-      }
-      onClick={() => navigate(`/workflows/${workflow.id}/edit`)}
-      style={{ cursor: 'pointer' }}
+      className="hover:border-brand-500 cursor-pointer"
     >
-      <Space size="small" wrap>
-        <Tag>v{workflow.version}</Tag>
-        <Tag color="blue">{mode}</Tag>
-        <Tag icon={<ShareAltOutlined />}>{sharing}</Tag>
-        <Tooltip title="创建时间">
-          <span style={{ color: '#999', fontSize: 12 }}>{new Date(workflow.created_at).toLocaleString()}</span>
-        </Tooltip>
-      </Space>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-semibold text-ink-900">{workflow.name}</h3>
+        <StatusDot status={isFavorite ? 'success' : 'idle'} />
+      </div>
+      <div className="flex items-center gap-1.5 flex-wrap mb-3" onClick={(e) => e.stopPropagation()}>
+        <span className={`${tagBase} ${tagColors.gray}`}>v{workflow.version}</span>
+        <span className={`${tagBase} ${tagColors.blue}`}>{mode}</span>
+        <span className={`${tagBase} ${tagColors.green}`}>{sharing}</span>
+        <span
+          className="text-xs text-ink-500"
+          title="创建时间"
+        >
+          {new Date(workflow.created_at).toLocaleString()}
+        </span>
+      </div>
+      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => toggle.mutate({ id: workflow.id, favorite: !isFavorite })}
+        >
+          {isFavorite ? '★ 已收藏' : '☆ 收藏'}
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => navigate(`/workflows/${workflow.id}/edit`)}
+        >
+          编辑
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onDelete(workflow.id)}
+        >
+          删除
+        </Button>
+      </div>
     </Card>
   );
 }
