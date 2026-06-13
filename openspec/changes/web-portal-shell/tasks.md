@@ -16,14 +16,14 @@
 
 ## 3. portal Primitives 原语库
 
-- [ ] 3.1 创建 `web/portal/src/components/primitives/Button.tsx`(variant: primary/secondary/ghost;size: sm/md/lg;`data-testid="btn"`) — 验证:`vitest Button.test.tsx` 3 个 case(primary variant / ghost variant / onClick)通过
-- [ ] 3.2 创建 `web/portal/src/components/primitives/Card.tsx` + `MetricCard.tsx` + `StatusDot.tsx` + `web/portal/src/index.css` 追加 `.status-running/success/error/idle/pending` 类 — 验证:`vitest Card/MetricCard/StatusDot.test.tsx` 5 个 case 通过
-- [ ] 3.3 创建 `web/portal/src/components/primitives/Input.tsx` + `Form.tsx` + `Modal.tsx`(`data-testid="modal"` + `data-testid="modal-backdrop"`) — 验证:`vitest Input.test.tsx` 2 个 case + `Modal.test.tsx` 2 个 case(open/close + backdrop click)通过
-- [ ] 3.4 创建 `web/portal/src/components/primitives/Toast.tsx` + `useToast.ts` hook(security/user/info 三色 + 5s 自动消失 + z-index 9999) — 验证:`vitest Toast.test.tsx` 4 个 case 通过
-- [ ] 3.5 创建 `web/portal/src/data/menu.ts`(5 sections + 30+ items,type `MenuItem` / `MenuSection` / `MenuStatus`) — 验证:`vitest menu.test.ts` 5 section + 30+ item + status 二选一通过
-- [ ] 3.6 创建 `web/portal/src/components/primitives/SidebarItem.tsx` + `SidebarSection.tsx` — 验证:`vitest SidebarItem.test.tsx` 2 个 case(active / hover)通过
-- [ ] 3.7 创建 `web/portal/src/components/primitives/Sidebar.tsx` — 验证:`vitest Sidebar.test.tsx` 3 个 case(5 section 渲染 / 30+ item 渲染 / active 高亮)通过
-- [ ] 3.8 创建 `web/portal/src/components/RequireAuth.tsx`(读 `localStorage['chatbiz.auth']`,未登录跳 `/login`) — 验证:`vitest RequireAuth.test.tsx` 2 个 case(已登录 / 未登录)通过
+- [x] 3.1 创建 `web/portal/src/components/primitives/Button.tsx`(variant: primary/secondary/ghost;size: sm/md/lg;`data-testid="btn"`) — 验证:`vitest Button.test.tsx` 3 个 case(primary variant / ghost variant / onClick)通过
+- [x] 3.2 创建 `web/portal/src/components/primitives/Card.tsx` + `MetricCard.tsx` + `StatusDot.tsx` + `web/portal/src/index.css` 追加 `.status-running/success/error/idle/pending` 类 — 验证:`vitest Card/MetricCard/StatusDot.test.tsx` 5 个 case 通过
+- [x] 3.3 创建 `web/portal/src/components/primitives/Input.tsx` + `Form.tsx` + `Modal.tsx`(`data-testid="modal"` + `data-testid="modal-backdrop"`) — 验证:`vitest Input.test.tsx` 2 个 case + `Modal.test.tsx` 2 个 case(open/close + backdrop click)通过
+- [x] 3.4 创建 `web/portal/src/components/primitives/Toast.tsx` + `useToast.ts` hook(security/user/info 三色 + 5s 自动消失 + z-index 9999) — 验证:`vitest Toast.test.tsx` 4 个 case 通过
+- [x] 3.5 创建 `web/portal/src/data/menu.ts`(5 sections + 30+ items,type `MenuItem` / `MenuSection` / `MenuStatus`) — 验证:`vitest menu.test.ts` 5 section + 30+ item + status 二选一通过
+- [x] 3.6 创建 `web/portal/src/components/primitives/SidebarItem.tsx` + `SidebarSection.tsx` — 验证:`vitest SidebarItem.test.tsx` 2 个 case(active / hover)通过
+- [x] 3.7 创建 `web/portal/src/components/primitives/Sidebar.tsx` — 验证:`vitest Sidebar.test.tsx` 3 个 case(5 section 渲染 / 30+ item 渲染 / active 高亮)通过
+- [x] 3.8 创建 `web/portal/src/components/RequireAuth.tsx`(读 `localStorage['chatbiz.auth']`,未登录跳 `/login`) — 验证:`vitest RequireAuth.test.tsx` 2 个 case(已登录 / 未登录)通过
 
 ## 4. portal 主框架页面
 
