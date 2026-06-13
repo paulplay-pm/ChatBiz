@@ -1,5 +1,5 @@
 import { Outlet, useNavigate } from 'react-router-dom';
-import { Sidebar } from '@/components/primitives/Sidebar';
+import { Sidebar } from 'ui/primitives/Sidebar';
 import { MenuItem, MenuSection } from '@/data/menu';
 
 export function AppLayout({ menuItems, sections, activeId }: {

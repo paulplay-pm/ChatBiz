@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Modal } from '@/components/primitives/Modal';
-import { ToastProvider, useToast } from '@/components/primitives/Toast';
+import { Modal } from 'ui/primitives/Modal';
+import { ToastProvider, useToast } from 'ui/primitives/Toast';
 
 describe('Modal', () => {
   it('does not render when open=false', () => {

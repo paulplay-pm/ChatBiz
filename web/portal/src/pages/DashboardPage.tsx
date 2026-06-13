@@ -1,5 +1,5 @@
-import { MetricCard } from '@/components/primitives/MetricCard';
-import { Button } from '@/components/primitives/Button';
+import { MetricCard } from 'ui/primitives/MetricCard';
+import { Button } from 'ui/primitives/Button';
 
 export default function DashboardPage() {
   return (

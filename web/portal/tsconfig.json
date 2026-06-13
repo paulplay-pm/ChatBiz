@@ -19,7 +19,10 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["vitest/globals", "@testing-library/jest-dom", "node"],
     "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] }
+    "paths": {
+      "@/*": ["src/*"],
+      "ui/*": ["../ui/*"]
+    }
   },
   "include": ["src", "tests", "e2e", "vitest.config.ts"]
 }
