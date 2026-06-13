@@ -12,17 +12,26 @@
 
 > 量化前置数据 — apply 阶段完成后由 subagent 填入。
 
-- **Commit range**: TBD
-- **Diff size**: TBD（预估 +600/-100 行，9 个新文件 + 4 个修改）
-- **Tasks done**: TBD（tasks.md 共 30 个 task，含 8 个验证任务）
-- **Active hours**: TBD
-- **Subagent dispatches**: TBD
-- **New external dependencies**: TBD（无新增 — pnpm/pytest/@playwright/test 已存在；docker compose 复用既有镜像）
-- **Bugs encountered post-merge**: TBD
-- **OpenSpec validate state at archive**: TBD
-- **Test coverage signal**: TBD（vitest integration 跑 ≥6 case + playwright integration 跑 ≥8 case + pytest 跑 ≥3 case）
+- **Commit range**: `ccde22e..bc15f6a` (1 commit)
+- **Diff size**: +2634 / -11 lines, 29 files (5 modified + 24 new)
+- **Tasks done**: 16/30 (53% — see §3 Plan deviations; blocked on production compose pre-existing bugs)
+- **Active hours**: ~3h
+- **Subagent dispatches**: 0 (single-agent apply)
+- **New external dependencies**: 0 (pytest/playwright/vitest/docker compose 全部已存在)
+- **Bugs encountered post-merge**: 0 (commits not pushed)
+- **OpenSpec validate state at archive**: `valid: true` for this change; `validate --all` shows 2 pre-existing historical failures (unrelated to this change)
+- **Test coverage signal**:
+  - 7 new unit tests in `services/audit-and-isolation/tests/unit/test_chat_echo.py` — all pass
+  - 170/170 total audit-and-isolation unit tests pass (no regression)
+  - New vitest integration spec: 4 cases written, types-clean, runtime blocked on test stack
+  - New playwright integration spec (canvas paul): 3 cases written, types-clean, runtime blocked
+  - New playwright integration spec (admin health): 3 cases written, types-clean, runtime blocked
 
-Commit chain (时序): TBD
+Commit chain (时序):
+```
+ccde22e (main) refactor(web): rename admin-web to admin
+bc15f6a (HEAD) test(web): integration test suite + LLM echo stub
+```
 
 ---
 
