@@ -420,7 +420,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ---
 
-## Task 2: 改 `web/portal/src/**` import path 指向 `web/ui/`
+## Task 2: 改 `web/portal/src/**` import path 指向 `web/ui/` — ✅ DONE (commit 66534b6 + 484bed1)
 
 **Files:**
 - Modify: `web/portal/package.json`(加 `chatbiz-ui: file:../ui` dep)
@@ -1685,3 +1685,26 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - T8: nginx 集成 + tailwind 逐位一致 + 4 path curl
 
 请告诉我用哪种模式,以及是否启动。
+
+---
+
+## T1 + T2 完成备注(给后续 T3-T8 参考)
+
+### T1 关键产出
+- `web/ui/` 共享层 12 文件:package.json + tsconfig + tailwind.config + index.css + 11 primitives + RequireAuth
+- `MenuStatus` / `MenuItem` / `MenuSection` 类型内联到 `SidebarItem.tsx` / `SidebarSection.tsx`(避免 `@/data/menu` 私有路径依赖)
+- barrel `web/ui/index.ts` re-export 12 组件 + 2 类型(无 `MenuStatus` re-export,需直接 import)
+- tsc 0, 12 文件 0 error
+
+### T2 关键产出
+- portal 33+ vitest 改 import path 后全过,tsc 0,build 成功
+- vitest.config.ts 加 `ui` alias + `react`/`react-dom`/`react-router-dom` 指向 portal node_modules + `dedupe`(避免 web/ui 子包带来的 dual-React)
+- index.css 走 `@import 'ui/index.css';`(而非 `chatbiz-ui/index.css`,因为 chatbiz-ui alias 指向 `index.ts` 不带 css)
+- **T2 后续 fix (484bed1)**: 移除 unused `chatbiz-ui: file:../ui` dep,避免 T3/T5 canvas/admin 复现 dual-React footgun
+
+### T3+ 已知风险(从 T1/T2 评审)
+1. **不要在 canvas/admin 加 `chatbiz-ui: file:../ui` dep**,改用 `ui` path alias(portal 的 484bed1 已示范)
+2. **canvas/admin 的 vitest.config.ts 必须有 `ui` alias + react dedupe**,(portal vitest.config.ts 484bed1 后版本可作为模板)
+3. **CSS @import 用 `ui/index.css`**,不用 `chatbiz-ui/index.css`
+4. **`MenuStatus` 不在 barrel re-export**,要 import 时 `from 'ui/primitives/SidebarItem'`(type)
+
