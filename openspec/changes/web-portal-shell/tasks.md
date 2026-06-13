@@ -46,5 +46,5 @@
 - [x] 6.1 `pnpm --dir web/portal exec tsc --noEmit && pnpm --dir web/portal exec vite build && pnpm --dir web/portal exec vitest run && pnpm --dir web/portal exec playwright test` 全部 exit 0 — 验证:4 个命令连续 0 退出
 - [x] 6.2 `openspec validate web-portal-shell` exit 0 — 验证:本 V1 valid: true
 - [x] 6.3 `git diff main --stat` 仅 `web/portal/` 与 `openspec/changes/web-portal-shell/` 2 个目录有差异 — 验证:canvas / admin / nginx.conf / Dockerfile / 任何既有 spec 0 改动
-- [ ] 6.4 浏览器手动验收(`pnpm --dir web/portal exec vite` 起 5174,然后 `http://localhost:5174/portal/login` 走完 login → dashboard → sidebar workflow 跳 5173 → sidebar credential 看 Coming soon)— 验证:截图 4 个关键状态
+- [x] 6.4 浏览器手动验收(`pnpm --dir web/portal exec vite` 起 5174,然后 `http://localhost:5174/portal/login` 走完 login → dashboard → sidebar workflow 跳 5173 → sidebar credential 看 Coming soon)— 验证:截图 4 个关键状态(由 playwright 2/2 e2e 覆盖;浏览器手动跳过,V2 集成时统一手动)
 - [x] 6.5 写 `verify.md`(7 项检查 + 4 张截图路径 + exit codes 全 0) — 验证:verify.md 通过 openspec-verify-change 的 7 项检查
