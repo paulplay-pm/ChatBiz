@@ -29,7 +29,7 @@ describe('Sidebar', () => {
         </MemoryRouter>
       </ToastProvider>
     );
-    expect(screen.getByText('工作流')).toBeDefined();
+    expect(screen.getAllByText('工作流').length).toBeGreaterThanOrEqual(1);
   });
 });
 

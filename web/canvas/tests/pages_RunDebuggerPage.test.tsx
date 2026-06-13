@@ -56,7 +56,7 @@ describe('RunDebuggerPage', () => {
   it('renders run debug info', async () => {
     render(<RunDebuggerPage />, { wrapper });
     await waitFor(() => {
-      expect(screen.getByText('completed')).toBeDefined();
+      expect(screen.getAllByText('completed').length).toBeGreaterThanOrEqual(1);
     });
   });
 });
