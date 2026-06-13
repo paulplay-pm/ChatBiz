@@ -16,11 +16,9 @@ test('canvas: can connect two nodes by drag from source handle to target handle'
   await expect(page).toHaveURL(/\/workflows/);
 
   // open existing workflow (list page) or create a new one
-  let opened = false;
   const editLink = page.locator('a[href*="/edit"]').first();
   if (await editLink.isVisible({ timeout: 2000 }).catch(() => false)) {
     await editLink.click();
-    opened = true;
   } else {
     await page.getByRole('button', { name: /新建工作流/ }).click();
     await page.getByPlaceholder(/paul/).fill('regression-' + Date.now());
@@ -41,8 +39,8 @@ test('canvas: can connect two nodes by drag from source handle to target handle'
     const pane = document.querySelector('.react-flow__pane, .react-flow__renderer') as Element | null;
     if (!pane || items.length < 2) return;
     // pick two non-start types
-    const item1 = items[2]; // LLM
-    const item2 = items[5]; // code
+    const item1 = items[2]!; // LLM
+    const item2 = items[5]!; // code
     const dt1 = new DataTransfer();
     fire(item1, 'dragstart', dt1);
     fire(pane, 'dragenter', dt1);

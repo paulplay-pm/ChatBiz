@@ -42,7 +42,7 @@ describe('useSaveWorkflow', () => {
       data: { id: 'wf-1', version: 2 },
     } as any);
     const { result } = renderHook(() => useSaveWorkflow(), { wrapper });
-    const data = await result.current.mutateAsync();
+    const data = await result.current.mutateAsync({});
     expect(data.id).toBe('wf-1');
     expect(data.version).toBe(2);
   });
