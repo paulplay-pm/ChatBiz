@@ -1710,49 +1710,33 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ---
 
-## T3 状态(已发现关键 regression)
+## T3 状态 — ✅ DONE (commit 9655018)
 
-### T3 实测结果
+### T3 实测结果(修后)
 - `tsc --noEmit` → ✅ PASS (0 error)
 - `vitest run` → ✅ 33/33 全过
-- `vite build` → ✅ 成功(但 bundle 207.11 KB,vs V1 main 201.39 KB,+5.7 KB)
-- `playwright test` → ❌ **2/2 fail**(V1 main 跑同样 e2e 是 2/2 pass)
+- `vite build` → ✅ 成功(**bundle 201.39 KB**, 跟 V1 main 201.39 KB 完全一致, 96 modules 一致)
+- `playwright test` → ✅ **2/2 pass**
 
-### 已知 regression: prod-build React Router 双实例
+### 修复 (commit 9655018)
 
-**症状**:
-- Vite preview 加载 `index-CFlCR7E-.js` 后 React 抛 `wy (Navigate)` 的 `at(!1)` invariant
-- dev mode (`vite`) 正常,URL `http://localhost:5174/portal/login` redirect 正常
-- 仅 prod build(production 优化后)有 5.7 KB 冗余,触发 dual-React-Router
+`web/portal/vite.config.ts` 加 3 段:
+- `resolve.dedupe: ['react', 'react-dom', 'react-router-dom']`
+- `optimizeDeps.include: ['react', 'react-dom', 'react-router-dom']`
+- `build.rollupOptions.output.manualChunks: undefined`
 
-**Root cause**(待深入):
-- T2 改 `from '@/components/primitives/Toast'` → `from 'ui/primitives/Toast'`
-- Vite 的 prod build 把 `ui/primitives/Toast` 解析到一个 module-id,与原 `@/components/primitives/Toast` 不同
-- esbuild 树摇/内联行为变化,导致 react-router-dom 部分被双打包
-- 经检查:node_modules 物理上只有 1 份 react-router-dom(单一 .pnpm/ 副本)
-- 是 Vite 内部优化器在处理 path alias vs `@/` alias 时的差异
+### Root cause (确认)
 
-**验证(已做)**:
-- 484bed1 (移除 chatbiz-ui dep) 不是根因
-- 67145e2 (alias `ui` 仍存在) 不影响
-- T2 commit 66534b6 本身就有问题(在 484bed1 之前 e2e 也 fail)
-- main 分支 V1 e2e 2/2 pass 用 201 KB bundle,worktree 207 KB e2e fail
+- T2 改 `from '@/components/primitives/Toast'` → `from 'ui/primitives/Toast'` 触发 Vite/esbuild 把 web/ui/primitives/Toast.tsx 内的 `import 'react'` 解析到 **web/ui/node_modules/react** (peerDeps 让 pnpm 装了一份 react 在 web/ui/ 下面)
+- 物理上 web/ui/node_modules/react 跟 portal/node_modules/react 是**两个 symlink 链**,esbuild 在 prod build tree-shake 时无法识别为同一 module,各自打一份
+- 证据: V1 main `createContext()` 9 次 → V2 14 次; `useContext()` 18 → 30 (V2 实际有 2 份 react + 2 份 react-router-dom)
+- dev mode 不踩因为 vite dev server 的 esbuild 不做 module-id 树摇;只有 `vite build` 触发 rollup 完整优化
 
-**影响范围**:
-- canvas (T3) 也会踩同样的坑(若 T3 走相同的 ui/primitives/* alias 模式)
-- admin (V3) 同上
+### 复用 (canvas T7 + admin V3)
 
-**下一步(下次 session)**:
-1. 调查 Vite 5.4.21 + path alias + esbuild 的 module-id 行为
-2. 候选 fix:
-   - 用 `vite-tsconfig-paths` 统一 tsconfig + vite 的 path
-   - 改用 file: dep + barrel import(但 T1 review 已否决)
-   - 在 `vite.config` 显式 `optimizeDeps.include: ['react-router-dom']`
-   - 升级到 Vite 6(若行为差异)
-3. canvas (T3) 实施时同步验证 e2e,若同问题: 走 T2 路径但先修 Vite 行为
+每个子应用 (`web/portal` / `web/canvas` / `web/admin`) 的 vite.config.ts 都需加这 3 段。Canvas (T6/T7) + Admin (V3) 实施时按此模板改。
 
-**当前 T3 结论**:
-- V2 T1+T2 落地但 e2e regression 留待 fix
-- V2 T3 依赖 fix 完成后才能跑 T4-T8
-- 本 session 提前结束在 T3 验证
+### Session 结论
+
+V2 T1+T2+T3 完整落地, e2e regression 已修, 准备好跑 T4-T8.
 
