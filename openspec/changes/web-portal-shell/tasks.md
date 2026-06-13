@@ -36,10 +36,10 @@
 
 ## 5. portal e2e + 文档
 
-- [ ] 5.1 创建 `web/portal/e2e/portal-flow.spec.ts` 第 1 个 spec:login → dashboard → sidebar workflow → `/canvas/workflows` — 验证:`playwright test` 第 1 个 spec PASS
-- [ ] 5.2 在 `web/portal/e2e/portal-flow.spec.ts` 加第 2 个 spec:sidebar credential → `/portal/coming-soon?from=credential` 渲染菜单名 — 验证:`playwright test` 第 2 个 spec PASS
-- [ ] 5.3 创建 `web/portal/README.md`(dev 5174 + build + e2e 命令;V1 期间独立 dev,V2 集成 nginx 5173) — 验证:`README.md` 含 3 个命令示例
-- [ ] 5.4 在 checklist 标记 portal 已对齐 prototype(checklist 1 行 ✓) — 验证:checklist 1 行 `[x]`,其余 `[ ]`
+- [x] 5.1 创建 `web/portal/e2e/portal-flow.spec.ts` 第 1 个 spec:login → dashboard → sidebar workflow → `/canvas/workflows` — 验证:`playwright test` 第 1 个 spec PASS
+- [x] 5.2 在 `web/portal/e2e/portal-flow.spec.ts` 加第 2 个 spec:sidebar credential → `/portal/coming-soon?from=credential` 渲染菜单名 — 验证:`playwright test` 第 2 个 spec PASS
+- [x] 5.3 创建 `web/portal/README.md`(dev 5174 + build + e2e 命令;V1 期间独立 dev,V2 集成 nginx 5173) — 验证:`README.md` 含 3 个命令示例
+- [x] 5.4 在 checklist 标记 portal 已对齐 prototype(checklist 1 行 ✓) — 验证:checklist 1 行 `[x]`,其余 `[ ]`
 
 ## 6. 端到端验证
 
