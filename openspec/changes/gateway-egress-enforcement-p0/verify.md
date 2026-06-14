@@ -1,6 +1,6 @@
 # Verify: gateway-egress-enforcement-p0 (草稿,apply 阶段中)
 
-> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,14/20 个新 task 完成(task 1.1-1.5, 2.1-2.4, 3.1, 4.1-4.4)。
+> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,15/20 个新 task 完成(task 1.1-1.5, 2.1-2.4, 3.1, 4.1-4.4, 5.1)。
 > 7 个 [EXISTING] 引用已在 6/12/2026 gap-analysis 阶段确认真实存在(grep 复核见下)。
 > apply 阶段**未完成** → 本 change **不可 archive**。`/retrospective.md` 在所有新 task
 > 完成后才写,本文件不替代。
@@ -22,7 +22,7 @@
 
 > 注:tasks.md 末尾"清单"是 7 条总结,展开是 10 条细分。表里 10 条细分(每条配 grep 行)是为了 verify 可追溯。
 
-## 2. 新 task 完成清单(14/20 推进,1.1-1.5 + 2.1-2.4 + 3.1 + 4.1-4.4 完成)
+## 2. 新 task 完成清单(15/20 推进,1.1-1.5 + 2.1-2.4 + 3.1 + 4.1-4.4 + 5.1 完成)
 
 | Task | 文件 | 验证 | 状态 |
 |---|---|---|---|
@@ -40,6 +40,7 @@
 | 4.2 跨实例 e2e trace | `tests/integration/test_trace_e2e.py` (4 case 默认 skip,TRACE_E2E=1 门控) | `pytest tests/integration/test_trace_e2e.py` **4 skipped** (默认);`pytest tests/unit/` **225/225 PASS** | ✅ **完成** |
 | 4.3 定时归档 MinIO | `services/audit-and-isolation/app/jobs/archive_audit.py` (新加 `archive_old_audit_logs()` async + `_serialize_parquet_like` + `_group_by_day` + `ArchiveResult` dataclass) + `tests/unit/test_archive_audit.py` (12 case) | `pytest tests/unit/test_archive_audit.py` **12/12 PASS**(happy path / empty table / S3 upload failure 不删 PG / head_bucket 失败 / cut-off 默认 90d / 序列化稳定 / group by day / 常量契约);`pytest tests/unit/` **237/237 PASS** | ✅ **完成** |
 | 4.4 冷查询端点 | `services/audit-and-isolation/app/api/audit_archive.py` (新加 router,`GET /v1/audit/archive?from=&to=`,asyncio.gather 并发读 MinIO,X-Audit-Source: cold header,head_bucket 预检,366 天上限,日期范围 422 守卫) + `app/main.py` (注册新 router) + `tests/integration/test_audit_archive_endpoint.py` (10 case) | `pytest tests/integration/test_audit_archive_endpoint.py` **10/10 PASS**(happy path / 单日 / 无数据返空 / MinIO unreachable 503 / get_object 失败 503 / 422 守卫 4 类 / 边界 366 天 / 无 S3 client 503);`pytest tests/unit/` **237/237 PASS** | ✅ **完成** |
+| 5.1 perf contracts | `services/audit-and-isolation/app/perf/contracts.py` (新加 4 个 Protocol:RateLimiter / ResponseCache / RequestBatcher / MetricsExporter + 4 个 Noop 默认实现) + `app/perf/__init__.py` (导出) + `tests/unit/test_perf_contracts.py` (24 case) | `pytest tests/unit/test_perf_contracts.py` **24/24 PASS**(4 Protocol 签名守卫 + 4 Noop 行为 + 4 real impl 满足 Protocol + cross-cutting 3 + 4 runtime_checkable 守卫);`pytest tests/unit/` **261/261 PASS** | ✅ **完成** |
 | 3.1 RetryWithIdempotency | — | 待 apply 阶段 | ⏳ pending |
 | 3.1 RetryWithIdempotency | — | 待 apply 阶段 | ⏳ pending |
 | 4.1 GET /v1/traces/{trace_id} | — | 待 apply 阶段 | ⏳ pending |
@@ -50,6 +51,7 @@
 | 4.3 定时归档 MinIO | — | 待 apply 阶段 | ⏳ pending |
 | 4.4 冷查询端点 | — | 待 apply 阶段 | ⏳ pending |
 | 4.4 冷查询端点 | — | 待 apply 阶段 | ⏳ pending |
+| 5.1 perf contracts | — | 待 apply 阶段 | ⏳ pending |
 | 5.1 perf contracts | — | 待 apply 阶段 | ⏳ pending |
 | 5.2 /metrics 端点 | — | 待 apply 阶段 | ⏳ pending |
 | 5.3 嵌入 chat.py | — | 待 apply 阶段 | ⏳ pending |
@@ -162,18 +164,19 @@ services/gateway-scanner/tests/fixtures/
 
 ## 7. 范围说明(scope reduction 决策)
 
-task 1.1-4.4 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest + NGINX L4 LB conf + HA failover e2e + RetryWithIdempotency 装饰器 + GET /v1/traces 跨实例查询端点 + 跨实例 trace e2e + 定时归档 job + 冷查询端点。**Phase A + B + C + D 全部完成**。
+task 1.1-5.1 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest + NGINX L4 LB conf + HA failover e2e + RetryWithIdempotency 装饰器 + GET /v1/traces 跨实例查询端点 + 跨实例 trace e2e + 定时归档 job + 冷查询端点 + 4 perf contract Protocol + 4 Noop。**Phase A + B + C + D + E(1/3) 完成**。
 
-剩余 6 个新 task(5.1-5.3 / 6.1 / 7.1-7.2)涉及:
-- **5.1-5.3** perf contracts + `/metrics` 端点 (Phase E)
+剩余 5 个新 task(5.2-5.3 / 6.1 / 7.1-7.2)涉及:
+- **5.2** `/metrics` Prometheus 端点(用 5.1 MetricsExporter Protocol)
+- **5.3** chat.py 嵌入 4 contract 调用点
 - **6.1** 文档(`docs/architecture.md` §4.3.Y)
 - **7.x** 收尾(覆盖率 100% + verify.md 最终版)
 
 ## 8. 后续
 
-- **本 verify.md 草稿会在 5.1 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
+- **本 verify.md 草稿会在 5.2 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
 - **最终 verify.md**(7.2 task)在所有 20 个新 task 完成后写,包含完整 18 个 requirement 的 requirement-by-requirement 证据。
-- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 14/20 任务, 剩 6 个 pending(表 §2 已展开)。
+- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 15/20 任务, 剩 5 个 pending(表 §2 已展开)。
 
 ## 9. Task 1.5 GitHub Actions 详细证据
 
@@ -614,6 +617,55 @@ pytest tests/unit/                                          237 passed, 2 skippe
 **风险 2**:从 S3 拉的所有 key 都重复 GET (没 S3 端 list 优化)
 **决策**:客户端 enumerate 1+ 天的 key 列表, 不调 S3 ListObjectsV2
 **缓解**:≤ 366 个 key 每次 query, 远在 S3 LIST 限额 (1000/key prefix) 之内; 后续如加 list, 改成 S3 ListObjectsV2 即可
+
+## 19. Task 5.1 perf contracts 详细证据
+
+### 19.1 文件清单
+```
+services/audit-and-isolation/app/perf/contracts.py     (260 行, 4 Protocol + 4 Noop + 1 helper)
+services/audit-and-isolation/app/perf/__init__.py     (导出)
+services/audit-and-isolation/tests/unit/test_perf_contracts.py  (24 case)
+```
+
+### 19.2 测试结果
+```
+pytest tests/unit/test_perf_contracts.py -v  →  24 passed
+pytest tests/unit/                             261 passed, 2 skipped
+```
+
+### 19.3 关键设计点
+| 设计点 | 决定 | 原因 |
+|---|---|---|
+| Protocol 而非 ABC | `@runtime_checkable` 装饰 | PEP 544 structural subtyping; 任何有同样方法的类自动满足, 不需 inherit; 未来换 `aiocache` 等第三方库不用 wrapper |
+| Noop 默认实现 | 4 个全 Noop | 安全 fallback: 找不到 real impl 时, 请求通过 + 0 rate limit + 0 cache hit + drop metrics; ops 一眼看出"未配"症状 |
+| RequestBatcher Noop | 返回 `_NeverResolvedFuture` (永不 resolve) | 跟 spec 字面"subscribe to upstream future"保持, 但故意 broken — production 不该用 Noop, test 一旦 await 立刻 timeout 暴露 |
+| MetricsExporter 5 方法 | observe_request/observe_duration/observe_pii_hit/set_active_connections/observe_trace_cache_hit | spec 5.1 字面 5 类指标; 1:1 对应 /metrics 端点的 5 个 metric family (task 5.2) |
+| `RateLimiter.check` 同步 | 是 | fail-fast 429 不用等 event loop; remote-system impl 在 init 阶段 cache 决策 |
+| `ResponseCache.put` ttl per-call | 是 | 静态 FAQ 可 cache 5min, 实时查询只 30s; 不同 prompt 寿命不同 |
+| `RequestBatcher` 返 `asyncio.Future` | 是 | spec 字面 `Future[response]`; 但 Noop 返 `_NeverResolvedFuture` 不是真 Future — Protocol runtime_checkable 不在 RequestBatcher 上 (避免 isinstance 误杀 Noop) |
+| 0 第三方依赖 | 是 | 不用 boto3 / redis-py / prometheus_client; real impl 留 deployment 期 swap |
+
+### 19.4 4 个 Protocol × 4 个 Noop 矩阵
+| Contract | Real impl (production) | Noop (dev/test/fallback) |
+|---|---|---|
+| RateLimiter | token bucket / sliding window / fixed quota | 永返 True (允许一切) |
+| ResponseCache | Redis / in-memory dict | get 永返 None; put 静默 drop |
+| RequestBatcher | in-process batcher with asyncio.Future | 返 `_NeverResolvedFuture` (await 卡死) |
+| MetricsExporter | prometheus_client Counter/Histogram/Gauge | 所有方法 silent drop |
+
+### 19.5 风险与决策记录
+**风险 1**:NoopRequestBatcher 返回 `_NeverResolvedFuture` 不是 `asyncio.Future` 真子类, Protocol 标 `asyncio.Future` 类型不一致。
+**决策**:Protocol 标 `asyncio.Future` 是 spec 字面"subscribe to upstream future"; Noop 故意 broken(用 `_NeverResolvedFuture`)让"production 误用 Noop" 立刻暴露。RequestBatcher 不加 `@runtime_checkable`, 避免 isinstance 误判。
+**缓解**:module docstring 显式说明; test `test_noop_request_batcher_submit_returns_never_resolved_future` 验证 Noop 行为; 5.3 集成时 (chat 端点) 检查 NotImplementedError-style guard 防止生产用 Noop。
+
+**风险 2**:`from __future__ import annotations` 让所有 type hints 变 string, `inspect.signature().return_annotation` 返 `"bool"` 不是 `bool`。
+**决策**:test 用 `ra is bool or ra == "bool" or (hasattr(ra, "__name__") and ra.__name__ == "bool")` 兼容两种形式。
+**缓解**:不需要改 perf/contracts.py 去掉 `from __future__ import annotations` (那个 import 是 module-level 通用, 改不了)。
+
+**风险 3**:5.3 chat 端点集成这 4 个 contract 时, Noop 的 RequestBatcher 返 never-resolved future 会让 e2e hang。
+**决策**:5.3 集成时必须在 lifespan 检查 `RequestBatcher` 不是 `NoopRequestBatcher` 才用, 或者 chat 端点用 try/except 包装 submit() 防止 hang。
+**缓解**:本 task 范围只做 contract, 5.3 集成时由集成代码自己处理这个边界。
+
 
 
 

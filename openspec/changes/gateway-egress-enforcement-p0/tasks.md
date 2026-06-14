@@ -32,7 +32,7 @@
 
 ## 5. 性能 contract + /metrics 端点(2h 内,3 个 task)
 
-- [ ] 5.1 实现 4 个 perf contract Protocol `services/audit-and-isolation/app/perf/contracts.py`:`RateLimiter.check(user_id, model) -> bool` / `ResponseCache.get(request_hash)` + `put(request_hash, response, ttl)` / `RequestBatcher.submit(request) -> Future[response]` / `MetricsExporter` + 4 个 Noop 默认实现,5.1 验证:`tests/unit/test_perf_contracts.py` 验证接口签名稳定 + Noop 行为
+- [x] 5.1 实现 4 个 perf contract Protocol `services/audit-and-isolation/app/perf/contracts.py`:`RateLimiter.check(user_id, model) -> bool` / `ResponseCache.get(request_hash)` + `put(request_hash, response, ttl)` / `RequestBatcher.submit(request) -> Future[response]` / `MetricsExporter` + 4 个 Noop 默认实现,5.1 验证:`tests/unit/test_perf_contracts.py` 验证接口签名稳定 + Noop 行为 ✅ 2026-06-14 完成(24/24 PASS,所有 4 Protocol runtime_checkable)
 - [ ] 5.2 暴露 `/metrics` 端点 `services/audit-and-isolation/app/api/metrics.py`:Prometheus exposition format,5 类指标(requests_total{method,path,status} / duration_seconds_bucket / pii_hits_total{pii_type,action} / active_connections / trace_cache_hits_total),HELP + TYPE 注释,5.2 验证:`tests/integration/test_metrics_endpoint.py` 验证 format + 字段 + 注释
 - [ ] 5.3 在 `services/audit-and-isolation/app/api/chat.py` 主流程嵌入 4 个 contract 调用点(限流 → 缓存 → 批处理 → 指标),失败时降级到 Noop,5.3 验证:`tests/integration/test_contract_integration.py` 验证 Noop 路径可跑通完整 e2e(用 audit-and-isolation 现有 e2e 4 scenarios 复用)
 
