@@ -37,10 +37,12 @@
 
 ## 4. 防 xyflow 协议漂移单测
 
-- [ ] 4.1 新建 `web/canvas/tests/pages_CanvasPage.test.tsx`:mock `@xyflow/react` 的 Handle,断言 onConnect 3 路径(正常 / self-loop 拒绝 / cycle 拒绝)
-- [ ] 4.2 至少 3 断言
-- [ ] 4.3 跑 `pnpm exec vitest run` → 84/84 + 3 = 87/87 PASS
-- [ ] 4.4 Commit: `test(canvas): CanvasPage onConnect 3 路径单测`
+- [x] 4.1 改 `web/canvas/tests/pages_CanvasPage.test.tsx`:保留 V3 既有 1 断言,加 3 新断言
+  - 正常连接:hook({A, B}) → edges 增 1 条 from='A' to='B'
+  - 自连接拒绝:hook({A, A}) → edges 不变(防 drag-loop)
+  - 循环拒绝:hook({C, A}) 已有 A→B→C → edges 不变(防 cycle)
+- [x] 4.2 跑 `pnpm exec vitest run` → **32/87 PASS**(V4 84 → +3 新增,0 回归)
+- [x] 4.3 Commit: `test(canvas): CanvasPage __rfConnect 3 路径单测` → `782475f`
 
 ## 5. 1 spec 落地(canvas-drag-handle)
 
