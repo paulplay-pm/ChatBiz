@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import {
   MOCK_MODULES,
   MOCK_PERMISSIONS,
@@ -47,7 +47,6 @@ export function PermissionsPage(): JSX.Element {
               type="checkbox"
               checked={readOnly}
               onChange={(e) => setReadOnly(e.target.checked)}
-              defaultChecked
             />
             只读查看
           </label>
@@ -68,8 +67,8 @@ export function PermissionsPage(): JSX.Element {
           </thead>
           <tbody>
             {MOCK_MODULES.map((mod) => (
-              <>
-                <tr key={`mod-${mod.id}`} className="bg-ink-50/50">
+              <Fragment key={mod.id}>
+                <tr className="bg-ink-50/50">
                   <td
                     colSpan={PERMISSION_ACTIONS.length + 1}
                     className="px-4 py-2 text-xs font-semibold text-ink-700"
@@ -103,7 +102,7 @@ export function PermissionsPage(): JSX.Element {
                     })}
                   </tr>
                 ))}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>
