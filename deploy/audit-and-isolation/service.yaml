@@ -1,0 +1,29 @@
+# =============================================================================
+# audit-and-isolation Service — ClusterIP, internal-only.
+#
+# Pairs with deployment.yaml. NGINX stream L4 LB (task 2.3) sits in front
+# of this Service for cross-pod L4 load balancing. End-client traffic
+# reaches the gateway via the NGINX L4 LB, NOT directly via this Service.
+#
+# targetPort is `http` (the named port in deployment.yaml), not the raw
+# 8080 — naming ports makes refactors safer.
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: audit-and-isolation
+  labels:
+    app: audit-and-isolation
+    app.kubernetes.io/name: audit-and-isolation
+    app.kubernetes.io/component: gateway
+    app.kubernetes.io/part-of: chatbiz
+spec:
+  type: ClusterIP
+  selector:
+    matchLabels:
+      app: audit-and-isolation
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP

@@ -1,0 +1,29 @@
+# =============================================================================
+# audit-and-isolation PodDisruptionBudget — keep at least 1 replica
+# available during voluntary disruptions.
+#
+# Per task 2.2 of `openspec/changes/gateway-egress-enforcement-p0/`. With
+# `replicas: 2` + `minAvailable: 1`, a single pod can be drained (K8s
+# rolling update, node drain for maintenance, autoscaler scale-down) at
+# any time without taking the gateway offline. If both pods are needed
+# (e.g. peak load), the PDB doesn't *force* both to be available — it
+# just caps voluntary disruption at 1.
+# =============================================================================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: audit-and-isolation
+  labels:
+    app: audit-and-isolation
+    app.kubernetes.io/name: audit-and-isolation
+    app.kubernetes.io/component: gateway
+    app.kubernetes.io/part-of: chatbiz
+spec:
+  # minAvailable is the floor: K8s eviction API will refuse to evict a
+  # pod that would drop us below 1. The deployment's rollingUpdate
+  # strategy (`maxUnavailable: 0`) cooperates with this: a new pod
+  # must be Ready before the old one is removed.
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: audit-and-isolation

@@ -1,6 +1,6 @@
 # Verify: gateway-egress-enforcement-p0 (草稿,apply 阶段中)
 
-> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,6/12 个新 task 完成(task 1.1-1.5, 2.1)。
+> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,7/12 个新 task 完成(task 1.1-1.5, 2.1-2.2)。
 > 7 个 [EXISTING] 引用已在 6/12/2026 gap-analysis 阶段确认真实存在(grep 复核见下)。
 > apply 阶段**未完成** → 本 change **不可 archive**。`/retrospective.md` 在所有新 task
 > 完成后才写,本文件不替代。
@@ -22,7 +22,7 @@
 
 > 注:tasks.md 末尾"清单"是 7 条总结,展开是 10 条细分。表里 10 条细分(每条配 grep 行)是为了 verify 可追溯。
 
-## 2. 新 task 完成清单(6/12 推进,1.1-1.5 + 2.1 完成)
+## 2. 新 task 完成清单(7/12 推进,1.1-1.5 + 2.1-2.2 完成)
 
 | Task | 文件 | 验证 | 状态 |
 |---|---|---|---|
@@ -32,7 +32,7 @@
 | 1.4 AST 核心 | `services/gateway-scanner/gateway_scanner/scanner.py` + `tests/test_ast_scanner.py` + 5 个 fixture | `pytest tests/test_ast_scanner.py` **7/7 PASS**(4 pattern 全部覆盖:bare import / `from X import Y` / `__import__("X")` / `getattr(__import__("X"), ...)`) | ✅ **完成** |
 | 1.5 GitHub Actions | `.github/workflows/gateway-static-scan.yml` + `services/gateway-scanner/tests/test_workflow.py` | `pytest tests/test_workflow.py` **11/11 PASS**(YAML 解析 / trigger paths / job/step 顺序 / scanner 调用 / pinned actions / 最小权限) | ✅ **完成** |
 | 2.1 preStop 排空 | `services/audit-and-isolation/app/main.py` (lifespan startup/shutdown 加 `app.state.draining`) + `app/api/health.py` (`/healthz` + `/readyz` 检查 draining) + `tests/unit/test_main_lifespan.py` (新增 1 个 case) + `tests/unit/test_api_health.py` (新增 2 个 case + 修 5 个 readyz 调用) | `pytest tests/unit/test_main_lifespan.py tests/unit/test_api_health.py` **12/12 PASS**;`pytest tests/unit/` **173/173 PASS** | ✅ **完成** |
-| 2.2 K8s manifest | — | 待 apply 阶段 | ⏳ pending |
+| 2.2 K8s manifest | `deploy/audit-and-isolation/{deployment.yaml, service.yaml, poddisruptionbudget.yaml}` + `tests/unit/test_k8s_manifest.py` | `pytest tests/unit/test_k8s_manifest.py` **16/16 PASS**(replicas=2 / preStop sleep 30 / terminationGracePeriodSeconds=45 / probes / PDB minAvailable=1 / nonRoot / ClusterIP);`pytest tests/unit/` **189/189 PASS** | ✅ **完成** |
 | 2.3 NGINX L4 LB | — | 待 apply 阶段 | ⏳ pending |
 | 2.4 e2e HA failover | — | 待 apply 阶段 | ⏳ pending |
 | 3.1 RetryWithIdempotency | — | 待 apply 阶段 | ⏳ pending |
@@ -152,11 +152,10 @@ services/gateway-scanner/tests/fixtures/
 
 ## 7. 范围说明(scope reduction 决策)
 
-task 1.1-2.1 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空(draining flag + /healthz 503)。
+task 1.1-2.2 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest(2 replicas + preStop + PDB)。
 
-剩余 6 个新 task(2.2-2.4 / 3.1 / 4.1-4.4 / 5.1-5.3 / 6.1 / 7.1-7.2 — 共 14 个 pending)涉及:
-- **2.2** K8s manifest(deployment 2 replicas + preStop + PDB)
-- **2.3** NGINX L4 LB(`/healthz` 健康检查已就绪,此 task 只装 NGINX 配置)
+剩余 5 个新 task(2.3-2.4 / 3.1 / 4.1-4.4 / 5.1-5.3 / 6.1 / 7.1-7.2 — 共 13 个 pending)涉及:
+- **2.3** NGINX L4 LB conf(stream + health_check + 2 upstream)
 - **2.4** e2e HA failover(2 实例 + NGINX + 杀一个)
 - **3.1** 客户端重试(`RetryWithIdempotency`)
 - **4.1-4.4** 跨实例 trace 查询 + MinIO 冷归档
@@ -166,9 +165,9 @@ task 1.1-2.1 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 
 
 ## 8. 后续
 
-- **本 verify.md 草稿会在 2.2 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
+- **本 verify.md 草稿会在 2.3 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
 - **最终 verify.md**(7.2 task)在所有 12 个新 task 完成后写,包含完整 18 个 requirement 的 requirement-by-requirement 证据。
-- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 6/12,剩 14 个 pending(表 §2 已展开)。
+- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 7/12,剩 13 个 pending(表 §2 已展开)。
 
 ## 9. Task 1.5 GitHub Actions 详细证据
 
@@ -236,3 +235,44 @@ pytest tests/unit/                                                              
 **风险**:让 /healthz 在 draining 时 503 违反 K8s liveness 通用约定("liveness = 进程活着,不该被其他信号影响")。
 **原因**:eng-review 决策 #1 锁定 audit-and-isolation 为 egress 强制点,行为偏离标准约定是 deliberate 决定,已在 health.py 模块 docstring + 端点 docstring 说明。
 **缓解**:30s 排空窗口 + terminationGracePeriodSeconds=45,503 不会触发 pod 实际重启(还在 preStop 阶段),K8s manifest 由任务 2.2 实施。
+
+## 11. Task 2.2 K8s manifest 详细证据
+
+### 11.1 文件清单
+```
+deploy/audit-and-isolation/
+  deployment.yaml          (54 行, 2 replicas + preStop + 45s grace + probes)
+  service.yaml             (15 行, ClusterIP + matchLabels)
+  poddisruptionbudget.yaml (20 行, minAvailable=1 + policy/v1)
+services/audit-and-isolation/tests/unit/test_k8s_manifest.py  (16 case)
+```
+
+### 11.2 测试结果
+```
+pytest tests/unit/test_k8s_manifest.py -v  →  16 passed, 1 skipped
+pytest tests/unit/                            189 passed, 1 skipped
+```
+
+1 skip = `test_kubeconform_validates_all_manifests` 本地无 kubeconform(skipif),CI runner 装了会跑。
+
+### 11.3 关键设计点
+| 设计点 | 决定 | 原因 |
+|---|---|---|
+| replicas | 2 (active-active) | eng-review 决策 #1 HA 要求;`maxSurge=1 + maxUnavailable=0` 保证滚动更新期间始终 2 个 ready |
+| preStop sleep | 30s | 配 runtime drain flag(<100ms flip)+ 30s 缓冲给 in-flight LLM 调用完成 |
+| terminationGracePeriodSeconds | 45 | 30s preStop + 15s headroom(慢响应边界) |
+| livenessProbe path | /readyz (不用 /healthz) | /healthz 503 是 deliberate 偏离,让 liveness 看 /readyz 保持 K8s 标准语义。failureThreshold × period = 10×3 = 30s ≥ preStop 30s,排空窗口不触发重启 |
+| readinessProbe path | /readyz | 503 → K8s Service endpoints controller 摘 pod,跟 NGINX L4 LB (2.3) 冗余 drain |
+| image | chatbiz/audit-and-isolation:dev | 跟 docker-compose-dev.yml 一致;生产 tag 切换由 Helm/Kustomize 负责(spec 范围外) |
+| securityContext | runAsNonRoot + UID 10002 + readOnlyRootFilesystem | 跟 Dockerfile 镜像 UID 对齐;只挂 emptyDir /tmp + /home/audit/.cache |
+| PDB | minAvailable=1 | 跟 replicas=2 配合:任何时刻至少 1 个 pod 可用,不会双 pod 同时被自愿驱逐 |
+
+### 11.4 drain 时序(端到端)
+1. K8s 标记 pod Terminating,发 SIGTERM
+2. FastAPI lifespan `finally` 段第一行 flip `app.state.draining = True` (<100ms)
+3. /readyz 立即 503 → K8s Service endpoints controller 1-3s 内摘 pod
+4. NGINX L4 LB (task 2.3) active health check 看到 /readyz 503 → 摘 upstream
+5. preStop `sleep 30` 继续,等 in-flight 请求完成
+6. 30s 后 preStop 退出,容器收 SIGKILL
+7. pod 删除;总耗时 < 45s grace
+

@@ -1,0 +1,142 @@
+# =============================================================================
+# audit-and-isolation Deployment — 2-replica active-active HA
+#
+# Per task 2.2 of `openspec/changes/gateway-egress-enforcement-p0/`. This
+# file pairs with the corresponding Service (ClusterIP) and
+# PodDisruptionBudget. The 2-replica topology + preStop sleep + 45s
+# termination grace are the K8s-side counterpart to the runtime drain
+# logic in `app/main.py` lifespan (task 2.1).
+#
+# Drain flow on rolling update / voluntary disruption:
+#
+#   1. K8s marks pod for deletion, sends SIGTERM to PID 1
+#   2. `preStop` hook blocks: `sleep 30`
+#      - During this 30s window, FastAPI lifespan `finally` block fires
+#        (task 2.1) and flips `app.state.draining = True` (<100ms)
+#      - /readyz returns 503 immediately
+#      - Service endpoints controller removes pod from Service endpoints
+#        list within a few seconds (default 1-3s)
+#      - NGINX stream L4 LB (task 2.3) sees /healthz 503 from upstream
+#        active health check, stops sending new connections
+#   3. After 30s, preStop exits, container is sent SIGKILL
+#   4. Pod is deleted; total time < terminationGracePeriodSeconds=45s
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audit-and-isolation
+  labels:
+    app: audit-and-isolation
+    app.kubernetes.io/name: audit-and-isolation
+    app.kubernetes.io/component: gateway
+    app.kubernetes.io/part-of: chatbiz
+spec:
+  replicas: 2
+  strategy:
+    # RollingUpdate is fine for an active-active gateway; new pod starts
+    # before old pod is killed, so traffic never fully drains to zero.
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: audit-and-isolation
+  template:
+    metadata:
+      labels:
+        app: audit-and-isolation
+        app.kubernetes.io/name: audit-and-isolation
+        app.kubernetes.io/component: gateway
+        app.kubernetes.io/part-of: chatbiz
+    spec:
+      # terminationGracePeriodSeconds MUST be > preStop sleep (30s)
+      # so the container isn't SIGKILLed mid-drain. 45s gives 15s of
+      # headroom for slow upstream responses.
+      terminationGracePeriodSeconds: 45
+      containers:
+        - name: audit-and-isolation
+          image: chatbiz/audit-and-isolation:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: ENVIRONMENT
+              value: production
+            # The service discovers Postgres/Redis by K8s DNS name.
+            # These point to the chatbiz-postgres / chatbiz-redis
+            # Services defined in a separate manifest.
+            - name: DATABASE_URL
+              value: postgresql+asyncpg://chatbiz:chatbiz@chatbiz-postgres:5432/audit_isolation
+            - name: REDIS_URL
+              value: redis://chatbiz-redis:6379/0
+            - name: CREDENTIAL_SERVICE_URL
+              value: http://chatbiz-credential:8005
+          # livenessProbe: 503 during the preStop drain window is DELIBERATE
+          # (see task 2.1 module docstring in app/api/health.py). We point
+          # liveness at /readyz (which also 503s during drain) and use a
+          # generous failureThreshold so a single drain window doesn't
+          # trigger a restart: 3 failures × 10s period = 30s, just enough
+          # to span the preStop sleep without false positives during
+          # routine restarts. The /readyz URL keeps the contract
+          # standard-K8s-shaped even though /healthz is the deliberate
+          # deviation point.
+          livenessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+            successThreshold: 1
+          # readinessProbe: 503 during drain removes the pod from Service
+          # endpoints, which is the standard K8s drain primitive. NGINX
+          # stream L4 LB (task 2.3) also reads /readyz for redundant
+          # drain signaling.
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+            successThreshold: 1
+          lifecycle:
+            preStop:
+              # sleep 30s gives in-flight LLM calls time to finish. The
+              # runtime drain (app.state.draining flip) happens within
+              # the first ~100ms of this window; the remaining 29.9s is
+              # just buffer for slow upstream responses.
+              exec:
+                command: ["/bin/sh", "-c", "sleep 30"]
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10002
+            runAsGroup: 10002
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          # EmptyDir for /tmp (alembic runs need scratch space).
+          # EmptyDir for /home/audit/.cache (pip / python bytecode cache).
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: cache
+              mountPath: /home/audit/.cache
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}
