@@ -27,6 +27,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api.audit_archive import router as audit_archive_router
 from app.api.chat import router as chat_router
 from app.api.health import router as health_router
 from app.api.models import router as models_router
@@ -77,6 +78,7 @@ app.include_router(chat_router, prefix="/v1")
 app.include_router(health_router)
 app.include_router(models_router, prefix="/v1")
 app.include_router(traces_router)
+app.include_router(audit_archive_router)
 
 
 __all__ = ["app", "lifespan"]

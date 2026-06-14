@@ -1,6 +1,6 @@
 # Verify: gateway-egress-enforcement-p0 (草稿,apply 阶段中)
 
-> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,13/16 个新 task 完成(task 1.1-1.5, 2.1-2.4, 3.1, 4.1-4.3)。
+> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,14/20 个新 task 完成(task 1.1-1.5, 2.1-2.4, 3.1, 4.1-4.4)。
 > 7 个 [EXISTING] 引用已在 6/12/2026 gap-analysis 阶段确认真实存在(grep 复核见下)。
 > apply 阶段**未完成** → 本 change **不可 archive**。`/retrospective.md` 在所有新 task
 > 完成后才写,本文件不替代。
@@ -22,7 +22,7 @@
 
 > 注:tasks.md 末尾"清单"是 7 条总结,展开是 10 条细分。表里 10 条细分(每条配 grep 行)是为了 verify 可追溯。
 
-## 2. 新 task 完成清单(13/16 推进,1.1-1.5 + 2.1-2.4 + 3.1 + 4.1-4.3 完成)
+## 2. 新 task 完成清单(14/20 推进,1.1-1.5 + 2.1-2.4 + 3.1 + 4.1-4.4 完成)
 
 | Task | 文件 | 验证 | 状态 |
 |---|---|---|---|
@@ -39,6 +39,7 @@
 | 4.1 GET /v1/traces/{trace_id} | `services/audit-and-isolation/app/api/traces.py` (新加 router,L1 Redis `trace:cache:*` 5min TTL → L2 PG `audit_log` 降级 → 404,populate-on-miss) + `app/main.py` (注册新 router) + `tests/integration/test_traces_endpoint.py` (8 case) | `pytest tests/integration/test_traces_endpoint.py` **8/8 PASS**(4 spec 必含 fixture + 2 path 长度守卫 + 2 常量契约);`pytest tests/unit/` **225/225 PASS** | ✅ **完成** |
 | 4.2 跨实例 e2e trace | `tests/integration/test_trace_e2e.py` (4 case 默认 skip,TRACE_E2E=1 门控) | `pytest tests/integration/test_trace_e2e.py` **4 skipped** (默认);`pytest tests/unit/` **225/225 PASS** | ✅ **完成** |
 | 4.3 定时归档 MinIO | `services/audit-and-isolation/app/jobs/archive_audit.py` (新加 `archive_old_audit_logs()` async + `_serialize_parquet_like` + `_group_by_day` + `ArchiveResult` dataclass) + `tests/unit/test_archive_audit.py` (12 case) | `pytest tests/unit/test_archive_audit.py` **12/12 PASS**(happy path / empty table / S3 upload failure 不删 PG / head_bucket 失败 / cut-off 默认 90d / 序列化稳定 / group by day / 常量契约);`pytest tests/unit/` **237/237 PASS** | ✅ **完成** |
+| 4.4 冷查询端点 | `services/audit-and-isolation/app/api/audit_archive.py` (新加 router,`GET /v1/audit/archive?from=&to=`,asyncio.gather 并发读 MinIO,X-Audit-Source: cold header,head_bucket 预检,366 天上限,日期范围 422 守卫) + `app/main.py` (注册新 router) + `tests/integration/test_audit_archive_endpoint.py` (10 case) | `pytest tests/integration/test_audit_archive_endpoint.py` **10/10 PASS**(happy path / 单日 / 无数据返空 / MinIO unreachable 503 / get_object 失败 503 / 422 守卫 4 类 / 边界 366 天 / 无 S3 client 503);`pytest tests/unit/` **237/237 PASS** | ✅ **完成** |
 | 3.1 RetryWithIdempotency | — | 待 apply 阶段 | ⏳ pending |
 | 3.1 RetryWithIdempotency | — | 待 apply 阶段 | ⏳ pending |
 | 4.1 GET /v1/traces/{trace_id} | — | 待 apply 阶段 | ⏳ pending |
@@ -47,6 +48,7 @@
 | 4.2 e2e trace 跨实例 | — | 待 apply 阶段 | ⏳ pending |
 | 4.3 定时归档 MinIO | — | 待 apply 阶段 | ⏳ pending |
 | 4.3 定时归档 MinIO | — | 待 apply 阶段 | ⏳ pending |
+| 4.4 冷查询端点 | — | 待 apply 阶段 | ⏳ pending |
 | 4.4 冷查询端点 | — | 待 apply 阶段 | ⏳ pending |
 | 5.1 perf contracts | — | 待 apply 阶段 | ⏳ pending |
 | 5.2 /metrics 端点 | — | 待 apply 阶段 | ⏳ pending |
@@ -160,21 +162,18 @@ services/gateway-scanner/tests/fixtures/
 
 ## 7. 范围说明(scope reduction 决策)
 
-task 1.1-4.3 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest + NGINX L4 LB conf + HA failover e2e + RetryWithIdempotency 装饰器 + GET /v1/traces 跨实例查询端点 + 跨实例 trace e2e + 定时归档 job。**Phase A + B + C + D(3/4) 完成**。
+task 1.1-4.4 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest + NGINX L4 LB conf + HA failover e2e + RetryWithIdempotency 装饰器 + GET /v1/traces 跨实例查询端点 + 跨实例 trace e2e + 定时归档 job + 冷查询端点。**Phase A + B + C + D 全部完成**。
 
-剩余 7 个新 task(4.4 / 5.1-5.3 / 6.1 / 7.1-7.2)涉及:
-- **4.4** 冷查询端点 (Phase D)
+剩余 6 个新 task(5.1-5.3 / 6.1 / 7.1-7.2)涉及:
 - **5.1-5.3** perf contracts + `/metrics` 端点 (Phase E)
 - **6.1** 文档(`docs/architecture.md` §4.3.Y)
 - **7.x** 收尾(覆盖率 100% + verify.md 最终版)
 
-(注: tasks.md 实际列出 20 个 task (1.1-1.5=5 + 2.1-2.4=4 + 3.1=1 + 4.1-4.4=4 + 5.1-5.3=3 + 6.1=1 + 7.1-7.2=2), 不是先前误算的 12。)
-
 ## 8. 后续
 
-- **本 verify.md 草稿会在 4.4 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
+- **本 verify.md 草稿会在 5.1 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
 - **最终 verify.md**(7.2 task)在所有 20 个新 task 完成后写,包含完整 18 个 requirement 的 requirement-by-requirement 证据。
-- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 13/20 任务, 剩 7 个 pending(表 §2 已展开)。
+- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 14/20 任务, 剩 6 个 pending(表 §2 已展开)。
 
 ## 9. Task 1.5 GitHub Actions 详细证据
 
@@ -566,6 +565,56 @@ pytest tests/unit/                            237 passed, 2 skipped
 **风险 3**:delete rowcount != uploaded count 时, 只 warn 不 raise。
 **决策**:实际 rowcount 通常 0 (transaction 失败回滚) 或精确匹配; 不匹配 = 罕见网络抖, 不让 job 整体失败, 留给下日 reconcile。
 **缓解**:warn-level log, 监控可 alert on warn; 不在 ArchiveResult 里 surface (避免下游 metrics 误报)。
+
+## 18. Task 4.4 冷查询端点 详细证据
+
+### 18.1 文件清单
+```
+services/audit-and-isolation/app/api/audit_archive.py             (220 行, 新加)
+services/audit-and-isolation/app/main.py                            (改: import + include_router)
+services/audit-and-isolation/tests/integration/test_audit_archive_endpoint.py  (10 case)
+```
+
+### 18.2 测试结果
+```
+pytest tests/integration/test_audit_archive_endpoint.py -v  →  10 passed
+pytest tests/unit/                                          237 passed, 2 skipped
+```
+
+### 18.3 关键设计点
+| 设计点 | 决定 | 原因 |
+|---|---|---|
+| 路径 | `GET /v1/audit/archive?from=&to=` (query) | spec 字面; query param 比 path 灵活 (日期范围 + 将来加 `?model=` 等 filter) |
+| Date 范围 | max 366 天 (1 year) | 防止 ops 误操作扫 10 年 archive; 366 天足够 1-year 合规报告 |
+| S3 client 注入 | `set_s3_client()` 在 lifespan 注入 | 测试可传 fake, 部署传 boto3 (lifespan task 2.1 之后做) |
+| 响应头 | `X-Audit-Source: cold` | spec 字面; 调试一眼看 hot vs cold 后端 |
+| asyncio.gather 并发读 | 是 | 30 天 query = 30 个独立 S3 GET, 并发 = ~300ms p99; 串行 ~3s |
+| head_bucket 预检 | 是 | 跟 4.3 一致; 防止 query 触发一堆 S3 GET 后才发现 bucket 不通 |
+| 文件格式 | JSONL (跟 4.3 一致) | 4.3 写入时是 jsonl, 4.4 读时也读 jsonl; 换 parquet 时两处一起改 |
+| 422 守卫 | (a) from/to 非 yyyy-mm-dd (b) to < from (c) 范围 > 366 天 | FastAPI Query pattern + 业务逻辑双层 |
+| No S3 client 503 | 是 | 跟 MinIO unreachable 503 区分 (detail 文案不同), ops 一眼分清是配置问题还是网络问题 |
+
+### 18.4 端点行为矩阵
+| from / to | MinIO 状态 | 响应 |
+|---|---|---|
+| 合法范围, 有数据 | OK | 200 + events + `X-Audit-Source: cold` |
+| 合法范围, 无数据 | OK | 200 + empty events + header 仍在 |
+| 范围 > 366 天 | (无关) | 422 (range too wide) |
+| 'to' < 'from' | (无关) | 422 (to < from) |
+| 非 yyyy-mm-dd 格式 | (无关) | 422 (Query pattern) |
+| MinIO unreachable (head_bucket) | fail | 503 + "archive storage unavailable" |
+| MinIO get_object 失败 | partial | 503 + 同上 (gather 任一失败即 503) |
+| S3 client 未注入 | (无 client) | 503 + "no s3 client configured" |
+
+### 18.5 风险与决策记录
+**风险 1**:asyncio.gather fail-fast — 一个 key 不可访问导致整 503
+**决策**:fail-fast 是 spec 字面("MinIO 失败 503"), 而不是 partial success
+**缓解**:如果 future use case 需要 "best-effort partial query", 在 response body 加 warnings 数组 (现在不返, 因为 spec 没要求)
+
+**风险 2**:从 S3 拉的所有 key 都重复 GET (没 S3 端 list 优化)
+**决策**:客户端 enumerate 1+ 天的 key 列表, 不调 S3 ListObjectsV2
+**缓解**:≤ 366 个 key 每次 query, 远在 S3 LIST 限额 (1000/key prefix) 之内; 后续如加 list, 改成 S3 ListObjectsV2 即可
+
 
 
 
