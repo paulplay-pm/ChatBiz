@@ -79,11 +79,11 @@
 
 ## 8. 跨 app e2e(portal → /admin/users)扩展 V2
 
-- [ ] 8.1 改 `web/portal/e2e/cross-app-jump.spec.ts`:加 1 case "portal: 点击系统管理→用户列表跳 /admin/users"(需先确认 nginx 容器起 5173)
-- [ ] 8.2 跑 `pnpm exec playwright test --config=playwright.cross-app.config.ts` 期望 3/3 PASS
-- [ ] 8.3 跑 `pnpm exec playwright test` 在 canvas 期望 6/8(=baseline)
-- [ ] 8.4 跑 `pnpm exec playwright test` 在 admin 期望 ≥ baseline(1/4,若新增 5 子页 e2e 通过更多)
-- [ ] 8.5 Commit: `test(portal): 跨 app e2e 加 portal → /admin/users`
+- [x] 8.1 改 `web/portal/e2e/cross-app-jump.spec.ts`:删 V2 「index card → /admin/」失效 case(T1 改后);保留 V2 工作流跳 canvas;加 3 新 case:meta refresh / + 系统管理 → /admin/users + 系统管理 → /admin/roles
+- [x] 8.2 跑 `pnpm exec playwright test --config=playwright.cross-app.config.ts` → 4/4 PASS
+- [x] 8.3 跑 `pnpm exec playwright test` 在 canvas → 1/8(=V2 baseline,0 回归)
+- [x] 8.4 跑 `pnpm exec playwright test` 在 admin → 1/5(=V2 baseline,0 回归)
+- [x] 8.5 Commit: `test(portal): 跨 app e2e 扩展 4 case` → `4541329`
 
 ## 9. portal→canvas 5-path curl + V1 baseline 对比
 
