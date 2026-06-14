@@ -1,0 +1,106 @@
+# =============================================================================
+# gateway-static-scan — compile-time guard against direct LLM provider SDK
+# imports in ChatBiz services.
+#
+# Triggers on every PR that touches `services/` or `libs/`, plus manual
+# dispatch. The job installs `services/gateway-scanner/` (3 runtime deps:
+# pyyaml / click / rich) and runs it over the service tree. Exit code 1
+# (violations found) fails the PR.
+#
+# Per task 1.5 of `openspec/changes/gateway-egress-enforcement-p0/`. The
+# scanner is policy enforced by eng-review decision #1: the data-isolation
+# gateway (`services/audit-and-isolation/`) is the egress enforcement point
+# for all LLM upstream calls; no service may import an LLM SDK directly.
+# =============================================================================
+
+name: gateway-static-scan
+
+on:
+  pull_request:
+    paths:
+      - "services/**"
+      - "libs/**"
+      - "services/gateway-scanner/**"
+      - ".github/workflows/gateway-static-scan.yml"
+  push:
+    branches: [main]
+    paths:
+      - "services/**"
+      - "libs/**"
+  workflow_dispatch: {}
+
+# Minimal permissions: read repo content only. No secrets, no network beyond
+# pip + actions/checkout. Cancel in-progress runs on new pushes to the same PR.
+permissions:
+  contents: read
+
+concurrency:
+  group: gateway-static-scan-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    name: Scan services/ + libs/ for LLM SDK imports
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/gateway-scanner/pyproject.toml
+
+      - name: Install gateway-scanner
+        # Editable install so the CLI entry point `gateway-scanner` is on PATH
+        # and `python -m gateway_scanner` resolves. The package has only 3
+        # runtime deps (pyyaml / click / rich) so this is fast.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e services/gateway-scanner
+
+      - name: Verify scanner is importable
+        # Sanity check: catch install failures early with a clear message,
+        # before reporting 0 violations (which would silently pass CI).
+        run: |
+          python -c "import gateway_scanner; print('scanner version:', gateway_scanner.__version__)"
+          python -m gateway_scanner --help
+
+      - name: Scan services/ + libs/ for LLM SDK imports
+        # The scanner exits 0 (clean), 1 (violations), or 2 (setup error).
+        # GitHub Actions treats any non-zero exit as a failed step, which
+        # blocks PR merge when branch protection requires this check.
+        #
+        # We pass the scanner's own blocklist explicitly (vs relying on
+        # `./gateway_scanner.yaml` in the cwd) so the workflow is self-
+        # contained and works regardless of where the runner checks out.
+        run: |
+          set -euo pipefail
+          echo "Scanning services/ ..."
+          python -m gateway_scanner services/ \
+            --blocklist services/gateway-scanner/blocklist.yaml \
+            --allowlist services/gateway-scanner/allowlist.yaml
+
+          # libs/ doesn't exist yet (placeholder for future shared modules).
+          # If/when it does, the scanner will pick it up automatically since
+          # it's listed in the `on.pull_request.paths` trigger.
+          if [ -d libs ]; then
+            echo "Scanning libs/ ..."
+            python -m gateway_scanner libs/ \
+              --blocklist services/gateway-scanner/blocklist.yaml \
+              --allowlist services/gateway-scanner/allowlist.yaml
+          else
+            echo "No libs/ directory yet — skipping."
+          fi
+
+      - name: Annotate scan result
+        if: always()
+        # Always succeed at the step level (we don't want the workflow to
+        # double-fail); the scan step itself decides pass/fail. This step
+        # just adds a friendly summary line in the run log.
+        run: |
+          echo "::notice::gateway-static-scan completed — see 'Scan services/' step for details."

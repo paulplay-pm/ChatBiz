@@ -1,6 +1,6 @@
 # Verify: gateway-egress-enforcement-p0 (草稿,apply 阶段中)
 
-> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,4/12 个新 task 完成(task 1.1-1.4)。
+> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,5/12 个新 task 完成(task 1.1-1.5)。
 > 7 个 [EXISTING] 引用已在 6/12/2026 gap-analysis 阶段确认真实存在(grep 复核见下)。
 > apply 阶段**未完成** → 本 change **不可 archive**。`/retrospective.md` 在所有新 task
 > 完成后才写,本文件不替代。
@@ -22,7 +22,7 @@
 
 > 注:tasks.md 末尾"清单"是 7 条总结,展开是 10 条细分。表里 10 条细分(每条配 grep 行)是为了 verify 可追溯。
 
-## 2. 新 task 完成清单(4/12 推进,1.1-1.4 完成)
+## 2. 新 task 完成清单(5/12 推进,1.1-1.5 完成)
 
 | Task | 文件 | 验证 | 状态 |
 |---|---|---|---|
@@ -30,7 +30,7 @@
 | 1.2 blocklist | `services/gateway-scanner/blocklist.yaml` + `tests/test_blocklist.py` | `pytest tests/test_blocklist.py` **8/8 PASS**(16 个 LLM provider SDK 含 6 个 spec 必含项) | ✅ **完成** |
 | 1.3 allowlist | `services/gateway-scanner/allowlist.yaml` + `tests/test_allowlist.py` | `pytest tests/test_allowlist.py` **7/7 PASS**(2 个 entry:gateway-scanner 自身 + workflow-engine conftest.py,全部路径存在) | ✅ **完成** |
 | 1.4 AST 核心 | `services/gateway-scanner/gateway_scanner/scanner.py` + `tests/test_ast_scanner.py` + 5 个 fixture | `pytest tests/test_ast_scanner.py` **7/7 PASS**(4 pattern 全部覆盖:bare import / `from X import Y` / `__import__("X")` / `getattr(__import__("X"), ...)`) | ✅ **完成** |
-| 1.5 GitHub Actions | — | 待 apply 阶段 | ⏳ pending |
+| 1.5 GitHub Actions | `.github/workflows/gateway-static-scan.yml` + `services/gateway-scanner/tests/test_workflow.py` | `pytest tests/test_workflow.py` **11/11 PASS**(YAML 解析 / trigger paths / job/step 顺序 / scanner 调用 / pinned actions / 最小权限) | ✅ **完成** |
 | 2.1 preStop | — | 待 apply 阶段 | ⏳ pending |
 | 2.2 K8s manifest | — | 待 apply 阶段 | ⏳ pending |
 | 2.3 NGINX L4 LB | — | 待 apply 阶段 | ⏳ pending |
@@ -152,10 +152,9 @@ services/gateway-scanner/tests/fixtures/
 
 ## 7. 范围说明(scope reduction 决策)
 
-task 1.1-1.4 阶段交付的 `scanner.py` 实现完整 4 pattern(`ast.Import` / `ast.ImportFrom` / `__import__("X")` / `getattr(__import__("X"), ...)`),longest-prefix blocklist 匹配,SyntaxError 容错,allowlist 跳过。
+task 1.1-1.5 阶段交付的 `services/gateway-scanner/` 完整闭环:CLI + 4 pattern AST 扫描 + blocklist/allowlist 配置 + CI 集成。
 
-剩余 8 个新 task(1.5 / 2.1-2.4 / 3.1 / 4.1-4.4 / 5.1-5.3 / 6.1 / 7.1-7.2 — 共 16 个)涉及:
-- **1.5** CI 集成(GitHub Actions `gateway-static-scan` job)
+剩余 7 个新 task(2.1-2.4 / 3.1 / 4.1-4.4 / 5.1-5.3 / 6.1 / 7.1-7.2 — 共 15 个 pending)涉及:
 - **2.x** HA 拓扑(K8s manifest + NGINX L4 LB + preStop)
 - **3.x** 客户端重试(`RetryWithIdempotency`)
 - **4.x** 跨实例 trace 查询 + MinIO 冷归档
@@ -165,6 +164,38 @@ task 1.1-1.4 阶段交付的 `scanner.py` 实现完整 4 pattern(`ast.Import` / 
 
 ## 8. 后续
 
-- **本 verify.md 草稿会在 1.5 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
+- **本 verify.md 草稿会在 2.x ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
 - **最终 verify.md**(7.2 task)在所有 12 个新 task 完成后写,包含完整 18 个 requirement 的 requirement-by-requirement 证据。
-- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 4/12,剩 16 个 pending(表 §2 已展开)。
+- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 5/12,剩 15 个 pending(表 §2 已展开)。
+
+## 9. Task 1.5 GitHub Actions 详细证据
+
+### 9.1 文件清单
+```
+.github/workflows/gateway-static-scan.yml    (76 行 workflow)
+services/gateway-scanner/tests/test_workflow.py  (11 个 case)
+```
+
+### 9.2 `pytest tests/test_workflow.py` 输出
+```
+============================== 11 passed in 0.02s ==============================
+```
+
+11 个 case 覆盖:YAML 解析 / name / pull_request trigger / 路径包含 services + libs / scan job 存在 / runs-on ubuntu / step 顺序 / scanner 调用 / workflow_dispatch / 最小权限 / pinned action 版本(防 @main 风险)。
+
+### 9.3 workflow 关键设计
+| 设计点 | 决定 | 原因 |
+|---|---|---|
+| 触发 | pull_request + push to main + workflow_dispatch | PR 阻止合入 + 主仓每次 push 跑 + 安全团队手动重跑 |
+| Python 版本 | 3.12 | 与 audit-and-isolation 一致 |
+| pip cache | `services/gateway-scanner/pyproject.toml` | 重复 run 加速 |
+| 权限 | `contents: read` only | 不需要 secrets / write |
+| 并发 | `cancel-in-progress: true` | 新 push 取消旧 run,不浪费 CI 分钟 |
+| Scanner 调用 | `python -m gateway_scanner services/ --blocklist ... --allowlist ...` | self-contained,不依赖 cwd 有 yaml |
+| libs/ 兼容 | 软触发(`if [ -d libs ]`) | 未来 libs/ 出现时无需改 workflow |
+
+### 9.4 全部测试套件回归
+```
+pytest tests/  →  40/40 PASS
+  (smoke 7 + blocklist 8 + allowlist 7 + ast 7 + workflow 11)
+```

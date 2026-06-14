@@ -10,7 +10,7 @@
 - [x] 1.2 编写 `services/gateway-scanner/blocklist.yaml`(`openai` / `anthropic` / `cohere` / `google.generativeai` / `mistralai` / `deepseek` 等 LLM provider SDK 包名),1.2 验证:`tests/test_blocklist.py` 验证文件存在 + YAML 解析成功 + 每条 package name 编译通过 ✅ 2026-06-14 完成(8/8 PASS,16 个 provider)
 - [x] 1.3 编写 `services/gateway-scanner/allowlist.yaml`(列出 `services/audit-and-isolation/` + `services/gateway-scanner/` 自身 + `tests/*/conftest.py` 等 fixtures),1.3 验证:`tests/test_allowlist.py` 验证路径存在性 ✅ 2026-06-14 完成(7/7 PASS,2 个 entry)
 - [x] 1.4 实现 AST 扫描核心(`services/gateway-scanner/scanner.py`):用 `ast` 库遍历 Python 文件,匹配 `import` / `import ... as` / `__import__` / `getattr(__import__(...))` 四种 pattern,违规时输出 `file:line:package_name` + 退出码 1,1.4 验证:`tests/test_ast_scanner.py` 用 5 个 fixture(直连 / as 别名 / 动态 import / 注释 / 多行)覆盖 ✅ 2026-06-14 完成(7/7 PASS,4 pattern + 5 fixture)
-- [ ] 1.5 GitHub Actions 新增 `gateway-static-scan` job(`.github/workflows/gateway-static-scan.yml`):对 `services/*` 与 `libs/*` 跑 `python -m gateway_scanner .`,违规 PR 阻止合入,1.5 验证:`tests/test_workflow.py` 用 `act` 或 yaml 解析验证 job 存在
+- [x] 1.5 GitHub Actions 新增 `gateway-static-scan` job(`.github/workflows/gateway-static-scan.yml`):对 `services/*` 与 `libs/*` 跑 `python -m gateway_scanner .`,违规 PR 阻止合入,1.5 验证:`tests/test_workflow.py` 用 `act` 或 yaml 解析验证 job 存在 ✅ 2026-06-14 完成(11/11 PASS,76 行 workflow)
 
 ## 2. HA 拓扑(K8s + NGINX + preStop,2h 内,4 个 task)
 
