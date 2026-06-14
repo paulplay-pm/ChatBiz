@@ -143,6 +143,22 @@ function CanvasPageInner() {
     [nodes, edges, addEdge, toast],
   );
 
+  // V5 T2: dev-only __rfConnect hook,供 e2e 替代 mouse drag
+  // 根因:xyflow .react-flow__handle 默认 6x6 px,Playwright mouse.move
+  // linear interpolation ±1-2 px 偏差,导致 elementFromPoint 拿不到 handle。
+  // Hook 走 onConnect 同步路径,行为与真实 drag 完全等价。
+  // Vite dead-code-eliminate prod build,window.__rfConnect 不挂载。
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    type RfConnectArgs = { source: string; target: string };
+    (window as unknown as { __rfConnect: (args: RfConnectArgs) => void }).__rfConnect = ({ source, target }: RfConnectArgs) => {
+      onConnect({ source, target, sourceHandle: null, targetHandle: null });
+    };
+    return () => {
+      delete (window as unknown as { __rfConnect?: unknown }).__rfConnect;
+    };
+  }, [onConnect]);
+
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
