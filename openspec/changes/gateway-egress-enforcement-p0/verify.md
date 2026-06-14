@@ -1,6 +1,6 @@
 # Verify: gateway-egress-enforcement-p0 (草稿,apply 阶段中)
 
-> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,16/20 个新 task 完成(task 1.1-1.5, 2.1-2.4, 3.1, 4.1-4.4, 5.1-5.2)。
+> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,17/20 个新 task 完成(task 1.1-1.5, 2.1-2.4, 3.1, 4.1-4.4, 5.1-5.3)。
 > 7 个 [EXISTING] 引用已在 6/12/2026 gap-analysis 阶段确认真实存在(grep 复核见下)。
 > apply 阶段**未完成** → 本 change **不可 archive**。`/retrospective.md` 在所有新 task
 > 完成后才写,本文件不替代。
@@ -22,7 +22,7 @@
 
 > 注:tasks.md 末尾"清单"是 7 条总结,展开是 10 条细分。表里 10 条细分(每条配 grep 行)是为了 verify 可追溯。
 
-## 2. 新 task 完成清单(16/20 推进,1.1-1.5 + 2.1-2.4 + 3.1 + 4.1-4.4 + 5.1-5.2 完成)
+## 2. 新 task 完成清单(17/20 推进,1.1-1.5 + 2.1-2.4 + 3.1 + 4.1-4.4 + 5.1-5.3 完成)
 
 | Task | 文件 | 验证 | 状态 |
 |---|---|---|---|
@@ -42,6 +42,7 @@
 | 4.4 冷查询端点 | `services/audit-and-isolation/app/api/audit_archive.py` (新加 router,`GET /v1/audit/archive?from=&to=`,asyncio.gather 并发读 MinIO,X-Audit-Source: cold header,head_bucket 预检,366 天上限,日期范围 422 守卫) + `app/main.py` (注册新 router) + `tests/integration/test_audit_archive_endpoint.py` (10 case) | `pytest tests/integration/test_audit_archive_endpoint.py` **10/10 PASS**(happy path / 单日 / 无数据返空 / MinIO unreachable 503 / get_object 失败 503 / 422 守卫 4 类 / 边界 366 天 / 无 S3 client 503);`pytest tests/unit/` **237/237 PASS** | ✅ **完成** |
 | 5.1 perf contracts | `services/audit-and-isolation/app/perf/contracts.py` (新加 4 个 Protocol:RateLimiter / ResponseCache / RequestBatcher / MetricsExporter + 4 个 Noop 默认实现) + `app/perf/__init__.py` (导出) + `tests/unit/test_perf_contracts.py` (24 case) | `pytest tests/unit/test_perf_contracts.py` **24/24 PASS**(4 Protocol 签名守卫 + 4 Noop 行为 + 4 real impl 满足 Protocol + cross-cutting 3 + 4 runtime_checkable 守卫);`pytest tests/unit/` **261/261 PASS** | ✅ **完成** |
 | 5.2 /metrics 端点 | `app/metrics.py` (扩: 加 5 个 V6b metric: `requests_total{method,path,status}` Counter + `duration_seconds` Histogram + `pii_hits_total{pii_type,action}` Counter + `active_connections` Gauge + `trace_cache_hits_total` Counter + `render_metrics()` helper) + `app/api/metrics.py` (新加 router,`GET /metrics` 返 Prometheus text format) + `app/main.py` (注册新 router) + `tests/integration/test_metrics_endpoint.py` (17 case) | `pytest tests/integration/test_metrics_endpoint.py` **17/17 PASS**(200 + Content-Type + 5 metric 都在 + 5 TYPE 守卫 + HELP 长度 + counter increment + gauge set + histogram bucket/sum/count + 路由注册);`pytest tests/unit/` **261/261 PASS** | ✅ **完成** |
+| 5.3 chat.py 嵌入 4 contract | `app/api/chat.py` (改: 4 个 contract 调用点 — RateLimiter.check @ step 4.5 → 429 / ResponseCache.get+put @ step 4.6 + 7.5 / RequestBatcher.submit @ step 6 替代 call_upstream(检测 Noop 走直调) / MetricsExporter.observe_request + observe_duration + observe_pii_hit @ 4 过渡点) + `app/api/dependencies.py` (新加: 4 个 getter + 4 个 state 常量 + Noop fallback) + `tests/integration/test_contract_integration.py` (6 case) | `pytest tests/integration/test_contract_integration.py` **6/6 PASS**(4 scenario 复用 + 429 + Noop 降级);`pytest tests/integration/test_e2e_4_scenarios.py` **4/4 PASS** (现有 4 场景不破坏);`pytest tests/unit/` **261/261 PASS** | ✅ **完成** |
 | 3.1 RetryWithIdempotency | — | 待 apply 阶段 | ⏳ pending |
 | 3.1 RetryWithIdempotency | — | 待 apply 阶段 | ⏳ pending |
 | 4.1 GET /v1/traces/{trace_id} | — | 待 apply 阶段 | ⏳ pending |
@@ -163,18 +164,17 @@ services/gateway-scanner/tests/fixtures/
 
 ## 7. 范围说明(scope reduction 决策)
 
-task 1.1-5.2 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest + NGINX L4 LB conf + HA failover e2e + RetryWithIdempotency 装饰器 + GET /v1/traces 跨实例查询端点 + 跨实例 trace e2e + 定时归档 job + 冷查询端点 + 4 perf contract Protocol + 4 Noop + /metrics Prometheus 端点。**Phase A + B + C + D + E(2/3) 完成**。
+task 1.1-5.3 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest + NGINX L4 LB conf + HA failover e2e + RetryWithIdempotency 装饰器 + GET /v1/traces 跨实例查询端点 + 跨实例 trace e2e + 定时归档 job + 冷查询端点 + 4 perf contract Protocol + 4 Noop + /metrics Prometheus 端点 + chat.py 嵌入 4 contract。**Phase A + B + C + D + E 全部完成**。
 
-剩余 4 个新 task(5.3 / 6.1 / 7.1-7.2)涉及:
-- **5.3** chat.py 嵌入 4 contract 调用点(用 5.1 Protocol + 5.2 metrics)
+剩余 3 个新 task(6.1 / 7.1-7.2)涉及:
 - **6.1** 文档(`docs/architecture.md` §4.3.Y)
 - **7.x** 收尾(覆盖率 100% + verify.md 最终版)
 
 ## 8. 后续
 
-- **本 verify.md 草稿会在 5.3 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
+- **本 verify.md 草稿会在 6.1 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
 - **最终 verify.md**(7.2 task)在所有 20 个新 task 完成后写,包含完整 18 个 requirement 的 requirement-by-requirement 证据。
-- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 16/20 任务, 剩 4 个 pending(表 §2 已展开)。
+- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 17/20 任务, 剩 3 个 pending(表 §2 已展开)。
 
 ## 9. Task 1.5 GitHub Actions 详细证据
 
@@ -712,7 +712,7 @@ pytest tests/unit/                                   261 passed, 2 skipped
 | test_metrics_endpoint_no_auth_required | 不需要 header |
 | test_metrics_route_registered_in_app | /metrics 在 app.routes |
 
-### 20.5 风险与决策记录
+## 20.5 风险与决策记录
 **风险 1**:`Content-Type` 文字从 `version=0.0.4` 升到 `version=1.0.0` (prometheus_client 升级); test 文字 "version=0.0.4" 失败。
 **决策**:test 改用 `assert "version=" in ct` 接受任何 version 值, 不绑特定 format version。
 **缓解**:未来 prometheus_client 再 bump 也不会 fail; spec 没说具体 version 字符串。
@@ -720,6 +720,59 @@ pytest tests/unit/                                   261 passed, 2 skipped
 **风险 2**:5.1 设计的 MetricsExporter Protocol 没被 5.2 直接消费 — Protocol 是"写入"路径 (chat 调 `observe_*`), 5.2 端点是"读取"路径 (Prometheus 调 `render_metrics`)。两件事分开。
 **决策**:本 task 范围只做"端点 + 5 metric 注册", 不实现 Protocol 的 production 实装。
 **缓解**:5.3 集成 chat 端点时, 会在 lifespan 注入 MetricsExporter (用 prometheus_client 真对象),Protocol 跟 5.2 metric 1:1 对应 (5 方法 ↔ 5 metric), 集成代码自己 wire。
+
+## 21. Task 5.3 chat.py 嵌入 4 contract 详细证据
+
+### 21.1 文件清单
+```
+services/audit-and-isolation/app/api/chat.py                    (改: 4 contract 调用点 + observe_request/duration/pii_hit)
+services/audit-and-isolation/app/api/dependencies.py            (新加: 4 个 getter + 4 state 常量)
+services/audit-and-isolation/tests/integration/test_contract_integration.py  (6 case)
+```
+
+### 21.2 测试结果
+```
+pytest tests/integration/test_contract_integration.py  ->  6 passed
+pytest tests/integration/test_e2e_4_scenarios.py       ->  4 passed (复用)
+pytest tests/unit/                                     ->  261 passed, 2 skipped
+```
+
+### 21.3 4 contract 调用点映射
+| Contract | Chat 端位置 | 行为 |
+|---|---|---|
+| RateLimiter.check | step 4.5 (auth 后, routing 前) | 返 False → 429 + metrics.observe_request(429) |
+| ResponseCache.get | step 4.6 (routing 后, PII 前) | 命中 → 直接返 Response (跳过 PII/upstream); 5min TTL |
+| ResponseCache.put | step 7.5 (响应后, audit 前) | 写回, ttl_seconds=300 |
+| RequestBatcher.submit | step 6 (替代直接 call_upstream) | isinstance(NoopRequestBatcher) 检测 → dev 走直调, prod 走 batcher |
+| MetricsExporter.observe_request | 5 过渡点 (entry / 422 / 413 / 400 / 200 / 429 / 502 / 504) | 每次返响应/异常前调 |
+| MetricsExporter.observe_duration | step 8 成功后 | 完整请求时长 |
+| MetricsExporter.observe_pii_hit | step 5 每次 PII type 命中 | type + "redact" |
+| MetricsExporter.observe_trace_cache_hit | (不在 chat, 在 4.1 traces endpoint) | task 4.1 触发 |
+
+### 21.4 关键设计点
+| 设计点 | 决定 | 原因 |
+|---|---|---|
+| 4 contract 注入方式 | `app.state.{rate_limiter, response_cache, request_batcher, metrics}` lifespan 注入 + 依赖 getter 拉取 | 跟 credential_client 一样的 app.state 模式; 测试通过 `app.state.X = Y` 注入 |
+| Noop fallback | 依赖 getter 用 `getattr(state, X, NoopX())` | dev/test 不配 lifespan 也能工作; 跟 5.1 Noop 设计一致 |
+| RequestBatcher Noop 检测 | `isinstance(request_batcher, NoopRequestBatcher)` | 5.1 NoopRequestBatcher 返 _NeverResolvedFuture (await 卡死); dev 必须 fallback 到 call_upstream 直接调 |
+| ResponseCache key | `f"{body['model']}:{prompt_hash(messages)}"` | content-addressed, 同一 prompt 跨 user 命中; 跟 4.1 trace cache key 风格一致 |
+| ResponseCache TTL | 300s (5min) | 5.1 spec 字面, ResponseCache 留 per-call ttl |
+| 错误路径 metrics | 每个 except 调 `metrics.observe_request(...,status_code)` | prometheus 看到的是真实的 status label, 不只是 happy path |
+| observe_trace_cache_hit | 不在 chat 主流程, 在 4.1 traces endpoint 触发 | spec 5.1 5 个方法都在 MetricsExporter 上, 但 spec 5.3 4 contract 调用点不包含 trace cache hit (在 4.1) |
+
+### 21.5 风险与决策记录
+**风险 1**:集成测试 6 个 case 跑 1 个就 fail with `'dict' object is not callable` — 根因是 `_make_route_picker` 我把 `public_route` 当 callable 调 (`public_route(model)`), 但 `public_route` 已经是 dict, 应该是 `public_route` (不调)。 4-scenarios 测试已有 picker 正确用法 (返 dict 不调)。
+**决策**:对齐 4-scenarios picker 实现, picker 返 dict 而非 dict-callable。
+**缓解**:6 case 全过; picker 行为跟现有 4-scenarios 一致; 文档 surface 在 §21.5。
+
+**风险 2**:`isinstance(request_batcher, NoopRequestBatcher)` 每次 chat 请求都做, 性能开销 < 1µs, 可忽略。
+**决策**:接受这个 micro-cost, 换 dev/prod 路径清晰可读。
+**缓解**:docstring 解释, 未来如需优化可换 attribute flag。
+
+**风险 3**:NoopRequestBatcher 返 never-resolve future, 集成时容易 hang。
+**决策**:chat 端**显式检测** isinstance(NoopRequestBatcher), 走直调 call_upstream, 让 dev/test 永远不死锁。
+**缓解**:5.1 perf_contracts test 验证 Noop 行为; contract_integration test 6 跑全 OK (Noop 路径完整 e2e); production lifespan 会用真 batcher 替 Noop。
+
 
 
 

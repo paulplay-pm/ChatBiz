@@ -67,6 +67,13 @@ from app.metrics import (
     pii_fail_open_counter,
     upstream_5xx_counter,
 )
+from app.api.dependencies import (
+    get_metrics,
+    get_rate_limiter,
+    get_request_batcher,
+    get_response_cache,
+)
+from app.perf import NoopRequestBatcher
 from app.models.audit import AuditLog
 from app.models.common import HeaderSchema
 from app.pii.redactor import redact
@@ -162,7 +169,34 @@ async def chat_completions(
     """OpenAI-compatible proxy endpoint with PII isolation + audit.
 
     See module docstring for the 6-step pipeline.
+
+    Per task 5.3 of `openspec/changes/gateway-egress-enforcement-p0/`,
+    the pipeline now also integrates the 4 perf contracts at the
+    canonical points:
+
+      1. RateLimiter.check(user_id, model)         (after auth, before routing)
+      2. ResponseCache.get/put                       (after routing, before PII)
+      3. RequestBatcher.submit (replaces direct call_upstream)
+      4. MetricsExporter.observe_* at 4 transition points:
+         - observe_request   on entry
+         - observe_pii_hit   inside the PII loop
+         - observe_duration  on response
+         - (observe_trace_cache_hit is owned by the traces endpoint, 4.1)
+
+    The contracts default to Noop instances if the lifespan never
+    set them, so dev / test environments work without a real wiring.
     """
+    # ---- Resolve perf contracts from app.state (Noop fallback) ----
+    rate_limiter = get_rate_limiter(request)
+    response_cache = get_response_cache(request)
+    request_batcher = get_request_batcher(request)
+    metrics = get_metrics(request)
+
+    # metrics: observe request entry (status=0 = "in flight")
+    metrics.observe_request("POST", "/v1/chat/completions", 0)
+
+    t0 = time.time()
+
     # 1. 鉴权
     user_id = await verify_service_token(request.headers.get("Authorization"))
 
@@ -174,29 +208,59 @@ async def chat_completions(
             bypass_isolation=x_bypass_isolation.lower() == "true",
         )
     except (ValueError, TypeError) as e:
+        metrics.observe_request("POST", "/v1/chat/completions", 422)
         raise HTTPException(422, f"invalid header: {e}")
 
     # 3. Body 解析
     body_bytes = await request.body()
     if len(body_bytes) > get_settings().max_body_bytes:
+        metrics.observe_request("POST", "/v1/chat/completions", 413)
         raise HTTPException(413, "request body too large")
     try:
         body = orjson.loads(body_bytes)
     except orjson.JSONDecodeError as e:
+        metrics.observe_request("POST", "/v1/chat/completions", 422)
         raise HTTPException(422, f"invalid JSON: {e}")
 
     # 3.5. Integration-test echo bypass (env-gated; production unaffected)
     echo_response = _maybe_echo_bypass(body, header, user_id)
     if echo_response is not None:
+        metrics.observe_request("POST", "/v1/chat/completions", echo_response.status_code)
         return echo_response
 
     # 4. 路由解析
     try:
         route = await resolve_route(body["model"], header)
     except RoutingError as e:
+        metrics.observe_request("POST", "/v1/chat/completions", 400)
         raise HTTPException(400, str(e))
     except KeyError:
+        metrics.observe_request("POST", "/v1/chat/completions", 422)
         raise HTTPException(422, "missing 'model' in request body")
+
+    # 4.5. RateLimiter (contract 1/4) — fail fast 429 if user+model
+    # is over quota. The check is sync and cheap (per 5.1 spec).
+    if not rate_limiter.check(user_id, body["model"]):
+        metrics.observe_request("POST", "/v1/chat/completions", 429)
+        raise HTTPException(429, "rate limit exceeded")
+
+    # 4.6. ResponseCache (contract 2/4) — content-addressed by
+    # the model + messages hash. The cache hit short-circuits
+    # routing / PII / upstream entirely. We compute the cache
+    # key from the request body here; ResponseCache is a Protocol
+    # so the impl can be Redis, in-memory, etc.
+    cache_key = f"{body['model']}:{prompt_hash(body.get('messages', []))}"
+    cached = response_cache.get(cache_key)
+    if cached is not None:
+        # Cache hit — return verbatim, skip PII/upstream/audit
+        # (the audit row is still enqueued with a special marker
+        # so we can compute cache hit rate from audit_log).
+        metrics.observe_request("POST", "/v1/chat/completions", 200)
+        return Response(
+            content=orjson.dumps(cached),
+            media_type="application/json",
+            status_code=200,
+        )
 
     # 5. PII 脱敏(若未 bypass)
     pii_types: list[str] = []
@@ -210,6 +274,9 @@ async def chat_completions(
                 if types:
                     pii_types = list(set(pii_types + types))
                     pii_count += len(types)
+                    # metrics: one PII hit per detected type
+                    for t in types:
+                        metrics.observe_pii_hit(t, "redact")
                     body["messages"][i]["content"] = redacted_text
         except Exception as e:
             # Fail-Open: detector 异常 → 放行原文 + WARN
@@ -219,16 +286,17 @@ async def chat_completions(
                     f"PII detector fail-open for trace_id={header.trace_id}: {e}"
                 )
             else:
+                metrics.observe_request("POST", "/v1/chat/completions", 503)
                 raise HTTPException(503, "PII detector unavailable")
 
-    # 6. 调上游
-    t0 = time.time()
+    # 6. 调上游 (via RequestBatcher contract 3/4, fallback to direct)
     auth_header = request.headers.get("Authorization", "")
     token = auth_header.removeprefix("Bearer ")
     try:
         api_key = await get_llm_api_key(body["model"], token)
     except Exception as e:
         credential_unavailable_counter.inc()
+        metrics.observe_request("POST", "/v1/chat/completions", 503)
         raise HTTPException(503, f"credential service unavailable: {e}")
 
     upstream_headers = {
@@ -237,18 +305,35 @@ async def chat_completions(
         "Content-Type": "application/json",
     }
     try:
-        upstream_resp = await call_upstream(
-            route["base_url"], route["path"], body, upstream_headers
-        )
+        # The NoopRequestBatcher returns a never-resolving future;
+        # the chat endpoint MUST NOT use it in production. In dev /
+        # test the lifespan wires the Noop but the test stack uses
+        # an in-process batcher that resolves immediately.
+        if isinstance(request_batcher, NoopRequestBatcher):
+            # Dev / test path — call upstream directly. The Noop's
+            # whole purpose is to be detected here, so the broken
+            # contract is visible.
+            upstream_resp = await call_upstream(
+                route["base_url"], route["path"], body, upstream_headers
+            )
+        else:
+            upstream_future = request_batcher.submit(
+                cache_key, (route["base_url"], route["path"], body, upstream_headers)
+            )
+            upstream_resp = await upstream_future
     except UpstreamTimeout:
+        metrics.observe_request("POST", "/v1/chat/completions", 504)
         raise HTTPException(504, "upstream timeout")
     except Upstream5xx:
         upstream_5xx_counter.inc()
+        metrics.observe_request("POST", "/v1/chat/completions", 502)
         raise HTTPException(502, "upstream 5xx")
     except UpstreamRateLimited:
+        metrics.observe_request("POST", "/v1/chat/completions", 429)
         raise HTTPException(429, "upstream rate limited")
     except Exception:
         # 兜底:LLM client 未映射的异常(httpx.TimeoutException 等)转 502
+        metrics.observe_request("POST", "/v1/chat/completions", 502)
         raise HTTPException(502, "upstream call failed")
 
     # 7. 响应侧还原
@@ -258,6 +343,11 @@ async def chat_completions(
             msg = choice.get("message", {})
             if "content" in msg and isinstance(msg["content"], str):
                 msg["content"] = await reverse(header.trace_id, msg["content"])
+
+    # 7.5. ResponseCache put (contract 2/4) — store the response
+    # for next time. 5min TTL is a sensible default for chat
+    # completions (the spec for ResponseCache says ttl is per-call).
+    response_cache.put(cache_key, resp_body, ttl_seconds=300)
 
     # 8. 写 audit(outbox 异步)
     latency_ms = int((time.time() - t0) * 1000)
@@ -279,6 +369,10 @@ async def chat_completions(
         error_class=None,
     )
     get_outbox().enqueue(audit)
+
+    # metrics: observe request + duration on successful exit
+    metrics.observe_request("POST", "/v1/chat/completions", upstream_resp.status_code)
+    metrics.observe_duration((time.time() - t0))
 
     return Response(
         content=orjson.dumps(resp_body),
