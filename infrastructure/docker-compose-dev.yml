@@ -183,6 +183,23 @@ services:
     ports:
       - "5173:80"
 
+  # V6a alias: docker compose v5.0.2 strict validation 把 dev compose extends
+  # 拉过来的 `depends_on: chatbiz-postgres` / `chatbiz-redis` 引用(来自 base
+  # compose 的 credential / audit-and-isolation / workflow-engine-migrate 等段)
+  # 当 unresolved service. dev compose namespace 显式 extends 拉过来让 v5 strict
+  # validation 看到 service key 已定义. 实际启动仍由 base compose 的 `chatbiz-postgres`
+  # / `chatbiz-redis` 段负责(同 service key, base 段覆盖 dev extends 拉过来的).
+  # 关联 change: fix-compose-postgres-naming.
+  chatbiz-postgres:
+    extends:
+      file: docker-compose.yml
+      service: chatbiz-postgres
+
+  chatbiz-redis:
+    extends:
+      file: docker-compose.yml
+      service: chatbiz-redis
+
   # V6a V0 企微扫码后端(Python FastAPI + RS256 JWT)
   sso:
     image: chatbiz/sso:dev
@@ -234,6 +251,13 @@ volumes:
     name: chatbiz-pycache-workflow
   web-node-modules:
     name: chatbiz-web-node-modules
+  # V6a alias: base compose 的 chatbiz-postgres / chatbiz-redis 段引用
+  # postgres-data / redis-data volume, dev compose namespace 显式声明 name
+  # 让 v5 strict validation 看到 volume 已定义. 同 fix-compose-postgres-naming.
+  postgres-data:
+    name: chatbiz-postgres-data
+  redis-data:
+    name: chatbiz-redis-data
 
 networks:
   default:
