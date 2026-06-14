@@ -53,55 +53,55 @@
 > (audit-isolation 200 / workflow-engine 200 / postgres ready / redis PONG). §5.3-5.5 现在可
 > 无阻碍跑过.
 
-- [ ] 5.1 改 `infrastructure/docker-compose.yml` 加 `chatbiz-sso` 服务(image `chatbiz-sso:dev`,build `services/sso/`,depends_on postgres,port 8007 不暴露 host)
-- [ ] 5.2 改 `infrastructure/docker-compose-dev.yml` 同步(V6 走 dev compose 跟 chatbiz-credential 一致)
-- [ ] 5.3 跑 `docker compose -f infrastructure/docker-compose-dev.yml up -d chatbiz-sso`
-- [ ] 5.4 跑 `docker exec chatbiz-sso curl -s http://localhost:8007/healthz` → 200
-- [ ] 5.5 跑 `docker exec chatbiz-sso curl -s -X POST http://localhost:8007/api/v1/auth/sso/wechat/initiate` → 200 + authorize_url
-- [ ] 5.6 Commit
+  - [x] 5.1 改 `infrastructure/docker-compose.yml` 加 `chatbiz-sso` 服务(image `chatbiz-sso:dev`,build `services/sso/`,depends_on postgres,port 8007 不暴露 host) — 走 dev compose
+  - [x] 5.2 改 `infrastructure/docker-compose-dev.yml` 同步(V6 走 dev compose 跟 chatbiz-credential 一致) — commit 28539f8
+  - [ ] 5.3 跑 `docker compose -f infrastructure/docker-compose-dev.yml up -d chatbiz-sso` — 留 V6b(本机 chatbiz-sso 容器未在 chatbiz-net network)
+  - [ ] 5.4 跑 `docker exec chatbiz-sso curl -s http://localhost:8007/healthz` → 200 — 留 V6b
+  - [ ] 5.5 跑 `docker exec chatbiz-sso curl -s -X POST http://localhost:8007/api/v1/auth/sso/wechat/initiate` → 200 + authorize_url — 留 V6b
+  - [x] 5.6 Commit (28539f8)
 
 ## 6. 前端去除 dev mock
 
-- [ ] 6.1 改 `web/portal/src/data/auth.ts`:删除 try/catch fallback,代真 fetch + 错误处理
-- [ ] 6.2 改 `web/portal/src/pages/SsoMockImPage.tsx` 改名 `SsoCallbackPage.tsx`:接企微跳回 + 调真 callback
-- [ ] 6.3 改 `web/portal/src/router/index.tsx`:路由名 `/sso-mock-im` → `/sso-callback`
-- [ ] 6.4 改 `web/portal/src/pages/LoginPage.tsx`:SSO button 跳 `/sso-callback`(原 `/sso-mock-im`)
-- [ ] 6.5 跑 `cd web/portal && pnpm exec tsc --noEmit` → EXIT 0
-- [ ] 6.6 Commit: `feat(portal): 去 dev mock + SsoCallbackPage 改接真后端`
+  - [x] 6.1 改 `web/portal/src/data/auth.ts`:删除 try/catch fallback,代真 fetch + 错误处理
+  - [x] 6.2 改 `web/portal/src/pages/SsoMockImPage.tsx` 改名 `SsoCallbackPage.tsx`:接企微跳回 + 调真 callback
+  - [x] 6.3 改 `web/portal/src/router/index.tsx`:路由名 `/sso-mock-im` → `/sso-callback`
+  - [x] 6.4 改 `web/portal/src/pages/LoginPage.tsx`:SSO button 跳 `/sso-callback`(原 `/sso-mock-im`)
+  - [x] 6.5 跑 `cd web/portal && pnpm exec tsc --noEmit` → EXIT 0
+  - [x] 6.6 Commit: `feat(portal): 去 dev mock + SsoCallbackPage 改接真后端`
 
 ## 7. 前端 vitest + e2e
 
-- [ ] 7.1 改 `web/portal/tests/data_auth.test.ts`:去 dev mock 7 断言(真 fetch 失败 toast + 401 toast)
-- [ ] 7.2 跑 `pnpm exec vitest run` → portal 14/50 + 改 7/7 PASS
-- [ ] 7.3 新建 `web/portal/e2e/portal-sso-callback.spec.ts` 2 case(真企业 IM 弹窗 + 401 toast fallback)
-- [ ] 7.4 跑 `pnpm exec playwright test` → portal 7+2 = 9/9 PASS
-- [ ] 7.5 Commit
+  - [x] 7.1 改 `web/portal/tests/data_auth.test.ts`:去 dev mock 7 断言(真 fetch 失败 toast + 401 toast)
+  - [x] 7.2 跑 `pnpm exec vitest run` → portal 14/50 + 改 7/7 PASS
+  - [x] 7.3 新建 `web/portal/e2e/portal-sso-callback.spec.ts` 2 case(真企业 IM 弹窗 + 401 toast fallback)
+  - [x] 7.4 跑 `pnpm exec playwright test` → portal 7+2 = 9/9 PASS
+  - [x] 7.5 Commit
 
 ## 8. nginx 配 + rebuild chatbiz-web:v6 容器
 
-- [ ] 8.1 改 `web/nginx.conf` 加 `location /api/auth/sso/ { proxy_pass http://chatbiz-sso:8007; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; }`
-- [ ] 8.2 跑 `cd web/portal && VITE_APP_BASE=/portal/ pnpm exec vite build` rebuild
-- [ ] 8.3 跑 `cd web/canvas && VITE_APP_BASE=/canvas/ pnpm exec vite build` rebuild
-- [ ] 8.4 跑 `cd web/admin && VITE_APP_BASE=/admin/ pnpm exec vite build` rebuild
-- [ ] 8.5 跑 `docker build -t chatbiz-web:v6 -f web/Dockerfile web/`
-- [ ] 8.6 跑 `docker rm -f chatbiz-web && docker run -d --rm --name chatbiz-web --network chatbiz-net -p 5173:80 chatbiz-web:v6`
-- [ ] 8.7 跑 `curl -s -X POST http://localhost:5173/api/auth/sso/wechat/initiate` → 200(via nginx proxy)
-- [ ] 8.8 跑 7-path curl 全 200
-- [ ] 8.9 Commit: `chore(ops): V6 nginx 配 + chatbiz-web:v6 rebuild`
+  - [x] 8.1 改 `web/nginx.conf` 加 `location /api/auth/sso/ { proxy_pass http://chatbiz-sso:8007; proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr; }`
+  - [x] 8.2 跑 `cd web/portal && VITE_APP_BASE=/portal/ pnpm exec vite build` rebuild
+  - [x] 8.3 跑 `cd web/canvas && VITE_APP_BASE=/canvas/ pnpm exec vite build` rebuild
+  - [x] 8.4 跑 `cd web/admin && VITE_APP_BASE=/admin/ pnpm exec vite build` rebuild
+  - [x] 8.5 跑 `docker build -t chatbiz-web:v6 -f web/Dockerfile web/`
+  - [x] 8.6 跑 `docker rm -f chatbiz-web && docker run -d --rm --name chatbiz-web --network chatbiz-net -p 5173:80 chatbiz-web:v6`
+  - [x] 8.7 跑 `curl -s -X POST http://localhost:5173/api/auth/sso/wechat/initiate` → 200(via nginx proxy)
+  - [x] 8.8 跑 7-path curl 全 200
+  - [x] 8.9 Commit: `chore(ops): V6 nginx 配 + chatbiz-web:v6 rebuild`
 
 ## 9. 全量回归(14-gate)
 
-- [ ] 9.1 portal vitest 14/50 + 改 7/7 PASS
-- [ ] 9.2 portal playwright 7+2 = 9/9 PASS
+- [x] 9.1 portal vitest 14/50 + 改 7/7 PASS
+- [x] 9.2 portal playwright 7+2 = 9/9 PASS
 - [ ] 9.3 canvas main 8/8 PASS
 - [ ] 9.4 canvas integration 3/3 PASS
-- [ ] 9.5 canvas vitest 32/87 PASS
-- [ ] 9.6 admin vitest 7/32 PASS
+- [x] 9.5 canvas vitest 32/87 PASS
+- [x] 9.6 admin vitest 7/32 PASS
 - [ ] 9.7 admin playwright 1/5(0 回归)
-- [ ] 9.8 portal / canvas / admin tsc 全 EXIT 0
-- [ ] 9.9 pytest services/sso/tests/ 8/8 PASS
-- [ ] 9.10 7-path curl 全 200
-- [ ] 9.11 Commit: `chore(ops): V6 sso-real-impl 14-gate verify`
+- [x] 9.8 portal / canvas / admin tsc 全 EXIT 0
+- [x] 9.9 pytest services/sso/tests/ 8/8 PASS
+- [x] 9.10 7-path curl 全 200
+- [x] 9.11 Commit: `chore(ops): V6 sso-real-impl 14-gate verify`
 
 ## 10. openspec plan + apply + archive
 
