@@ -1,6 +1,6 @@
 # Verify: gateway-egress-enforcement-p0 (草稿,apply 阶段中)
 
-> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,15/20 个新 task 完成(task 1.1-1.5, 2.1-2.4, 3.1, 4.1-4.4, 5.1)。
+> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,16/20 个新 task 完成(task 1.1-1.5, 2.1-2.4, 3.1, 4.1-4.4, 5.1-5.2)。
 > 7 个 [EXISTING] 引用已在 6/12/2026 gap-analysis 阶段确认真实存在(grep 复核见下)。
 > apply 阶段**未完成** → 本 change **不可 archive**。`/retrospective.md` 在所有新 task
 > 完成后才写,本文件不替代。
@@ -22,7 +22,7 @@
 
 > 注:tasks.md 末尾"清单"是 7 条总结,展开是 10 条细分。表里 10 条细分(每条配 grep 行)是为了 verify 可追溯。
 
-## 2. 新 task 完成清单(15/20 推进,1.1-1.5 + 2.1-2.4 + 3.1 + 4.1-4.4 + 5.1 完成)
+## 2. 新 task 完成清单(16/20 推进,1.1-1.5 + 2.1-2.4 + 3.1 + 4.1-4.4 + 5.1-5.2 完成)
 
 | Task | 文件 | 验证 | 状态 |
 |---|---|---|---|
@@ -41,6 +41,7 @@
 | 4.3 定时归档 MinIO | `services/audit-and-isolation/app/jobs/archive_audit.py` (新加 `archive_old_audit_logs()` async + `_serialize_parquet_like` + `_group_by_day` + `ArchiveResult` dataclass) + `tests/unit/test_archive_audit.py` (12 case) | `pytest tests/unit/test_archive_audit.py` **12/12 PASS**(happy path / empty table / S3 upload failure 不删 PG / head_bucket 失败 / cut-off 默认 90d / 序列化稳定 / group by day / 常量契约);`pytest tests/unit/` **237/237 PASS** | ✅ **完成** |
 | 4.4 冷查询端点 | `services/audit-and-isolation/app/api/audit_archive.py` (新加 router,`GET /v1/audit/archive?from=&to=`,asyncio.gather 并发读 MinIO,X-Audit-Source: cold header,head_bucket 预检,366 天上限,日期范围 422 守卫) + `app/main.py` (注册新 router) + `tests/integration/test_audit_archive_endpoint.py` (10 case) | `pytest tests/integration/test_audit_archive_endpoint.py` **10/10 PASS**(happy path / 单日 / 无数据返空 / MinIO unreachable 503 / get_object 失败 503 / 422 守卫 4 类 / 边界 366 天 / 无 S3 client 503);`pytest tests/unit/` **237/237 PASS** | ✅ **完成** |
 | 5.1 perf contracts | `services/audit-and-isolation/app/perf/contracts.py` (新加 4 个 Protocol:RateLimiter / ResponseCache / RequestBatcher / MetricsExporter + 4 个 Noop 默认实现) + `app/perf/__init__.py` (导出) + `tests/unit/test_perf_contracts.py` (24 case) | `pytest tests/unit/test_perf_contracts.py` **24/24 PASS**(4 Protocol 签名守卫 + 4 Noop 行为 + 4 real impl 满足 Protocol + cross-cutting 3 + 4 runtime_checkable 守卫);`pytest tests/unit/` **261/261 PASS** | ✅ **完成** |
+| 5.2 /metrics 端点 | `app/metrics.py` (扩: 加 5 个 V6b metric: `requests_total{method,path,status}` Counter + `duration_seconds` Histogram + `pii_hits_total{pii_type,action}` Counter + `active_connections` Gauge + `trace_cache_hits_total` Counter + `render_metrics()` helper) + `app/api/metrics.py` (新加 router,`GET /metrics` 返 Prometheus text format) + `app/main.py` (注册新 router) + `tests/integration/test_metrics_endpoint.py` (17 case) | `pytest tests/integration/test_metrics_endpoint.py` **17/17 PASS**(200 + Content-Type + 5 metric 都在 + 5 TYPE 守卫 + HELP 长度 + counter increment + gauge set + histogram bucket/sum/count + 路由注册);`pytest tests/unit/` **261/261 PASS** | ✅ **完成** |
 | 3.1 RetryWithIdempotency | — | 待 apply 阶段 | ⏳ pending |
 | 3.1 RetryWithIdempotency | — | 待 apply 阶段 | ⏳ pending |
 | 4.1 GET /v1/traces/{trace_id} | — | 待 apply 阶段 | ⏳ pending |
@@ -52,8 +53,6 @@
 | 4.4 冷查询端点 | — | 待 apply 阶段 | ⏳ pending |
 | 4.4 冷查询端点 | — | 待 apply 阶段 | ⏳ pending |
 | 5.1 perf contracts | — | 待 apply 阶段 | ⏳ pending |
-| 5.1 perf contracts | — | 待 apply 阶段 | ⏳ pending |
-| 5.2 /metrics 端点 | — | 待 apply 阶段 | ⏳ pending |
 | 5.3 嵌入 chat.py | — | 待 apply 阶段 | ⏳ pending |
 | 6.1 architecture.md §4.3.Y | — | 待 apply 阶段 | ⏳ pending |
 | 7.1 pytest cov 100% | — | 待 apply 阶段(收尾) | ⏳ pending |
@@ -164,19 +163,18 @@ services/gateway-scanner/tests/fixtures/
 
 ## 7. 范围说明(scope reduction 决策)
 
-task 1.1-5.1 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest + NGINX L4 LB conf + HA failover e2e + RetryWithIdempotency 装饰器 + GET /v1/traces 跨实例查询端点 + 跨实例 trace e2e + 定时归档 job + 冷查询端点 + 4 perf contract Protocol + 4 Noop。**Phase A + B + C + D + E(1/3) 完成**。
+task 1.1-5.2 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest + NGINX L4 LB conf + HA failover e2e + RetryWithIdempotency 装饰器 + GET /v1/traces 跨实例查询端点 + 跨实例 trace e2e + 定时归档 job + 冷查询端点 + 4 perf contract Protocol + 4 Noop + /metrics Prometheus 端点。**Phase A + B + C + D + E(2/3) 完成**。
 
-剩余 5 个新 task(5.2-5.3 / 6.1 / 7.1-7.2)涉及:
-- **5.2** `/metrics` Prometheus 端点(用 5.1 MetricsExporter Protocol)
-- **5.3** chat.py 嵌入 4 contract 调用点
+剩余 4 个新 task(5.3 / 6.1 / 7.1-7.2)涉及:
+- **5.3** chat.py 嵌入 4 contract 调用点(用 5.1 Protocol + 5.2 metrics)
 - **6.1** 文档(`docs/architecture.md` §4.3.Y)
 - **7.x** 收尾(覆盖率 100% + verify.md 最终版)
 
 ## 8. 后续
 
-- **本 verify.md 草稿会在 5.2 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
+- **本 verify.md 草稿会在 5.3 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
 - **最终 verify.md**(7.2 task)在所有 20 个新 task 完成后写,包含完整 18 个 requirement 的 requirement-by-requirement 证据。
-- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 15/20 任务, 剩 5 个 pending(表 §2 已展开)。
+- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 16/20 任务, 剩 4 个 pending(表 §2 已展开)。
 
 ## 9. Task 1.5 GitHub Actions 详细证据
 
@@ -665,6 +663,64 @@ pytest tests/unit/                             261 passed, 2 skipped
 **风险 3**:5.3 chat 端点集成这 4 个 contract 时, Noop 的 RequestBatcher 返 never-resolved future 会让 e2e hang。
 **决策**:5.3 集成时必须在 lifespan 检查 `RequestBatcher` 不是 `NoopRequestBatcher` 才用, 或者 chat 端点用 try/except 包装 submit() 防止 hang。
 **缓解**:本 task 范围只做 contract, 5.3 集成时由集成代码自己处理这个边界。
+
+## 20. Task 5.2 /metrics 端点 详细证据
+
+### 20.1 文件清单
+```
+services/audit-and-isolation/app/metrics.py                       (改: + 5 V6b metric + render_metrics helper)
+services/audit-and-isolation/app/api/metrics.py                  (新加, 50 行, GET /metrics 端点)
+services/audit-and-isolation/app/main.py                          (改: include_router)
+services/audit-and-isolation/tests/integration/test_metrics_endpoint.py  (17 case)
+```
+
+### 20.2 测试结果
+```
+pytest tests/integration/test_metrics_endpoint.py -v  →  17 passed
+pytest tests/unit/                                   261 passed, 2 skipped
+```
+
+### 20.3 关键设计点
+| 设计点 | 决定 | 原因 |
+|---|---|---|
+| Metric 注册 | 复用 `prometheus_client` (已在 pyproject.toml) | 不用自造 exposition format; prometheus_client 已处理 HELP/TYPE/format |
+| 5 metric 1:1 对应 | `requests_total{method,path,status}` Counter / `duration_seconds` Histogram / `pii_hits_total{pii_type,action}` Counter / `active_connections` Gauge / `trace_cache_hits_total` Counter | spec 5.2 字面 5 类; 跟 5.1 MetricsExporter Protocol 5 方法一一对应 |
+| V5a 老 metric 保留 | 4 counter + 1 histogram (`pii_fail_open_total` 等) | ops 现有 dashboard scrape 旧 metric; 5.2 不破坏 |
+| Duration Histogram buckets | (0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0) | LLM streaming 1-60s chat completions; 紧 1ms bucket 让 SLO p99 = 50ms 可解析 |
+| 不需要 auth | 路由裸, k8s NetworkPolicy 限制访问 | Prometheus scraper 不带 token; 任何 app-level auth 都会让 scrape 失败 |
+| Content-Type | 走 `prometheus_client.CONTENT_TYPE_LATEST` (version=1.0.0) | spec; 接受任何 version= 值 (format version 偶尔 bump) |
+| Histogram 数据 | `_bucket{le="X"}` + `_sum` + `_count` | Prometheus exposition format 标准 |
+
+### 20.4 测试覆盖矩阵
+| 测试 | 验证 |
+|---|---|
+| test_metrics_endpoint_returns_200 | 200 |
+| test_metrics_content_type_is_prometheus_text | text/plain + version= |
+| test_metrics_body_is_text | 非 bytes body |
+| test_all_5_spec_metrics_are_present | 5 metric 都有 # TYPE + # HELP |
+| test_requests_total_is_counter (1/5) | TYPE=counter |
+| test_duration_seconds_is_histogram (2/5) | TYPE=histogram |
+| test_pii_hits_total_is_counter (3/5) | TYPE=counter |
+| test_active_connections_is_gauge (4/5) | TYPE=gauge |
+| test_trace_cache_hits_total_is_counter (5/5) | TYPE=counter |
+| test_all_5_metrics_have_non_empty_help | 5 HELP 注释都 > 10 字符 |
+| test_requests_total_counter_increments | Counter .inc() 后行出现 |
+| test_pii_hits_total_has_correct_labels | {pii_type, action} label |
+| test_trace_cache_hits_total_counter_increments | task 4.1 的 metric 在 /metrics 暴露 |
+| test_active_connections_gauge_reflects_set | Gauge .set(42) 后值 = 42.0 |
+| test_duration_seconds_histogram_observe_recorded | Histogram .observe(0.123) 后 _bucket/_sum/_count 都出现 |
+| test_metrics_endpoint_no_auth_required | 不需要 header |
+| test_metrics_route_registered_in_app | /metrics 在 app.routes |
+
+### 20.5 风险与决策记录
+**风险 1**:`Content-Type` 文字从 `version=0.0.4` 升到 `version=1.0.0` (prometheus_client 升级); test 文字 "version=0.0.4" 失败。
+**决策**:test 改用 `assert "version=" in ct` 接受任何 version 值, 不绑特定 format version。
+**缓解**:未来 prometheus_client 再 bump 也不会 fail; spec 没说具体 version 字符串。
+
+**风险 2**:5.1 设计的 MetricsExporter Protocol 没被 5.2 直接消费 — Protocol 是"写入"路径 (chat 调 `observe_*`), 5.2 端点是"读取"路径 (Prometheus 调 `render_metrics`)。两件事分开。
+**决策**:本 task 范围只做"端点 + 5 metric 注册", 不实现 Protocol 的 production 实装。
+**缓解**:5.3 集成 chat 端点时, 会在 lifespan 注入 MetricsExporter (用 prometheus_client 真对象),Protocol 跟 5.2 metric 1:1 对应 (5 方法 ↔ 5 metric), 集成代码自己 wire。
+
 
 
 

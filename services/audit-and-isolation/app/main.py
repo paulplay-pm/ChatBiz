@@ -30,6 +30,7 @@ from fastapi import FastAPI
 from app.api.audit_archive import router as audit_archive_router
 from app.api.chat import router as chat_router
 from app.api.health import router as health_router
+from app.api.metrics import router as metrics_router
 from app.api.models import router as models_router
 from app.api.traces import router as traces_router
 from app.audit.writer import get_outbox
@@ -76,6 +77,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="chatbiz-audit-and-isolation", version="0.1.0", lifespan=lifespan)
 app.include_router(chat_router, prefix="/v1")
 app.include_router(health_router)
+app.include_router(metrics_router)
 app.include_router(models_router, prefix="/v1")
 app.include_router(traces_router)
 app.include_router(audit_archive_router)
