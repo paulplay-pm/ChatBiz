@@ -194,11 +194,16 @@ services:
     extends:
       file: docker-compose.yml
       service: chatbiz-postgres
+    # V6b FU-3: 显式 container_name 让 tools/check-compose-naming.sh
+    # (规则 2) 在 dev compose namespace 独立看时也通过。
+    container_name: chatbiz-postgres
 
   chatbiz-redis:
     extends:
       file: docker-compose.yml
       service: chatbiz-redis
+    # V6b FU-3: 同 chatbiz-postgres 注释
+    container_name: chatbiz-redis
 
   # V6a V0 企微扫码后端(Python FastAPI + RS256 JWT)
   sso:

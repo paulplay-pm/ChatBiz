@@ -146,6 +146,26 @@ OpenSpec CLI 用 `openspec-*`(`openspec-propose` / `openspec-explore` / `openspe
 
 冲突检测规则:本表"已分配"行的端口在 compose 改写前查表;命中保留位要先跟 change 沟通挪位;命中未来分配区可直接用并在 PR 描述里登记。
 
+### Docker Compose service key 命名规范(强制)
+
+`infrastructure/docker-compose.yml` 与 `infrastructure/docker-compose-dev.yml` 的 service key 必须遵循以下规则。test compose (`infrastructure/docker-compose-test.yml`) by design 隔离网络 + 独立命名空间,不归本规范管。
+
+1. **service key 必须以 `chatbiz-` 前缀**(避免与外部容器名冲突 + 暗示命名空间)。例:`chatbiz-postgres` ✅, `postgres` ❌
+2. **每个 service 必须显式声明 `container_name: chatbiz-...`**(便于 `docker ps` 排查)。例:
+   ```yaml
+   chatbiz-workflow-engine:
+     image: chatbiz/workflow-engine:dev
+     container_name: chatbiz-workflow-engine
+   ```
+3. **任何被引用的 named volume 必须在文件顶层 `volumes:` 段显式声明 `name:`**(避免 docker compose v5+ strict validation 报 `undefined volume`)。`bind mount` 形式的 host-path volume 不在此限。
+4. **别名 extends 段必须独立 lint 可见** —— dev compose 用 `extends` 拉 base 段时,如果 dev 段不重新声明 `container_name`,从 dev namespace 独立 lint 看不到 → 必须显式声明。
+
+**Lint hook**:`tools/check-compose-naming.sh`(可执行,bash 4+ / macOS BSD awk 兼容)扫 `infrastructure/docker-compose.yml` + `infrastructure/docker-compose-dev.yml`,符合规则 PASS,有违规时**默认非 baseline 错误 → exit 1**,baseline 内违规降级为 `WARN-baseline`。`--strict` 把 baseline 也算 ERROR,`--show-baseline` 打印当前 12 个 baseline service 清单(扫清时由 `compose-naming-migration-full` change 一次性 rename)。
+
+**Baseline 状态(2026-06-14)**:12 个 application service (credential / credential-cron / credential-migrate / audit-and-isolation / audit-and-isolation-migrate / workflow-engine / workflow-engine-migrate / sso / sso-migrate / web + dev compose 内的 `chatbiz-postgres` / `chatbiz-redis` alias extends 段) 在 fix-compose 期间**未**触动,记入 baseline 抑制错误。新加 service 禁止进 baseline,必须直接满足规则 1+2+3。
+
+**来源**:`openspec/changes/fix-compose-postgres-naming/`(2026-06-13 archive) + `openspec/changes/fix-compose-postgres-naming/tasks.md` V6b FU-3。
+
 ### 前端目录与端口约定(强制)
 
 - **所有前端页面代码统一放到 `web/` 目录下**,不要在 `apps/`、`clients/`、`ui/` 等其它地方新建前端项目。当前已有：
