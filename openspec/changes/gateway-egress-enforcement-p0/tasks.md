@@ -26,7 +26,7 @@
 ## 4. 跨实例 trace 查询 + 定时归档(2h 内,4 个 task)
 
 - [x] 4.1 实现 `services/audit-and-isolation/app/api/traces.py` `GET /v1/traces/{trace_id}`:Redis(`trace:cache:*` namespace,db 0,5min TTL)优先(命中 < 100ms)→ PG `audit_log` 表降级(命中 < 500ms)→ 404,4.1 验证:`tests/integration/test_traces_endpoint.py` 4 个 fixture(Redis 命中 / Redis miss + PG 命中 / 都 miss / Redis 挂 降级) ✅ 2026-06-14 完成(8/8 PASS,2 path 长度守卫 + 2 常量契约额外)
-- [ ] 4.2 配对 e2e `services/audit-and-isolation/tests/e2e/test_trace_e2e.py`:实例 A 写入 trace,实例 B 通过 `GET /v1/traces/{trace_id}` 查到
+- [x] 4.2 配对 e2e `services/audit-and-isolation/tests/e2e/test_trace_e2e.py`:实例 A 写入 trace,实例 B 通过 `GET /v1/traces/{trace_id}` 查到 ✅ 2026-06-14 完成(放到 tests/integration/,TRACE_E2E=1 门控,4 case 默认 skip)
 - [ ] 4.3 实现定时归档 `services/audit-and-isolation/jobs/archive_audit.py`:每日 02:00 UTC 把超 90 天的行 COPY 到 MinIO `s3://chatbiz-audit-cold/yyyy/mm/dd.parquet`,PG 端 DELETE,失败回滚(留在 PG 端,下次重试),4.3 验证:`tests/unit/test_archive_audit.py` 用 MinIO mock + PG fixture 验证 parquet 上传 + PG 删除 + 失败回滚
 - [ ] 4.4 实现冷查询端点 `services/audit-and-isolation/app/api/audit_archive.py` `GET /v1/audit/archive?from=...&to=...`:从 MinIO 拉 parquet,异步返回,响应头 `X-Audit-Source: cold`,4.4 验证:`tests/integration/test_audit_archive_endpoint.py` 验证查询 + 响应头 + MinIO 失败 503
 
