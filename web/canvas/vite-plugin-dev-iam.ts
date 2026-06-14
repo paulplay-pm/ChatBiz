@@ -19,6 +19,9 @@ export function devIam(): Plugin {
     configureServer(server) {
       server.middlewares.use('/api/auth/login', (req, res, next) => {
         if (req.method !== 'POST') return next();
+        // V4: 支持 ?via=wechat-scan 标识 SSO 登录(V4 spec canvas-auth 追加)
+        const url = new URL(req.url ?? '', 'http://localhost');
+        const via = url.searchParams.get('via');
         let body = '';
         req.on('data', (c) => { body += c; });
         req.on('end', () => {
@@ -33,7 +36,7 @@ export function devIam(): Plugin {
             // Accept any non-empty password in dev mode
             const now = Math.floor(Date.now() / 1000);
             const token = signDevJwt(
-              { sub: `u-${username}`, name: username, email: `${username}@chatbiz`, iat: now, exp: now + 8 * 3600 },
+              { sub: `u-${username}`, name: username, email: `${username}@chatbiz`, via: via ?? 'password', iat: now, exp: now + 8 * 3600 },
               SECRET,
             );
             res.statusCode = 200;
