@@ -38,13 +38,13 @@
 
 ## 4. admin mock data 5 文件
 
-- [ ] 4.1 新建 `web/admin/src/data/users.ts` 导出 `MOCK_USERS`(3 行:张三/李四/王五)
-- [ ] 4.2 新建 `web/admin/src/data/roles.ts` 导出 `MOCK_ROLES`(4 角色:超管/部门管理员/开发者/普通用户)
-- [ ] 4.3 新建 `web/admin/src/data/departments.ts` 导出 `MOCK_DEPARTMENTS`(树状:技术部→后端组/前端组,产品部,运营部)
-- [ ] 4.4 新建 `web/admin/src/data/permissions.ts` 导出 `MOCK_PERMISSIONS`(7 模块 × 11 权限点 × 6 操作)
-- [ ] 4.5 新建 `web/admin/src/data/dataPermissions.ts` 导出 `MOCK_RULES`(3 规则)+ `MOCK_SHARES`(4 共享记录)
-- [ ] 4.6 跑 `pnpm exec tsc --noEmit` 在 admin 期望 EXIT 0
-- [ ] 4.7 Commit: `feat(admin): data/ 5 个 mock 文件`
+- [x] 4.1 新建 `web/admin/src/data/users.ts` 导出 `MOCK_USERS`(3 行:张三/李四/王五)
+- [x] 4.2 新建 `web/admin/src/data/roles.ts` 导出 `MOCK_ROLES`(4 角色:超管/部门管理员/开发者/普通用户,各 3+ 成员,矩阵 workflow+conversation × 5 操作)
+- [x] 4.3 新建 `web/admin/src/data/departments.ts` 导出 `MOCK_DEPARTMENTS`(树状:技术部→后端组/前端组,产品部,运营部)
+- [x] 4.4 新建 `web/admin/src/data/permissions.ts` 导出 `MOCK_MODULES`(7 模块 × 11 权限点)+ `PERMISSION_ACTIONS`(6 操作)+ `ROLE_OPTIONS`(4 角色)+ `MOCK_PERMISSIONS`(4 角色 × 11 点 × 6 操作矩阵)
+- [x] 4.5 新建 `web/admin/src/data/dataPermissions.ts` 导出 `MOCK_RULES`(3 规则:个人/部门/跨部门)+ `MOCK_SHARES`(4 共享记录)
+- [x] 4.6 跑 `pnpm exec tsc --noEmit` 在 admin → EXIT 0
+- [x] 4.7 Commit: `feat(admin): data/ 5 个 mock 文件`
 
 ## 5. admin router 6 path 替换 PlaceholderView
 
