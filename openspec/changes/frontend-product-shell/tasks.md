@@ -87,10 +87,10 @@
 
 ## 9. portal→canvas 5-path curl + V1 baseline 对比
 
-- [ ] 9.1 停 chatbiz-web 容器 + 重新 build `docker build -t chatbiz-web:v3 -f web/Dockerfile web/` + 起 v3 容器
-- [ ] 9.2 5-path curl:`/` `/portal/login` `/canvas/` `/admin/` `/health` 全 200
-- [ ] 9.3 用 playwright 跑 `cross-app-jump` 在新容器,期望 3/3 PASS(也验证 meta refresh)
-- [ ] 9.4 对比 V1 baseline bundle:portal 201KB / canvas 838KB / admin 225KB,期望 0 回归
+- [x] 9.1 停 chatbiz-web 容器 + 重新 build `docker build -t chatbiz-web:v3 -f web/Dockerfile web/` + 起 v3 容器(T8 已隐式完成:容器 chatbiz-web:v3 在 5173 healthy,3 分钟前起)
+- [x] 9.2 5-path curl:`/` `/portal/login` `/canvas/` `/admin/` `/health` 全 200(+ `/admin/users` `/admin/roles` 真路由也 200)= 7/7 PASS
+- [x] 9.3 playwright cross-app-jump 在新容器 4/4 PASS(已 T8 跑,含 T1 meta refresh + T5 /admin/users / /admin/roles 真 view)
+- [x] 9.4 V3 dist size vs V2 baseline:portal 199.2KB(-1.8) / canvas 818.7KB(-19.3) / admin 221.7KB(-3.3) **0 回归**
 
 ## 10. 14-gate verify
 
