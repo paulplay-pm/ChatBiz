@@ -18,16 +18,16 @@
 
 ## 2. 后端业务代码
 
-- [ ] 2.1 写 `services/sso/app/main.py`:create_app() factory + lifespan (DB engine + Redis + RSA 密钥 load/generate) + CORS + exception handlers + 4 routers 注册
-- [ ] 2.2 写 `services/sso/app/lifespan.py`:DB engine (asyncpg) + Redis client + RSA 私钥从 `secrets/jwt_private.pem` 加载,首次启动 generate 2048-bit
-- [ ] 2.3 写 `services/sso/app/services/jwt_utils.py`:encode_jwt (RS256) + decode_jwt + get_jwks (公钥导出)
-- [ ] 2.4 写 `services/sso/app/services/user.py`:upsert_sso_user (by corp_external_id, 首次创建) + get_user_by_id
-- [ ] 2.5 写 `services/sso/app/services/wechat.py`:exchange_code (POST 企微 /sns/oauth2/access_token) + fetch_userinfo (POST /sns/userinfo) + 4 错误边界
-- [ ] 2.6 写 `services/sso/app/models/{sso_user,sso_session,sso_audit}.py`:SQLAlchemy 异步 ORM
-- [ ] 2.7 写 `services/sso/app/audit.py`:write_audit_event (4 错误类映射)
-- [ ] 2.8 写 `services/sso/app/routers/sso.py`:4 端点(`/initiate` / `/callback` / `/refresh` + `/jwks.json` + `/healthz`)
-- [ ] 2.9 跑 `cd services/sso && python -c "from app.main import create_app; print(create_app())"` 验 import OK
-- [ ] 2.10 Commit: `feat(sso): chatbiz-sso 后端 4 端点 + RS256 JWT + 4 错误边界`
+- [x] 2.1 写 `services/sso/app/main.py`:create_app() factory + CORS + 4 错误边界 exception handlers + 5 端点 include_router
+- [x] 2.2 写 `services/sso/app/lifespan.py`:DB engine(asyncpg)+ Redis client + RSA 密钥 load/generate + startup banner
+- [x] 2.3 写 `services/sso/app/jwt_utils.py`:RS256 encode/decode + JWKS 暴露公钥 + 4 错误类
+- [x] 2.4 写 `services/sso/app/user.py`:upsert_sso_user by corp_external_id + get_user_by_id
+- [x] 2.5 写 `services/sso/app/wechat.py`:WeChatClient(exchange_code + fetch_userinfo + get_authorize_url)+ 错误码映射
+- [x] 2.6 写 `services/sso/app/models.py`:SsoUser + SsoSession + SsoAudit 3 表 SQLAlchemy ORM
+- [x] 2.7 写 `services/sso/app/audit.py`:write_audit_event(eng-review Quality #3 4 错误类埋点)
+- [x] 2.8 写 `services/sso/app/routers/sso.py`:5 端点(/initiate / /callback / /refresh / /jwks.json / /healthz)
+- [x] 2.9 跑 `python -c "from app.main import create_app; app = create_app()"` → create_app OK + 5 端点都注册
+- [x] 2.10 Commit: `feat(sso): chatbiz-sso 后端 5 端点 + RS256 JWT + 4 错误边界`
 
 ## 3. 后端 alembic migration + 3 表
 
