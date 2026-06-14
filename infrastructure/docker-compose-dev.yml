@@ -183,6 +183,48 @@ services:
     ports:
       - "5173:80"
 
+  # V6a V0 企微扫码后端(Python FastAPI + RS256 JWT)
+  sso:
+    image: chatbiz/sso:dev
+    build:
+      context: ../services/sso
+      dockerfile: Dockerfile
+    command:
+      - uvicorn
+      - app.main:app
+      - --host=0.0.0.0
+      - --port=8007
+      - --reload
+      - --reload-dir=/app/app
+    environment:
+      - WECHAT_CORP_ID=${WECHAT_CORP_ID:-}
+      - WECHAT_AGENT_ID=${WECHAT_AGENT_ID:-}
+      - WECHAT_SECRET=${WECHAT_SECRET:-}
+      - WECHAT_REDIRECT_URI=${WECHAT_REDIRECT_URI:-http://localhost:5173/portal/sso-callback}
+      - POSTGRES_DSN=postgresql+asyncpg://chatbiz:chatbiz@chatbiz-postgres:5432/chatbiz_sso
+      - REDIS_URL=redis://chatbiz-redis:6379/0
+    depends_on:
+      chatbiz-postgres:
+        condition: service_healthy
+      chatbiz-redis:
+        condition: service_healthy
+
+  sso-migrate:
+    image: chatbiz/sso:dev
+    build:
+      context: ../services/sso
+      dockerfile: Dockerfile
+    working_dir: /app
+    depends_on:
+      chatbiz-postgres:
+        condition: service_healthy
+    command:
+      - alembic
+      - upgrade
+      - head
+    environment:
+      - DATABASE_URL=postgresql://chatbiz:chatbiz@chatbiz-postgres:5432/chatbiz_sso
+
 volumes:
   pycache-credential:
     name: chatbiz-pycache-credential
@@ -196,3 +238,4 @@ volumes:
 networks:
   default:
     name: chatbiz-net
+
