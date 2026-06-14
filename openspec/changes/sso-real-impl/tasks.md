@@ -46,6 +46,13 @@
 
 ## 5. docker compose 启动 chatbiz-sso
 
+> **2026-06-14 解锁通知**: fix-compose-postgres-naming apply (commit 8c0df0b) 已修 base compose
+> `postgres` → `chatbiz-postgres` / `redis` → `chatbiz-redis` + 6 段 depends_on 引用同步改 +
+> dev compose 加 2 个 alias 段 (chatbiz-postgres / chatbiz-redis extends) + 2 个 volume 段
+> (postgres-data / redis-data). v5.0.2 strict validation 0 undefined. 5 service 实测启动
+> (audit-isolation 200 / workflow-engine 200 / postgres ready / redis PONG). §5.3-5.5 现在可
+> 无阻碍跑过.
+
 - [ ] 5.1 改 `infrastructure/docker-compose.yml` 加 `chatbiz-sso` 服务(image `chatbiz-sso:dev`,build `services/sso/`,depends_on postgres,port 8007 不暴露 host)
 - [ ] 5.2 改 `infrastructure/docker-compose-dev.yml` 同步(V6 走 dev compose 跟 chatbiz-credential 一致)
 - [ ] 5.3 跑 `docker compose -f infrastructure/docker-compose-dev.yml up -d chatbiz-sso`
