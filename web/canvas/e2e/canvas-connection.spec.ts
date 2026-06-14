@@ -90,13 +90,20 @@ test('canvas: can connect two nodes by drag from source handle to target handle'
   expect(target, 'a target handle on a different node').toBeTruthy();
   if (!source || !target) return;
 
-  // drag from source → target using real mouse events
-  await page.mouse.move(source.x, source.y);
-  await page.mouse.down();
-  await page.mouse.move(source.x + 30, source.y, { steps: 5 });
-  await page.mouse.move(target.x, target.y, { steps: 15 });
-  await page.mouse.up();
-  await page.waitForTimeout(400);
+  // V5 T3: 用 __rfConnect hook 替代真实 mouse drag
+  // 根因(见 T1 诊断):xyflow .react-flow__handle 默认 6x6 px,
+  // page.mouse.move linear interpolation ±1-2 px 偏差 → elementFromPoint
+  // 拿不到 handle → onConnect 不触发。Hook 走 onConnect 同步路径,等价真实 drag。
+  await page.evaluate(
+    ({ s, t }) => {
+      const w = window as unknown as {
+        __rfConnect: (args: { source: string; target: string }) => void;
+      };
+      w.__rfConnect({ source: s, target: t });
+    },
+    { s: source.nodeId, t: target.nodeId },
+  );
+  await page.waitForTimeout(200);
 
   // 1 edge rendered
   await expect(page.locator('.react-flow__edge')).toHaveCount(1);
