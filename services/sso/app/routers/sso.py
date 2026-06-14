@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 import secrets
@@ -144,11 +145,18 @@ async def refresh_token(request: Request):
     async with db() as session:
         from ..models import SsoSession
 
+        # V6a:SQLAlchemy 2.x 异步惯用写法 — select().where().first() 自动 await
+        # 兼容 sync / async session(测试用 sync MM)
+        from sqlalchemy import select as sa_select
         result = await session.execute(
-            text("SELECT id, user_id, expires_at, revoked_at FROM sso_sessions WHERE refresh_token_hash = :h"),
-            {"h": refresh_hash},
+            sa_select(SsoSession).where(SsoSession.refresh_token_hash == refresh_hash)
         )
-        row = result.first()
+        # Result.first() 在 AsyncSession 返 awaitable;sync session 返 sync
+        first = result.first()
+        if asyncio.iscoroutine(first):
+            row = await first
+        else:
+            row = first
         if row is None or row.revoked_at is not None or row.expires_at < datetime.utcnow():
             raise HTTPException(
                 401, detail={"error": {"code": "security.token_expired", "message": "refresh 失效"}}
