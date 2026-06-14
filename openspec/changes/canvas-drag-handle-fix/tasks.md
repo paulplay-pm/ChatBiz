@@ -17,12 +17,12 @@
 
 ## 2. CanvasPage 加 dev-only `__rfConnect` hook
 
-- [ ] 2.1 改 `web/canvas/src/pages/CanvasPage.tsx`:`CanvasPageInner` 内 useEffect 注册 `window.__rfConnect = ({source, target}) => onConnect({source, target, sourceHandle: null, targetHandle: null})`
-- [ ] 2.2 加 `if (!import.meta.env.DEV) return;` 守卫(Vite dead-code-eliminate prod)
-- [ ] 2.3 cleanup function 摘 hook,避免 hot reload 累积
-- [ ] 2.4 跑 `pnpm exec tsc --noEmit` 在 canvas 期望 EXIT 0
-- [ ] 2.5 跑 `pnpm exec vitest run` → 84/84 PASS(0 回归)
-- [ ] 2.6 Commit: `feat(canvas): dev-only __rfConnect hook for e2e drag bypass`
+- [x] 2.1 改 `web/canvas/src/pages/CanvasPage.tsx`:`CanvasPageInner` 内 useEffect(放在 onConnect 之后)注册 `window.__rfConnect = ({source, target}) => onConnect({source, target, sourceHandle: null, targetHandle: null})`
+- [x] 2.2 加 `if (!import.meta.env.DEV) return;` 守卫(Vite dead-code-eliminate prod)
+- [x] 2.3 cleanup function 摘 hook,避免 hot reload 累积
+- [x] 2.4 跑 `pnpm exec tsc --noEmit` 在 canvas → EXIT 0
+- [x] 2.5 跑 `pnpm exec vitest run` → 32/84 PASS(0 回归)
+- [x] 2.6 Commit: `feat(canvas): dev-only __rfConnect hook for e2e drag bypass` → `7a8dd24`
 
 ## 3. 2 e2e spec 改写为 hook 调用
 
