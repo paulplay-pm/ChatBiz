@@ -12,10 +12,10 @@
 
 ## 1. 入口修复
 
-- [ ] 1.1 改 `web/index.html` 删静态三卡,加 `<meta http-equiv="refresh" content="0; url=/portal/login">` + `<link rel="canonical" href="/portal/login">` + body 内 `<a href="/portal/login">` 降级链接
-- [ ] 1.2 验证 `curl -s http://localhost:5173/ | grep -c 'meta http-equiv="refresh"'` ≥ 1
-- [ ] 1.3 验证 `curl -s http://localhost:5173/ | grep -c 'card'` = 0
-- [ ] 1.4 Commit: `fix(web): index.html 改 meta refresh → /portal/login`
+- [x] 1.1 改 `web/index.html` 删静态三卡,加 `<meta http-equiv="refresh" content="0; url=/portal/login">` + `<link rel="canonical" href="/portal/login">` + body 内 `<a href="/portal/login">` 降级链接
+- [x] 1.2 验证 `curl -s http://localhost:5173/ | grep -c 'meta http-equiv="refresh"'` ≥ 1 → 1 ✓
+- [x] 1.3 验证 `curl -s http://localhost:5173/ | grep -c 'card'` = 0 → 0 ✓
+- [x] 1.4 Commit: `fix(web): index.html 改 meta refresh → /portal/login` → `6e42907`
 
 ## 2. portal Sidebar 5 分组
 
