@@ -15,6 +15,7 @@ from unittest.mock import patch
 
 import pytest
 from fastapi import Response
+from starlette.requests import Request as StarletteRequest
 
 import app.redis_client as redis_client
 from app.api import health
@@ -86,11 +87,43 @@ def _body(response):
 
 @pytest.mark.asyncio
 async def test_healthz_returns_ok_status():
-    assert await health.healthz() == {"status": "ok"}
+    request = _request_with_draining(False)
+    response = cast(Response, await health.healthz(request))
+    assert response.status_code == 200
+    assert _body(response) == {"status": "ok"}
+
+
+@pytest.mark.asyncio
+async def test_healthz_returns_503_when_draining():
+    """Per task 2.1 of gateway-egress-enforcement-p0: /healthz returns 503
+    when app.state.draining is True, so the NGINX L4 LB drains the upstream
+    during K8s preStop."""
+    request = _request_with_draining(True)
+    response = cast(Response, await health.healthz(request))
+    assert response.status_code == 503
+    assert _body(response) == {"status": "draining"}
+
+
+def _request_with_draining(draining: bool) -> StarletteRequest:
+    """Build a minimal FastAPI Request with `app.state.draining` set."""
+    scope = {"type": "http", "app": SimpleNamespace(state=SimpleNamespace(draining=draining))}
+    return StarletteRequest(scope)
+
+
+@pytest.mark.asyncio
+async def test_readyz_returns_503_when_draining():
+    """Per task 2.1: /readyz short-circuits to 503 when draining, before
+    any I/O. This is the standard K8s readiness semantics — pod is "not
+    ready" during the preStop drain window."""
+    request = _request_with_draining(True)
+    response = cast(Response, await health.readyz(request))
+    assert response.status_code == 503
+    assert _body(response) == {"status": "draining"}
 
 
 @pytest.mark.asyncio
 async def test_readyz_returns_200_when_all_dependencies_are_ready():
+    request = _request_with_draining(False)
     session = _SessionContext()
     redis = _Redis()
 
@@ -101,7 +134,7 @@ async def test_readyz_returns_200_when_all_dependencies_are_ready():
         patch.object(health.httpx, "AsyncClient", _AsyncClient),
         patch.object(health, "_inmemory", {"qwen-max": {"model_kind": "public"}}),
     ):
-        response = cast(Response, await health.readyz())
+        response = cast(Response, await health.readyz(request))
 
     assert response.status_code == 200
     assert _body(response) == {
@@ -123,6 +156,7 @@ async def test_readyz_returns_200_when_all_dependencies_are_ready():
 
 @pytest.mark.asyncio
 async def test_readyz_returns_503_with_marker_when_postgres_fails():
+    request = _request_with_draining(False)
     with (
         patch.object(health, "get_session", return_value=_SessionContext(error=RuntimeError("pg down"))),
         patch.object(redis_client, "get_redis", return_value=_Redis()),
@@ -130,7 +164,7 @@ async def test_readyz_returns_503_with_marker_when_postgres_fails():
         patch.object(health.httpx, "AsyncClient", _AsyncClient),
         patch.object(health, "_inmemory", {"qwen-max": {}}),
     ):
-        response = cast(Response, await health.readyz())
+        response = cast(Response, await health.readyz(request))
 
     body = _body(response)
     assert response.status_code == 503
@@ -142,6 +176,7 @@ async def test_readyz_returns_503_with_marker_when_postgres_fails():
 
 @pytest.mark.asyncio
 async def test_readyz_returns_503_with_marker_when_redis_fails():
+    request = _request_with_draining(False)
     with (
         patch.object(health, "get_session", return_value=_SessionContext()),
         patch.object(redis_client, "get_redis", return_value=_Redis(error=RuntimeError("redis down"))),
@@ -149,7 +184,7 @@ async def test_readyz_returns_503_with_marker_when_redis_fails():
         patch.object(health.httpx, "AsyncClient", _AsyncClient),
         patch.object(health, "_inmemory", {"qwen-max": {}}),
     ):
-        response = cast(Response, await health.readyz())
+        response = cast(Response, await health.readyz(request))
 
     body = _body(response)
     assert response.status_code == 503
@@ -161,6 +196,7 @@ async def test_readyz_returns_503_with_marker_when_redis_fails():
 
 @pytest.mark.asyncio
 async def test_readyz_returns_503_with_marker_when_credential_service_fails():
+    request = _request_with_draining(False)
     _AsyncClient.error = RuntimeError("credential down")
     with (
         patch.object(health, "get_session", return_value=_SessionContext()),
@@ -169,7 +205,7 @@ async def test_readyz_returns_503_with_marker_when_credential_service_fails():
         patch.object(health.httpx, "AsyncClient", _AsyncClient),
         patch.object(health, "_inmemory", {"qwen-max": {}}),
     ):
-        response = cast(Response, await health.readyz())
+        response = cast(Response, await health.readyz(request))
 
     body = _body(response)
     assert response.status_code == 503
@@ -181,6 +217,7 @@ async def test_readyz_returns_503_with_marker_when_credential_service_fails():
 
 @pytest.mark.asyncio
 async def test_readyz_returns_503_with_empty_routing_marker():
+    request = _request_with_draining(False)
     with (
         patch.object(health, "get_session", return_value=_SessionContext()),
         patch.object(redis_client, "get_redis", return_value=_Redis()),
@@ -188,7 +225,7 @@ async def test_readyz_returns_503_with_empty_routing_marker():
         patch.object(health.httpx, "AsyncClient", _AsyncClient),
         patch.object(health, "_inmemory", {}),
     ):
-        response = cast(Response, await health.readyz())
+        response = cast(Response, await health.readyz(request))
 
     body = _body(response)
     assert response.status_code == 503

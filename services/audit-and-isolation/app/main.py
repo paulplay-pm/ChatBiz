@@ -51,10 +51,22 @@ async def lifespan(app: FastAPI):
         logger.warning(f"routing table load failed: {e}")
     # 启动 audit outbox
     await get_outbox().start()
+    # preStop 排空标志 (task 2.1 of gateway-egress-enforcement-p0):
+    # 当 K8s preStop 触发或 uvicorn 收到 SIGTERM 时,FastAPI 跑 lifespan
+    # __aexit__ → yield 后第一行立即 flip → app.state.draining = True。
+    # /healthz 与 /readyz 都会检查这个 flag,draining 时立即返回 503,
+    # L4 LB(NGINX stream)看到 503 摘流量,pod 在 terminationGracePeriodSeconds
+    # 内排空。Flip 时延通常 <100ms(满足 spec "1s 内" 要求)。
+    # 30s 排空窗口由 K8s manifest 的 terminationGracePeriodSeconds=45 +
+    # preStop `sleep 30` 共同提供(task 2.2)。
+    app.state.draining = False
     try:
         yield
     finally:
-        # 关闭
+        # 关闭 — 第一件事:flip draining flag,让 /healthz 立即 503
+        app.state.draining = True
+        logger.info("audit-and-isolation draining: /healthz now 503, LB will stop sending traffic")
+        # 然后按原顺序关 outbox + dispose engine
         await get_outbox().stop()
         await dispose_engine()
 

@@ -1,9 +1,25 @@
 """Liveness + readiness probes.
 
-* ``GET /healthz`` — liveness. Always 200 (as long as the process
-  is up and the event loop is responsive). Used by Kubernetes
-  ``livenessProbe`` — if this stops responding, the pod is
-  restarted.
+* ``GET /healthz`` — liveness. **200 normally, 503 when draining.**
+  Per task 2.1 of `openspec/changes/gateway-egress-enforcement-p0/`:
+  when K8s preStop fires (SIGTERM → FastAPI lifespan __aexit__), the
+  service flips ``app.state.draining = True`` BEFORE stopping the
+  outbox or disposing the engine. The NGINX stream L4 LB (task 2.3)
+  checks /healthz on each upstream; once it sees 503 it stops sending
+  new traffic, and the 30s `preStop sleep` gives in-flight requests
+  time to finish.
+
+  Yes, returning 503 on a liveness probe violates the usual Kubernetes
+  convention ("liveness = process is alive, period"). The deviation
+  is deliberate: audit-and-isolation is the egress enforcement point
+  (eng-review decision #1). A pod that says "I'm alive" while refusing
+  to drain correctly would leak in-flight LLM calls outside the
+  audit-and-isolation policy. During normal operation, /healthz is
+  never 503 — only the K8s preStop window. After
+  `terminationGracePeriodSeconds` the pod is deleted regardless of
+  /healthz, so the "503 → restart" behavior is bounded to the drain
+  window.
+
 * ``GET /readyz`` — readiness. Returns 200 only when the
   gateway can actually serve a request:
 
@@ -14,10 +30,14 @@
     with a 401 (any HTTP response is enough — what we care
     about is TCP + handler reachability, not auth).
   - The in-memory routing table is non-empty.
+  - ``app.state.draining`` is False (short-circuits before any I/O).
 
   Used by Kubernetes ``readinessProbe`` — the pod is removed
   from the Service load-balancer pool when ``/readyz`` returns
-  non-200, so traffic drains before the pod is restarted.
+  non-200, so traffic drains before the pod is restarted. /readyz
+  503 during preStop also makes the NGINX L4 LB (task 2.3) drain
+  the upstream, providing redundant drain signaling alongside
+  /healthz.
 
 The 200/503 split keeps the liveness path tiny (no I/O) and
 makes the readiness path the single source of truth for "can
@@ -32,7 +52,7 @@ from __future__ import annotations
 import logging
 
 import httpx
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Request, Response
 from sqlalchemy import text
 
 from app import redis_client
@@ -46,25 +66,48 @@ router = APIRouter()
 
 
 @router.get("/healthz")
-async def healthz() -> dict:
-    """Liveness probe — always 200 if the process is alive.
+async def healthz(request: Request) -> Response:
+    """Liveness probe — 200 normally, 503 when draining.
 
-    The body is a tiny ``{"status": "ok"}`` so a debug client
-    can curl the endpoint and see a parseable response.
+    See module docstring for why /healthz (not just /readyz) returns 503
+    during the preStop drain window.
     """
-    return {"status": "ok"}
+    if getattr(request.app.state, "draining", False):
+        return Response(
+            content='{"status":"draining"}',
+            media_type="application/json",
+            status_code=503,
+        )
+    return Response(
+        content='{"status":"ok"}',
+        media_type="application/json",
+        status_code=200,
+    )
 
 
 @router.get("/readyz")
-async def readyz() -> Response:
-    """Readiness probe — 200 only when every dependency is reachable.
+async def readyz(request: Request) -> Response:
+    """Readiness probe — 200 only when every dependency is reachable
+    AND the service is not draining.
 
     Each check is wrapped in its own try/except so a single
     failing dependency produces a useful ``checks`` body
     rather than a 500. The HTTP status is 200 only when *all*
-    checks pass.
+    checks pass AND ``app.state.draining`` is False.
     """
     checks: dict[str, str] = {}
+
+    # preStop drain flag — short-circuit before any I/O. This is the
+    # standard K8s readiness semantics ("pod is not ready during drain"),
+    # not a deviation. /readyz 503 also makes the NGINX L4 LB (task 2.3)
+    # drain the upstream, providing redundant drain signaling alongside
+    # /healthz (which is the deviation).
+    if getattr(request.app.state, "draining", False):
+        return Response(
+            content='{"status":"draining"}',
+            media_type="application/json",
+            status_code=503,
+        )
 
     # PostgreSQL
     try:

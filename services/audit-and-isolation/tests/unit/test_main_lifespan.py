@@ -94,3 +94,43 @@ def test_app_registers_expected_routers_and_metadata():
     assert "/readyz" in route_paths
     assert "/v1/models" in route_paths
     assert "/v1/chat/completions" in route_paths
+
+
+@pytest.mark.asyncio
+async def test_lifespan_sets_draining_false_on_startup_and_true_after_shutdown():
+    """Per task 2.1 of `openspec/changes/gateway-egress-enforcement-p0/`.
+
+    Startup: `app.state.draining = False` so /healthz returns 200.
+    Shutdown: the first line of the `finally` block flips it to True,
+    so /healthz + /readyz immediately return 503. This is what the
+    K8s preStop hook + NGINX L4 LB rely on to drain traffic.
+    """
+    from app.api import health
+
+    outbox = _Outbox()
+
+    with (
+        patch.object(main, "get_settings", return_value=SimpleNamespace(environment="test")),
+        patch.object(main, "load_routing_into_cache", new=AsyncMock(return_value=0)),
+        patch.object(main, "get_outbox", return_value=outbox),
+        patch.object(main, "dispose_engine", new=AsyncMock()),
+    ):
+        # Build a synthetic app so we can hold a reference to it for
+        # before/after assertions.
+        app = FastAPI()
+        async with main.lifespan(app):
+            # Inside the lifespan, /healthz should be 200 (draining=False)
+            from starlette.requests import Request as StarletteRequest
+
+            req = StarletteRequest({"type": "http", "app": app})
+            resp = await health.healthz(req)
+            assert resp.status_code == 200, f"expected 200 while running, got {resp.status_code}"
+            assert app.state.draining is False
+
+    # After the lifespan exits, draining must be True (the FIRST line of
+    # the finally block). The flip happens before outbox.stop() and
+    # engine disposal, so /healthz sees 503 the instant shutdown begins.
+    assert app.state.draining is True, (
+        "app.state.draining must flip to True at the start of the finally block, "
+        "before outbox.stop() and dispose_engine()"
+    )

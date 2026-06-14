@@ -1,6 +1,6 @@
 # Verify: gateway-egress-enforcement-p0 (草稿,apply 阶段中)
 
-> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,5/12 个新 task 完成(task 1.1-1.5)。
+> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,6/12 个新 task 完成(task 1.1-1.5, 2.1)。
 > 7 个 [EXISTING] 引用已在 6/12/2026 gap-analysis 阶段确认真实存在(grep 复核见下)。
 > apply 阶段**未完成** → 本 change **不可 archive**。`/retrospective.md` 在所有新 task
 > 完成后才写,本文件不替代。
@@ -22,7 +22,7 @@
 
 > 注:tasks.md 末尾"清单"是 7 条总结,展开是 10 条细分。表里 10 条细分(每条配 grep 行)是为了 verify 可追溯。
 
-## 2. 新 task 完成清单(5/12 推进,1.1-1.5 完成)
+## 2. 新 task 完成清单(6/12 推进,1.1-1.5 + 2.1 完成)
 
 | Task | 文件 | 验证 | 状态 |
 |---|---|---|---|
@@ -31,7 +31,7 @@
 | 1.3 allowlist | `services/gateway-scanner/allowlist.yaml` + `tests/test_allowlist.py` | `pytest tests/test_allowlist.py` **7/7 PASS**(2 个 entry:gateway-scanner 自身 + workflow-engine conftest.py,全部路径存在) | ✅ **完成** |
 | 1.4 AST 核心 | `services/gateway-scanner/gateway_scanner/scanner.py` + `tests/test_ast_scanner.py` + 5 个 fixture | `pytest tests/test_ast_scanner.py` **7/7 PASS**(4 pattern 全部覆盖:bare import / `from X import Y` / `__import__("X")` / `getattr(__import__("X"), ...)`) | ✅ **完成** |
 | 1.5 GitHub Actions | `.github/workflows/gateway-static-scan.yml` + `services/gateway-scanner/tests/test_workflow.py` | `pytest tests/test_workflow.py` **11/11 PASS**(YAML 解析 / trigger paths / job/step 顺序 / scanner 调用 / pinned actions / 最小权限) | ✅ **完成** |
-| 2.1 preStop | — | 待 apply 阶段 | ⏳ pending |
+| 2.1 preStop 排空 | `services/audit-and-isolation/app/main.py` (lifespan startup/shutdown 加 `app.state.draining`) + `app/api/health.py` (`/healthz` + `/readyz` 检查 draining) + `tests/unit/test_main_lifespan.py` (新增 1 个 case) + `tests/unit/test_api_health.py` (新增 2 个 case + 修 5 个 readyz 调用) | `pytest tests/unit/test_main_lifespan.py tests/unit/test_api_health.py` **12/12 PASS**;`pytest tests/unit/` **173/173 PASS** | ✅ **完成** |
 | 2.2 K8s manifest | — | 待 apply 阶段 | ⏳ pending |
 | 2.3 NGINX L4 LB | — | 待 apply 阶段 | ⏳ pending |
 | 2.4 e2e HA failover | — | 待 apply 阶段 | ⏳ pending |
@@ -152,21 +152,23 @@ services/gateway-scanner/tests/fixtures/
 
 ## 7. 范围说明(scope reduction 决策)
 
-task 1.1-1.5 阶段交付的 `services/gateway-scanner/` 完整闭环:CLI + 4 pattern AST 扫描 + blocklist/allowlist 配置 + CI 集成。
+task 1.1-2.1 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空(draining flag + /healthz 503)。
 
-剩余 7 个新 task(2.1-2.4 / 3.1 / 4.1-4.4 / 5.1-5.3 / 6.1 / 7.1-7.2 — 共 15 个 pending)涉及:
-- **2.x** HA 拓扑(K8s manifest + NGINX L4 LB + preStop)
-- **3.x** 客户端重试(`RetryWithIdempotency`)
-- **4.x** 跨实例 trace 查询 + MinIO 冷归档
-- **5.x** perf contracts + `/metrics` 端点
+剩余 6 个新 task(2.2-2.4 / 3.1 / 4.1-4.4 / 5.1-5.3 / 6.1 / 7.1-7.2 — 共 14 个 pending)涉及:
+- **2.2** K8s manifest(deployment 2 replicas + preStop + PDB)
+- **2.3** NGINX L4 LB(`/healthz` 健康检查已就绪,此 task 只装 NGINX 配置)
+- **2.4** e2e HA failover(2 实例 + NGINX + 杀一个)
+- **3.1** 客户端重试(`RetryWithIdempotency`)
+- **4.1-4.4** 跨实例 trace 查询 + MinIO 冷归档
+- **5.1-5.3** perf contracts + `/metrics` 端点
 - **6.1** 文档(`docs/architecture.md` §4.3.Y)
 - **7.x** 收尾(覆盖率 100% + verify.md 最终版)
 
 ## 8. 后续
 
-- **本 verify.md 草稿会在 2.x ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
+- **本 verify.md 草稿会在 2.2 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
 - **最终 verify.md**(7.2 task)在所有 12 个新 task 完成后写,包含完整 18 个 requirement 的 requirement-by-requirement 证据。
-- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 5/12,剩 15 个 pending(表 §2 已展开)。
+- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 6/12,剩 14 个 pending(表 §2 已展开)。
 
 ## 9. Task 1.5 GitHub Actions 详细证据
 
@@ -199,3 +201,38 @@ services/gateway-scanner/tests/test_workflow.py  (11 个 case)
 pytest tests/  →  40/40 PASS
   (smoke 7 + blocklist 8 + allowlist 7 + ast 7 + workflow 11)
 ```
+
+## 10. Task 2.1 preStop 排空 详细证据
+
+### 10.1 文件清单
+```
+services/audit-and-isolation/app/main.py              (lifespan startup/shutdown 加 app.state.draining)
+services/audit-and-isolation/app/api/health.py        (/healthz + /readyz 都看 draining flag)
+services/audit-and-isolation/tests/unit/test_main_lifespan.py  (新增 1 个 case)
+services/audit-and-isolation/tests/unit/test_api_health.py     (新增 2 个 case + 修 5 个 readyz 调用 + 加 helper)
+```
+
+### 10.2 测试结果
+```
+pytest tests/unit/test_main_lifespan.py tests/unit/test_api_health.py -v  →  12/12 PASS
+pytest tests/unit/                                                              173/173 PASS
+```
+
+新增的 3 个 case:
+- `test_lifespan_sets_draining_false_on_startup_and_true_after_shutdown` — 验证 lifespan 进入时 `app.state.draining = False`,退出 finally 时 flip 到 True
+- `test_healthz_returns_503_when_draining` — 验证 /healthz 在 draining 时 503
+- `test_readyz_returns_503_when_draining` — 验证 /readyz 在 draining 时 503(短路 I/O)
+
+### 10.3 关键设计点
+| 设计点 | 决定 | 原因 |
+|---|---|---|
+| Draining flag 位置 | `app.state.draining` | FastAPI 标准 state, lifespan + handler 共享 |
+| Flip 时机 | lifespan `finally` 块第一行 | yield 之后**立刻** flip,先于 outbox.stop() + engine dispose,让 /healthz 第一瞬间就 503 |
+| /healthz 也 503 | 是(spec 字面) | audit-and-isolation 是 egress 强制点(决策 #1),宁可让 K8s liveness probe 触发重启也不让 in-flight LLM 调用漏出 policy。30s 排空窗口由 K8s manifest `preStop sleep 30` + `terminationGracePeriodSeconds=45` 提供(任务 2.2) |
+| /readyz 也 503 | 是(冗余) | 标准 K8s readiness 语义;同时给 NGINX L4 LB(task 2.3)冗余 drain 信号 |
+| 注入测试用 Request | `_request_with_draining` helper | 不起 TestClient,直接构造 StarletteRequest + SimpleNamespace state,快(<1s) |
+
+### 10.4 风险与决策记录
+**风险**:让 /healthz 在 draining 时 503 违反 K8s liveness 通用约定("liveness = 进程活着,不该被其他信号影响")。
+**原因**:eng-review 决策 #1 锁定 audit-and-isolation 为 egress 强制点,行为偏离标准约定是 deliberate 决定,已在 health.py 模块 docstring + 端点 docstring 说明。
+**缓解**:30s 排空窗口 + terminationGracePeriodSeconds=45,503 不会触发 pod 实际重启(还在 preStop 阶段),K8s manifest 由任务 2.2 实施。

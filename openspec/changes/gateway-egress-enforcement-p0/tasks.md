@@ -14,7 +14,7 @@
 
 ## 2. HA 拓扑(K8s + NGINX + preStop,2h 内,4 个 task)
 
-- [ ] 2.1 在 `services/audit-and-isolation/app/main.py` lifespan 的 shutdown 段加 preStop 排空:收到 SIGTERM 后 1s 内 `app.state.draining=True`,`/healthz` 立即返回 503,30s 排空,2.1 验证:`tests/unit/test_main_lifespan.py` 新增 SIGTERM fixture 验证状态切换
+- [x] 2.1 在 `services/audit-and-isolation/app/main.py` lifespan 的 shutdown 段加 preStop 排空:收到 SIGTERM 后 1s 内 `app.state.draining=True`,`/healthz` 立即返回 503,30s 排空,2.1 验证:`tests/unit/test_main_lifespan.py` 新增 SIGTERM fixture 验证状态切换 ✅ 2026-06-14 完成(173/173 unit PASS,新增 3 case + 改 5 readyz 调用)
 - [ ] 2.2 实现 K8s manifest `deploy/audit-and-isolation/deployment.yaml` + `service.yaml` + `poddisruptionbudget.yaml`:`replicas=2` + `preStop` exec command 30s + `terminationGracePeriodSeconds=45s` + `PodDisruptionBudget minAvailable=1`,2.2 验证:`tests/test_k8s_manifest.py` 用 `kubeconform` 验证 YAML 合法
 - [ ] 2.3 实现 NGINX stream L4 LB `deploy/audit-and-isolation/nginx.conf`:2 个 upstream + `health_check interval=5s fails=2 passes=1` + `proxy_timeout 30s`,2.3 验证:`tests/test_nginx_conf.py` 用 `nginx -t`(容器内或本机)验证语法
 - [ ] 2.4 配对 e2e `services/audit-and-isolation/tests/e2e/test_ha_failover.py`:用 docker-compose 启动 2 实例 audit-and-isolation + 1 NGINX,L4 LB 健康,杀掉实例 A,5s 内所有新请求被实例 B 接管,trace_id 在跨实例查询端点可关联(依赖 4.x trace 端点)
