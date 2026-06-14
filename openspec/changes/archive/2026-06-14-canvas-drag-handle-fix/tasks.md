@@ -87,9 +87,10 @@
 
 ## 10. archive V5 change
 
-- [ ] 10.1 `openspec archive canvas-drag-handle-fix --yes`
-- [ ] 10.2 验证 `openspec/changes/archive/2026-06-14-canvas-drag-handle-fix/` 含 5 文件 + 1 spec
-- [ ] 10.3 Commit + V5 worktree 等合并 main
+- [x] 10.1 `openspec archive canvas-drag-handle-fix --yes`(在 T8 步执行,等同 apply + 移入 archive)
+- [x] 10.2 验证 `openspec/changes/archive/2026-06-14-canvas-drag-handle-fix/` 含 **8 文件**(brainstorm/design/proposal/plan/tasks/verify/retrospective + .openspec.yaml)+ specs/1 个(canvas-drag-handle)+ `openspec/specs/canvas-drag-handle/spec.md` 已 apply
+- [x] 10.3 Commit archive 验证 + V5 worktree 等合并 main
+- [ ] 10.4 V5 branch push 由用户发起,或 merge 到 main(后续 V6 独立 change 接管)
 
 ## 任务统计
 
