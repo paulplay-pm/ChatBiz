@@ -1,0 +1,31 @@
+[project]
+name = "chatbiz-gateway-scanner"
+version = "0.1.0"
+description = "Compile-time guard against direct LLM provider SDK imports in ChatBiz services."
+requires-python = ">=3.12"
+dependencies = [
+    "pyyaml>=6.0",
+    "click>=8.1",
+    "rich>=13.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+]
+
+[project.scripts]
+gateway-scanner = "gateway_scanner.__main__:cli"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["gateway_scanner*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"

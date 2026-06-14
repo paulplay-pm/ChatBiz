@@ -6,7 +6,7 @@
 
 ## 1. 编译期静态扫描防御(`services/gateway-scanner/`,2h 内,4 个 task)
 
-- [ ] 1.1 创建 `services/gateway-scanner/` 目录与 `pyproject.toml`(只依赖 `pyyaml` + `click` + `pytest`,**不**依赖 FastAPI / DB),`python -m gateway_scanner path/to/dir` CLI 入口,1.1 验证:`tests/test_smoke.py` 验证 CLI 退出码 0 / 1 / 2
+- [x] 1.1 创建 `services/gateway-scanner/` 目录与 `pyproject.toml`(只依赖 `pyyaml` + `click` + `pytest`,**不**依赖 FastAPI / DB),`python -m gateway_scanner path/to/dir` CLI 入口,1.1 验证:`tests/test_smoke.py` 验证 CLI 退出码 0 / 1 / 2 ✅ 2026-06-14 完成(`pytest tests/test_smoke.py` 7/7 PASS)
 - [ ] 1.2 编写 `services/gateway-scanner/blocklist.yaml`(`openai` / `anthropic` / `cohere` / `google.generativeai` / `mistralai` / `deepseek` 等 LLM provider SDK 包名),1.2 验证:`tests/test_blocklist.py` 验证文件存在 + YAML 解析成功 + 每条 package name 编译通过
 - [ ] 1.3 编写 `services/gateway-scanner/allowlist.yaml`(列出 `services/audit-and-isolation/` + `services/gateway-scanner/` 自身 + `tests/*/conftest.py` 等 fixtures),1.3 验证:`tests/test_allowlist.py` 验证路径存在性
 - [ ] 1.4 实现 AST 扫描核心(`services/gateway-scanner/scanner.py`):用 `ast` 库遍历 Python 文件,匹配 `import` / `import ... as` / `__import__` / `getattr(__import__(...))` 四种 pattern,违规时输出 `file:line:package_name` + 退出码 1,1.4 验证:`tests/test_ast_scanner.py` 用 5 个 fixture(直连 / as 别名 / 动态 import / 注释 / 多行)覆盖
