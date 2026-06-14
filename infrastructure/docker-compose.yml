@@ -23,7 +23,7 @@ services:
   # ---------------------------------------------------------------------------
   # Shared infrastructure
   # ---------------------------------------------------------------------------
-  postgres:
+  chatbiz-postgres:
     image: postgres:16-alpine
     container_name: chatbiz-postgres
     restart: unless-stopped
@@ -44,7 +44,7 @@ services:
       timeout: 3s
       retries: 10
 
-  redis:
+  chatbiz-redis:
     image: redis:7-alpine
     container_name: chatbiz-redis
     restart: unless-stopped
@@ -81,9 +81,9 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       ENVIRONMENT: ${ENVIRONMENT:-local}
     depends_on:
-      postgres:
+      chatbiz-postgres:
         condition: service_healthy
-      redis:
+      chatbiz-redis:
         condition: service_healthy
       credential-migrate:
         condition: service_completed_successfully
@@ -133,7 +133,7 @@ sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)
       DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/credential
       PYTHONPATH: /home/credential/.local/lib/python3.12/site-packages:/app
     depends_on:
-      postgres:
+      chatbiz-postgres:
         condition: service_healthy
 
   credential-cron:
@@ -152,9 +152,9 @@ sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)
       CREDENTIAL_WECHAT_WEBHOOK: ${WECOM_WEBHOOK_URL:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
-      postgres:
+      chatbiz-postgres:
         condition: service_healthy
-      redis:
+      chatbiz-redis:
         condition: service_healthy
       credential-migrate:
         condition: service_completed_successfully
@@ -176,9 +176,9 @@ sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)
       LOG_LEVEL: ${LOG_LEVEL:-info}
       ENVIRONMENT: ${ENVIRONMENT:-local}
     depends_on:
-      postgres:
+      chatbiz-postgres:
         condition: service_healthy
-      redis:
+      chatbiz-redis:
         condition: service_healthy
       credential:
         condition: service_healthy
@@ -205,7 +205,7 @@ sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)
       DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/audit_isolation
       PYTHONPATH: /home/audit/.local/lib/python3.12/site-packages:/app
     depends_on:
-      postgres:
+      chatbiz-postgres:
         condition: service_healthy
 
   # ---------------------------------------------------------------------------
@@ -274,9 +274,9 @@ sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)
       # Mount Docker socket for code execution node sandbox
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
-      postgres:
+      chatbiz-postgres:
         condition: service_healthy
-      redis:
+      chatbiz-redis:
         condition: service_healthy
       audit-and-isolation:
         condition: service_healthy
@@ -306,7 +306,7 @@ sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)
       DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/workflow_engine
       PYTHONPATH: /home/wf/.local/lib/python3.12/site-packages:/app
     depends_on:
-      postgres:
+      chatbiz-postgres:
         condition: service_healthy
 
 # -----------------------------------------------------------------------------
