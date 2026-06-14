@@ -29,12 +29,12 @@
 
 ## 3. portal DashboardPage 4 metric + 快速开始 + 最近访问/动态
 
-- [ ] 3.1 新建 `web/portal/src/data/dashboard.ts` 导出 `metrics`(4 项)、`quickStarts`(4 项)、`recentAccesses`(3 项)、`recentActivities`(2 项)
-- [ ] 3.2 改 `web/portal/src/pages/DashboardPage.tsx`:`<h1>工作台</h1>` + 4 MetricCard + 4 快速开始卡(用 QuickStartCard 组件或 inline)+ 最近访问 List + 最近动态 List
-- [ ] 3.3 改 `web/portal/tests/pages_DashboardPage.test.tsx` 断言 4 metric 数值 + 4 快速开始标题 + 3 最近访问 + 2 最近动态
-- [ ] 3.4 跑 `pnpm exec vitest run web/portal/tests/pages_DashboardPage.test.tsx` 期望 PASS
-- [ ] 3.5 跑 `pnpm exec tsc --noEmit` 期望 EXIT 0
-- [ ] 3.6 Commit: `feat(portal): DashboardPage 4 metric + 快速开始 + 最近访问/动态`
+- [x] 3.1 新建 `web/portal/src/data/dashboard.ts` 导出 `METRICS`(4 项,spec 锁 12/5/2,456/456K)、`QUICK_STARTS`(4 项)、`RECENT_ACCESSES`(3 项)、`RECENT_ACTIVITIES`(2 条)
+- [x] 3.2 改 `web/portal/src/pages/DashboardPage.tsx`:`<h1>工作台</h1>` + 4 MetricCard + 4 快速开始卡(2×2,跨 app 跳 canvas)+ 最近访问 List + 最近动态 List
+- [x] 3.3 改 `web/portal/tests/pages_DashboardPage.test.tsx` 5 断言(工作台标题 + 4 metric 值 + 4 快速开始 + 3 最近访问 + 2 动态 + mock 来源)
+- [x] 3.4 跑 `pnpm exec vitest run` → 5/5 PASS
+- [x] 3.5 跑 `pnpm exec tsc --noEmit` → EXIT 0
+- [x] 3.6 Commit: `feat(portal): DashboardPage 4 metric + 快速开始 + 最近访问/动态` → `8979b2b`
 
 ## 4. admin mock data 5 文件
 
