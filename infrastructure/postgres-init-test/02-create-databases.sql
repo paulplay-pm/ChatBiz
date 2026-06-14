@@ -30,3 +30,7 @@ GRANT ALL PRIVILEGES ON DATABASE workflow_engine TO chatbiz;
 GRANT ALL ON SCHEMA public TO chatbiz;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO chatbiz;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO chatbiz;
+
+-- V6a chatbiz-sso
+SELECT 'CREATE DATABASE chatbiz_sso'
+WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'chatbiz_sso')\gexec

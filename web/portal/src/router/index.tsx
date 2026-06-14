@@ -2,7 +2,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AppLayout } from '@/components/AppLayout';
 import { RequireAuth } from 'ui/primitives/RequireAuth';
 import LoginPage from '@/pages/LoginPage';
-import SsoMockImPage from '@/pages/SsoMockImPage';
+import SsoCallbackPage from '@/pages/SsoCallbackPage';
 import DashboardPage from '@/pages/DashboardPage';
 import ComingSoonPage from '@/pages/ComingSoonPage';
 import { MENU, SECTIONS } from '@/data/menu';
@@ -21,8 +21,8 @@ export function PortalRouter() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      {/* V4: SSO 假 IM 弹窗页 — 不需要 auth,在 RequireAuth 外面 */}
-      <Route path="/sso-mock-im" element={<SsoMockImPage />} />
+      {/* V6a: SSO 企微回调页 — 不需要 auth,在 RequireAuth 外面 */}
+      <Route path="/sso-callback" element={<SsoCallbackPage />} />
       <Route element={<RequireAuth />}>
         <Route element={<AppLayoutWrapper />}>
           <Route path="/" element={<DashboardPage />} />

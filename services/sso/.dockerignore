@@ -1,0 +1,40 @@
+# Build context artefacts that bloat the image or leak secrets.
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+*.egg-info/
+build/
+dist/
+
+# Test / coverage reports
+.coverage.*
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Editor / OS noise
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local secrets / scratch files — never bake them into the image
+.env
+.env.*
+*.pem
+*.key
+secrets/

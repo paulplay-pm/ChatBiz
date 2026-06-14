@@ -1,0 +1,68 @@
+# =============================================================================
+# pre-commit configuration for the credential-management service.
+#
+# Install once with:    pre-commit install
+# Run on demand with:   pre-commit run --all-files
+# =============================================================================
+default_install_hook_types: [pre-commit, commit-msg]
+default_stages: [pre-commit]
+fail_fast: false
+
+repos:
+  # ---------- ruff: lint + format ------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        name: ruff (lint)
+        args: ["--fix", "--exit-non-zero-on-fix"]
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: ruff (format)
+        types_or: [python, pyi]
+
+  # ---------- mypy: static type checking -----------------------------------
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        name: mypy (strict)
+        args:
+          - --strict
+          - --explicit-package-bases
+        additional_dependencies:
+          - pydantic>=2.6
+          - sqlalchemy[asyncio]>=2.0
+          - types-cryptography
+        # Limit to first-party code; tests/alembic are excluded via pyproject.
+        files: ^app/.*\.py$
+
+  # ---------- bandit: security lint ----------------------------------------
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.10
+    hooks:
+      - id: bandit
+        name: bandit (security)
+        args:
+          - -r
+          - app
+          - -ll
+          - --skip
+          - "B101"   # assert_used — we use asserts deliberately in app code
+        additional_dependencies: ["bandit[toml]"]
+
+  # ---------- standard hygiene ---------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        # docker-compose has anchors / `&` aliases; tell pre-commit it's safe.
+        args: ["--allow-multiple-documents", "--unsafe"]
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=512"]
+      - id: detect-private-key
+        name: detect private keys
