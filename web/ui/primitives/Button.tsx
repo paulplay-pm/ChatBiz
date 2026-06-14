@@ -13,15 +13,16 @@ const sizes: Record<Size, string> = {
   lg: 'px-5 py-2.5 text-base',
 };
 
-export function Button({ variant = 'primary', size = 'md', children, onClick, type = 'button' }: {
-  variant?: Variant; size?: Size; children: ReactNode; onClick?: () => void; type?: 'button' | 'submit';
+export function Button({ variant = 'primary', size = 'md', children, onClick, type = 'button', className = '', disabled = false, 'data-testid': testId = 'btn' }: {
+  variant?: Variant; size?: Size; children: ReactNode; onClick?: () => void | Promise<void>; type?: 'button' | 'submit'; className?: string; disabled?: boolean; 'data-testid'?: string;
 }) {
   return (
     <button
       type={type}
       onClick={onClick}
-      data-testid="btn"
-      className={`rounded-lg font-medium transition-all ${variants[variant]} ${sizes[size]}`}
+      disabled={disabled}
+      data-testid={testId}
+      className={`rounded-lg font-medium transition-all ${variants[variant]} ${sizes[size]} ${className} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
       {children}
     </button>
