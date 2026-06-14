@@ -61,16 +61,16 @@
 
 ## 7. 全量回归(14-gate)
 
-- [ ] 7.1 跑 `pnpm exec vitest run` 在 canvas → 87/87(0 回归)
-- [ ] 7.2 跑 `pnpm exec playwright test` 在 canvas → **8/8 PASS**
-- [ ] 7.3 跑 `pnpm exec playwright test --config=playwright.integration.config.ts` → 3/3 PASS
-- [ ] 7.4 跑 `pnpm exec tsc --noEmit` 在 canvas → EXIT 0
-- [ ] 7.5 portal `pnpm exec vitest run` → 50/50
-- [ ] 7.6 portal `pnpm exec playwright test` → 7/7 PASS
-- [ ] 7.7 admin `pnpm exec vitest run` → 32/32
-- [ ] 7.8 admin `pnpm exec playwright test` → 1/5(不修)
-- [ ] 7.9 5-path curl(`/portal/login` `/portal/sso-mock-im` `/canvas/` `/admin/` `/admin/users`)→ 全 200
-- [ ] 7.10 Commit: `chore(ops): V5 14-gate verify`
+- [x] 7.1 跑 `pnpm exec vitest run` 在 canvas → 87/87 PASS(V4 84 → +3 防漂移单测,0 回归)
+- [x] 7.2 跑 `pnpm exec playwright test` 在 canvas → **8/8 PASS** ✓ V5 目标达成
+- [x] 7.3 跑 `pnpm exec playwright test --config=playwright.integration.config.ts` → 3/3 PASS(rebuild 容器 + `--network chatbiz-net` 修 V5 baseline 1 fail)
+- [x] 7.4 跑 `pnpm exec tsc --noEmit` 在 canvas → EXIT 0
+- [x] 7.5 portal `pnpm exec vitest run` → 50/50 PASS
+- [x] 7.6 portal `pnpm exec playwright test` → 7/7 PASS
+- [x] 7.7 admin `pnpm exec vitest run` → 32/32 PASS
+- [x] 7.8 admin `pnpm exec playwright test` → 1/5(V4 baseline,0 回归,不修)
+- [x] 7.9 5-path curl(`/portal/login` `/portal/sso-mock-im` `/canvas/` `/admin/` `/admin/users`)→ 全 200
+- [x] 7.10 Commit: `chore(ops): V5 canvas-drag-handle-fix 14-gate verify` → `7e8c519`
 
 ## 8. openspec plan + apply
 
