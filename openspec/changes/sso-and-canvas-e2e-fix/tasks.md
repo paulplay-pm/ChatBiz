@@ -77,17 +77,18 @@
 
 ## 7. portal LoginPage SSO 按钮 + dev IM mock
 
-- [ ] 7.1 新建 `web/portal/src/data/auth.ts`:`ssoInitiate()` / `ssoCallback()` / `ssoMockImConfirm()` 三个 fetch helper
-- [ ] 7.2 改 `web/portal/src/pages/LoginPage.tsx`:在 username/password 表单下方加"企业扫码登录"按钮
-- [ ] 7.3 新建 `web/portal/src/pages/SsoMockImPage.tsx`:假 IM 弹窗,显示 token + "确认登录"按钮
-- [ ] 7.4 改 `web/portal/src/router/index.tsx`:加 `/sso-mock-im` 路由
-- [ ] 7.5 新建 `web/portal/tests/data_auth.test.ts` 断言 3 helper 函数
-- [ ] 7.6 新建 `web/portal/tests/pages_SsoMockImPage.test.tsx` 断言 token 显示 + 确认按钮 + fetch 触发
-- [ ] 7.7 跑 vitest 期望 2 文件全 PASS
-- [ ] 7.8 跑 `pnpm exec tsc --noEmit` 在 portal 期望 EXIT 0
-- [ ] 7.9 改 `web/portal/e2e/portal-flow.spec.ts`:加 SSO e2e case(login → 扫码 → 确认 → 跳 dashboard)
-- [ ] 7.10 跑 `pnpm exec playwright test` 在 portal 期望 3+/3+ PASS(V2 baseline + 1 新 SSO)
-- [ ] 7.11 Commit: `feat(portal): SSO 企微扫码最小实现 + dev IM mock + e2e`
+- [x] 7.1 新建 `web/portal/src/data/auth.ts`:`ssoInitiate()` / `ssoCallback()` / `ssoMockImConfirm()` 三个 fetch helper + dev fallback
+- [x] 7.2 改 `web/portal/src/pages/LoginPage.tsx`:在 username/password 表单下方加"🪪 企业扫码登录"按钮 + 分隔线
+- [x] 7.3 新建 `web/portal/src/pages/SsoMockImPage.tsx`:假 IM 弹窗,显示 token + "确认登录"按钮 + error + 写 localStorage.auth
+- [x] 7.4 改 `web/portal/src/router/index.tsx`:加 `/sso-mock-im` 路由(在 RequireAuth 外面)
+- [x] 7.5 新建 `web/portal/tests/data_auth.test.ts` 7 断言(3 helper × fetch ok/fail/HTTP error)
+- [x] 7.6 新建 `web/portal/tests/pages_SsoMockImPage.test.tsx` 4 断言(token 渲染 + error + enable/disable)
+- [x] 7.7 跑 vitest:portal 14 files / 50 tests PASS(V3 40 → +10)
+- [x] 7.8 跑 `pnpm exec tsc --noEmit` 在 portal → EXIT 0
+- [x] 7.9 改 `web/portal/e2e/portal-flow.spec.ts`:加 SSO e2e case(login → 扫码 → 确认 → 跳首页 → localStorage)
+- [x] 7.10 跑 `pnpm exec playwright test` 在 portal → **7/7 PASS**(V3 6 + 1 SSO)
+- [x] 7.11 改 `web/ui/primitives/Button.tsx`:加 className + disabled + onClick 接受 Promise + data-testid 透传
+- [x] 7.12 Commit: `feat(portal): SSO 企微扫码最小实现 + dev IM mock + e2e`
 
 ## 8. canvas-auth spec Modify 追加 SSO 路径
 
