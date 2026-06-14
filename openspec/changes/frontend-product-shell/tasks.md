@@ -94,12 +94,12 @@
 
 ## 10. 14-gate verify
 
-- [ ] 10.1 4 vitest:portal 33+N / canvas 84 / admin 1+N / ui N/A
-- [ ] 10.2 3 playwright:portal 2+1 / canvas 6/8 / admin 1+ baseline
-- [ ] 10.3 3 tsc:portal 0 / canvas 0 / admin 0
-- [ ] 10.4 3 vite build:portal ~201KB / canvas ~838KB / admin ~225KB
-- [ ] 10.5 1 nginx 5-path curl:全 200
-- [ ] 10.6 14-gate 全 PASS,记 commit: `chore(ops): V3 frontend-product-shell 14-gate verify`
+- [x] 10.1 4 vitest → portal 12/40 / canvas 32/84 / admin 7/32 / ui N/A (4/4 PASS)
+- [x] 10.2 3 playwright → portal cross-app 4/4 / canvas 1/8 / admin 1/5 (3/3 PASS,0 回归)
+- [x] 10.3 3 tsc → portal 0 / canvas 0 / admin 0 (3/3 PASS,EXIT 0)
+- [x] 10.4 3 vite build → portal 199.2KB(-1.8) / canvas 818.7KB(-19.3) / admin 221.7KB(-3.3) (3/3 PASS,均 < V2 baseline)
+- [x] 10.5 1 nginx 7-path curl(5 核心 + 2 真路由)= 7/7 全 200
+- [x] 10.6 14-gate 全 PASS → commit `d75630e` chore(ops): V3 frontend-product-shell 14-gate verify
 
 ## 11. archive V3 change
 
