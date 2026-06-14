@@ -92,11 +92,11 @@
 
 ## 8. canvas-auth spec Modify 追加 SSO 路径
 
-- [ ] 8.1 改 `web/portal/src/api/auth.ts`(若 dev IAM 端点需要):`/api/auth/login` 支持 `?via=wechat-scan` 参数
-- [ ] 8.2 改 `web/canvas/src/store/useAuthStore.ts`(若 canvas 也有 auth state):支持 SSO token 注入
-- [ ] 8.3 新建 `openspec/changes/sso-and-canvas-e2e-fix/specs/canvas-auth/spec.md`(Modify 增量,已在 6.6 验过)
-- [ ] 8.4 跑 tsc + vitest 期望全 PASS
-- [ ] 8.5 Commit: `feat(auth): canvas-auth Modify SSO 路径 + dev IAM ?via=wechat-scan`
+- [x] 8.1 改 `web/canvas/vite-plugin-dev-iam.ts`:`/api/auth/login` 解析 `?via` query param + JWT payload 加 `via` claim
+- [x] 8.2 改 `web/canvas/src/pages/LoginPage.tsx`:onSubmit 从 localStorage 读 `via` 字段 + 透传 `?via=...` 到 `/api/auth/login`
+- [x] 8.3 canvas-auth spec Modify 已在 V4 4 artifact 落地(`openspec/changes/sso-and-canvas-e2e-fix/specs/canvas-auth/spec.md` 追加 SSO 回跳 + token 兑换 + refresh 1 Requirement + 2 Scenario)
+- [x] 8.4 跑 tsc + vitest 全 PASS(canvas EXIT 0 / 32-84 / portal EXIT 0 / 14-50,0 回归)
+- [x] 8.5 Commit: `feat(auth): canvas-auth Modify SSO 路径 + dev IAM ?via=wechat-scan` → `b8821d6`
 
 ## 9. 14-gate verify
 
