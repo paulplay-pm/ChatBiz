@@ -71,11 +71,11 @@
 
 ## 7. admin SideNav + AppShell 微调
 
-- [ ] 7.1 改 `web/admin/src/components/SideNav.tsx`:把顶部"工作区"label 改成"系统管理"(跟原型图 #8-13 一致)
-- [ ] 7.2 改 `web/admin/src/components/AppShell.tsx`:header 标题从"ChatBiz Admin" 改成"系统管理",用户头像保留
-- [ ] 7.3 跑 `pnpm exec tsc --noEmit` 在 admin 期望 EXIT 0
-- [ ] 7.4 跑 `pnpm exec vitest run` 在 admin 期望全 PASS
-- [ ] 7.5 Commit: `refactor(admin): SideNav/AppShell 标题改"系统管理"`
+- [x] 7.1 改 `web/admin/src/components/SideNav.tsx`:顶部"工作区"label **保留**(spec `admin-menu-update` § SideNav 分组 label 锁定保留,跟原型图 #8-13 一致;覆盖 tasks.md 7.1 原文「改成系统管理」,优先 spec 锁)
+- [x] 7.2 改 `web/admin/src/components/AppShell.tsx`:header 标题从"ChatBiz Admin" 改成"系统管理",用户头像保留
+- [x] 7.3 跑 `pnpm exec tsc --noEmit` 在 admin → EXIT 0
+- [x] 7.4 跑 `pnpm exec vitest run` 在 admin → 7 files / 32 tests 全 PASS
+- [x] 7.5 Commit: `refactor(admin): AppShell header 改「系统管理」` → `9e121fb`
 
 ## 8. 跨 app e2e(portal → /admin/users)扩展 V2
 
