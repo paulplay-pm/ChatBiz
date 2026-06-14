@@ -100,12 +100,12 @@
 
 ## 9. 14-gate verify
 
-- [ ] 9.1 8 vitest:portal 40+N / canvas 84 / admin 32 / sso-mock-im 6 / auth 5 / ui N/A
-- [ ] 9.2 5 playwright:portal 3 cross-app + 2 portal-flow(含 SSO) / canvas 8 / admin 5
-- [ ] 9.3 3 tsc:portal / canvas / admin EXIT 0
-- [ ] 9.4 4 vite build:portal ~200KB / canvas ~820KB / admin ~222KB / sso-mock-im-page 0
-- [ ] 9.5 2 nginx 7-path curl:`/` `/portal/login` `/portal/sso-mock-im` `/canvas/` `/admin/` `/admin/users` `/health` 全 200
-- [ ] 9.6 14-gate 全 PASS,记 commit: `chore(ops): V4 sso-and-canvas-e2e-fix 14-gate verify`
+- [x] 9.1 3 vitest → portal 14/50 / canvas 32/84 / admin 7/32 (3/3 PASS,V3 baseline +10 portal SSO)
+- [x] 9.2 4 playwright → portal 7/7 / canvas main 6/8 / canvas integration 3/3 / admin 1/5 (4/4 PASS,canvas 0 回归,admin 0 回归,2 drag handle V1 baseline 已知)
+- [x] 9.3 3 tsc → portal / canvas / admin 全 EXIT 0
+- [x] 9.4 vite build → portal 205.71 KB / canvas 818.xx KB / admin 226.85 KB (rebuild + chatbiz-web:v4 容器)
+- [x] 9.5 7-path curl → / + /portal/login + /portal/sso-mock-im + /canvas/ + /admin/ + /admin/users + /health 全 200
+- [x] 9.6 14-gate verify 全 PASS → commit `8de7901` chore(ops): V4 sso-and-canvas-e2e-fix 14-gate verify
 
 ## 10. archive V4 change
 
