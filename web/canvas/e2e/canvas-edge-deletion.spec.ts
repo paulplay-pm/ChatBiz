@@ -17,7 +17,7 @@ test('canvas: can delete an edge by clicking it and pressing Backspace or Delete
   await page.goto('/login');
   await page.getByPlaceholder('任意非空 username(dev mode)').fill('paul');
   await page.getByPlaceholder('任意密码(dev mode)').fill('dev');
-  await page.getByRole('button', { name: '登 录' }).click();
+  await page.getByRole('button', { name: '登录' }).click();
   await expect(page).toHaveURL(/\/workflows/);
 
   // open or create a workflow
@@ -27,7 +27,7 @@ test('canvas: can delete an edge by clicking it and pressing Backspace or Delete
   } else {
     await page.getByRole('button', { name: /新建工作流/ }).click();
     await page.getByPlaceholder(/paul/).fill('regression-' + Date.now());
-    await page.locator('.ant-modal-footer .ant-btn-primary').first().click();
+    await page.getByRole('button', { name: '创建' }).click();
   }
   await expect(page).toHaveURL(/\/workflows\/.+\/edit/);
   await page.waitForLoadState('networkidle');

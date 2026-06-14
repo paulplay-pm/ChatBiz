@@ -1,6 +1,5 @@
-import { MenuItem, MenuSection } from '@/data/menu';
-import { SidebarSection } from './SidebarSection';
-import { SidebarItem } from './SidebarItem';
+import { MenuItem, SidebarItem } from './SidebarItem';
+import { MenuSection, SidebarSection } from './SidebarSection';
 
 export function Sidebar({ items, sections, activeId, onSelect }: {
   items: MenuItem[]; sections: MenuSection[]; activeId: string; onSelect: (id: string) => void;

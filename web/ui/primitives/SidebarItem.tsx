@@ -1,4 +1,6 @@
-import { MenuItem } from '@/data/menu';
+export type MenuStatus = 'ready' | 'coming-soon';
+export type MenuItem = { id: string; label: string; icon: string; section: string; status: MenuStatus; href: string };
+
 export function SidebarItem({ item, active, onSelect }: { item: MenuItem; active: boolean; onSelect: (id: string) => void }) {
   return (
     <div

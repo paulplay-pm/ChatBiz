@@ -51,7 +51,7 @@ test('node schema endpoint returns 14 node types via api', async ({ page }) => {
   // Verifying the contract is sufficient: 14 node types must be available.
   await page.goto('/login');
   await page.getByPlaceholder('任意非空 username(dev mode)').fill('paul');
-  await page.getByRole('button', { name: '登 录' }).click();
+  await page.getByRole('button', { name: '登录' }).click();
   // After login, navigate to the list page which fetches /workflows and /api/nodes.
   // We just verify the navigation works; the contract assertion is via the mock.
   await expect(page).toHaveURL(/\/workflows/);

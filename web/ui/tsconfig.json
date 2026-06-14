@@ -17,12 +17,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "types": ["vitest/globals", "@testing-library/jest-dom", "node"],
     "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"],
-      "ui/*": ["../ui/*"]
-    }
+    "paths": { "@/*": ["./*"] }
   },
-  "include": ["src", "tests", "e2e", "vitest.config.ts"]
+  "include": ["index.ts", "primitives", "index.css"]
 }

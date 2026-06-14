@@ -19,10 +19,10 @@ test.beforeEach(async ({ page }) => {
 test('workflow list can create paul monthly report and navigate to editor', async ({ page }) => {
   await page.goto('/login');
   await page.getByPlaceholder('任意非空 username(dev mode)').fill('paul');
-  await page.getByRole('button', { name: '登 录' }).click();
+  await page.getByRole('button', { name: '登录' }).click();
   await expect(page).toHaveURL(/\/workflows/);
   await page.getByRole('button', { name: /新建工作流/ }).click();
   await page.getByPlaceholder('例:paul 财务月报').fill('paul 月报');
-  await page.getByRole('button', { name: /确\s定/ }).click();
+  await page.getByRole('button', { name: '创建' }).click();
   await expect(page).toHaveURL(/\/workflows\/paul-monthly\/edit/);
 });

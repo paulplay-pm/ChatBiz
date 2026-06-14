@@ -1,5 +1,7 @@
 import { ReactNode } from 'react';
-import { MenuSection } from '@/data/menu';
+
+export type MenuSection = { id: string; title: string };
+
 export function SidebarSection({ section, children }: { section: MenuSection; children: ReactNode }) {
   return (
     <div className="mb-3">

@@ -6,6 +6,7 @@ import React from 'react';
 import { CreateWorkflowModal } from '@/components/CreateWorkflowModal';
 import { DeleteConfirmModal } from '@/components/DeleteConfirmModal';
 import { WorkflowCard } from '@/components/WorkflowCard';
+import { ToastProvider } from 'ui/primitives/Toast';
 
 vi.mock('@/lib/apiClient', () => ({
   api: {
@@ -20,7 +21,8 @@ vi.mock('@/lib/apiClient', () => ({
 const wrapper = ({ children }: { children: React.ReactNode }) => {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return React.createElement(QueryClientProvider, { client: qc },
-    React.createElement(MemoryRouter, null, children));
+    React.createElement(MemoryRouter, null,
+      React.createElement(ToastProvider, null, children)));
 };
 
 describe('CreateWorkflowModal', () => {

@@ -5,6 +5,7 @@ import React from 'react';
 import { useSaveWorkflow } from '@/hooks/useSaveWorkflow';
 import { api } from '@/lib/apiClient';
 import { useCanvasEditStore } from '@/store/useCanvasEditStore';
+import { ToastProvider } from 'ui/primitives/Toast';
 
 vi.mock('@/lib/apiClient', () => ({
   api: {
@@ -15,7 +16,8 @@ vi.mock('@/lib/apiClient', () => ({
 
 const wrapper = ({ children }: { children: React.ReactNode }) => {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return React.createElement(QueryClientProvider, { client: qc }, children);
+  return React.createElement(QueryClientProvider, { client: qc },
+    React.createElement(ToastProvider, null, children));
 };
 
 describe('useSaveWorkflow', () => {

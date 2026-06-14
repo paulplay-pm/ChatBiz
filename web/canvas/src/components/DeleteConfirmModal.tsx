@@ -1,4 +1,6 @@
-import { Modal, message } from 'antd';
+import { useState } from 'react';
+import { Modal, Button } from 'ui/index';
+import { useToast } from 'ui/primitives/Toast';
 import { useDeleteWorkflow } from '@/hooks/useWorkflows';
 
 interface Props {
@@ -9,30 +11,35 @@ interface Props {
 
 export function DeleteConfirmModal({ workflowId, workflowName, onClose }: Props) {
   const del = useDeleteWorkflow();
+  const toast = useToast();
+  const [submitting, setSubmitting] = useState(false);
 
-  const onOk = async () => {
+  const onConfirm = async () => {
     if (!workflowId) return;
+    setSubmitting(true);
     try {
       await del.mutateAsync(workflowId);
-      message.success('已删除');
+      toast.info('已删除');
       onClose();
     } catch (e) {
       const err = e as { response?: { data?: { detail?: { error_message?: string } } } };
-      message.error(err.response?.data?.detail?.error_message ?? '删除失败');
+      toast.error(err.response?.data?.detail?.error_message ?? '删除失败');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <Modal
-      title="确认删除"
-      open={!!workflowId}
-      onCancel={onClose}
-      onOk={onOk}
-      okButtonProps={{ danger: true, loading: del.isPending }}
-      okText="删除"
-      cancelText="取消"
-    >
-      确定要删除工作流 <strong>{workflowName}</strong> 吗?此操作不可恢复。
+    <Modal open={!!workflowId} onClose={onClose} title="确认删除">
+      <p className="text-sm text-ink-700">
+        确定要删除工作流 <strong>{workflowName}</strong> 吗?此操作不可恢复。
+      </p>
+      <div className="flex gap-2 justify-end mt-6">
+        <Button variant="ghost" onClick={onClose}>取消</Button>
+        <span>
+          <Button variant="primary" onClick={onConfirm}>{submitting ? '删除中…' : '删除'}</Button>
+        </span>
+      </div>
     </Modal>
   );
 }

@@ -1,5 +1,5 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
-import { Result, Button } from 'antd';
+import { Button } from 'ui/primitives/Button';
 
 interface Props { children: ReactNode; }
 interface State { hasError: boolean; error?: Error; }
@@ -21,12 +21,11 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <Result
-          status="500"
-          title="出错了"
-          subTitle={this.state.error?.message || '未知错误'}
-          extra={<Button type="primary" onClick={() => window.location.reload()}>刷新页面</Button>}
-        />
+        <div data-testid="error-boundary" className="flex flex-col items-center justify-center p-12">
+          <h2 className="text-2xl font-semibold text-ink-900 mb-2">出错了</h2>
+          <p className="text-sm text-ink-500 mb-4">{this.state.error?.message || '未知错误'}</p>
+          <Button variant="primary" onClick={() => window.location.reload()}>刷新页面</Button>
+        </div>
       );
     }
     return this.props.children;

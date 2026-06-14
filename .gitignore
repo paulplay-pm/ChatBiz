@@ -135,6 +135,9 @@ test-results/
 .vite/
 *.tsbuildinfo
 
+# Node.js / pnpm
+node_modules/
+
 # Project-specific
 AGENTS.md
 .cache/

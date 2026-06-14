@@ -10,7 +10,11 @@ export default defineConfig(() => {
     base: appBase,
     plugins: [react(), devIam()],
     resolve: {
-      alias: { '@': path.resolve(__dirname, 'src') },
+      alias: { '@': path.resolve(__dirname, 'src'), ui: path.resolve(__dirname, '../ui') },
+      dedupe: ['react', 'react-dom', 'react-router-dom'],
+    },
+    optimizeDeps: {
+      include: ['react', 'react-dom', 'react-router-dom'],
     },
     server: {
       port: 5173,
