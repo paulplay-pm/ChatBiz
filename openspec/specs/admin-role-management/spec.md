@@ -1,0 +1,20 @@
+# admin-role-management Specification
+
+## Purpose
+TBD - created by archiving change frontend-product-shell. Update Purpose after archive.
+## Requirements
+### Requirement: 4 角色卡 + 权限矩阵
+admin `/roles` 路由 MUST 渲染 4 个角色卡(超级管理员/部门管理员/开发者/普通用户),点击卡片下方展示该角色的权限矩阵(工作流 + 对话 × 查看/创建/编辑/删除/发布)。
+
+#### Scenario: 4 角色卡
+- **WHEN** 访问 `/admin/roles`
+- **THEN** 屏幕显示 4 个角色卡,每卡含图标 + 角色名 + 描述 + 成员头像(至少 3 个 mock 成员)
+
+#### Scenario: 权限矩阵
+- **WHEN** 点击任一角色卡(如"开发者")
+- **THEN** 下方显示权限矩阵,行=工作流/对话,列=查看/创建/编辑/删除/发布,checkbox 反映该角色的权限(开发者:工作流+对话的查看/创建/编辑)
+
+#### Scenario: 顶部提示
+- **WHEN** 页面渲染
+- **THEN** 顶部蓝色 info bar 显示"一个用户可拥有多个角色,最终权限为所有角色权限的并集。点击「管理成员」查看和分配角色。"
+
