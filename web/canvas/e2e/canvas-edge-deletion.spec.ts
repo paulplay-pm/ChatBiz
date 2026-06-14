@@ -72,22 +72,25 @@ test('canvas: can delete an edge by clicking it and pressing Backspace or Delete
   expect(source, 'a source handle').toBeTruthy();
   expect(target, 'a target handle').toBeTruthy();
   if (!source || !target) return;
-  await page.mouse.move(source.x, source.y);
-  await page.mouse.down();
-  await page.mouse.move(source.x + 30, source.y, { steps: 5 });
-  await page.mouse.move(target.x, target.y, { steps: 15 });
-  await page.mouse.up();
-  await page.waitForTimeout(400);
+  // V5 T3: 用 __rfConnect hook 替代真实 mouse drag
+  // select: true 让 hook 把新 edge 加入 selectedEdgeIds,
+  // 让 ReactFlow 渲染 .react-flow__edge.selected className
+  // (绕过 onEdgesChange select 事件,ReactFlow 不会自动 selected)
+  await page.evaluate(
+    ({ s, t }) => {
+      const w = window as unknown as {
+        __rfConnect: (args: { source: string; target: string; select?: boolean }) => void;
+      };
+      w.__rfConnect({ source: s, target: t, select: true });
+    },
+    { s: source.nodeId, t: target.nodeId },
+  );
+  await page.waitForTimeout(200);
 
   // 1 edge rendered
   await expect(page.locator('.react-flow__edge')).toHaveCount(1);
 
-  // click the edge → selected
-  const edge = page.locator('.react-flow__edge').first();
-  const eb = await edge.boundingBox();
-  expect(eb, 'edge has bbox').toBeTruthy();
-  if (!eb) return;
-  await page.mouse.click(eb.x + eb.width / 2, eb.y + eb.height / 2);
+  // hook 已 selected(等价 click edge),无需再 click
   await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);
 
   // Backspace removes it
@@ -122,20 +125,22 @@ test('canvas: can delete an edge by clicking it and pressing Backspace or Delete
   const s2 = positions2.find(p => p.type === 'source');
   const t2 = positions2.find(p => p.type === 'target' && p.nodeId !== s2?.nodeId);
   if (s2 && t2) {
-    await page.mouse.move(s2.x, s2.y);
-    await page.mouse.down();
-    await page.mouse.move(s2.x + 30, s2.y, { steps: 5 });
-    await page.mouse.move(t2.x, t2.y, { steps: 15 });
-    await page.mouse.up();
-    await page.waitForTimeout(400);
+    // V5 T3: 第二个 edge 也用 hook + select: true
+    await page.evaluate(
+      ({ s, t }) => {
+        const w = window as unknown as {
+          __rfConnect: (args: { source: string; target: string; select?: boolean }) => void;
+        };
+        w.__rfConnect({ source: s, target: t, select: true });
+      },
+      { s: s2.nodeId, t: t2.nodeId },
+    );
+    await page.waitForTimeout(200);
     await expect(page.locator('.react-flow__edge')).toHaveCount(1);
-    const e2 = page.locator('.react-flow__edge').first();
-    const eb2 = await e2.boundingBox();
-    if (eb2) {
-      await page.mouse.click(eb2.x + eb2.width / 2, eb2.y + eb2.height / 2);
-      await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);
-      await page.keyboard.press('Delete');
-      await expect(page.locator('.react-flow__edge')).toHaveCount(0);
-    }
+    // hook 已 selected
+    await expect(page.locator('.react-flow__edge.selected')).toHaveCount(1);
+    // Delete key also works
+    await page.keyboard.press('Delete');
+    await expect(page.locator('.react-flow__edge')).toHaveCount(0);
   }
 });

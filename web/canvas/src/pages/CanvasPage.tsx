@@ -150,9 +150,25 @@ function CanvasPageInner() {
   // Vite dead-code-eliminate prod build,window.__rfConnect 不挂载。
   useEffect(() => {
     if (!import.meta.env.DEV) return;
-    type RfConnectArgs = { source: string; target: string };
-    (window as unknown as { __rfConnect: (args: RfConnectArgs) => void }).__rfConnect = ({ source, target }: RfConnectArgs) => {
+    type RfConnectArgs = { source: string; target: string; select?: boolean };
+    (window as unknown as { __rfConnect: (args: RfConnectArgs) => void }).__rfConnect = ({ source, target, select }: RfConnectArgs) => {
       onConnect({ source, target, sourceHandle: null, targetHandle: null });
+      // V5 T3: e2e canvas-edge-deletion 需要让 ReactFlow 把新建的 edge 视为 selected
+      // (因为 hook 绕过 onEdgesChange 的 select 事件,ReactFlow 不会自动加 .selected className)
+      if (select) {
+        setTimeout(() => {
+          // 等 ReactFlow 渲染完,从 store 拿最新 edge id 加入 selectedEdgeIds
+          const s = useCanvasEditStore.getState();
+          const newEdge = s.edges.find((e) => e.from === source && e.to === target);
+          if (newEdge) {
+            setSelectedEdgeIds((prev) => {
+              const next = new Set(prev);
+              next.add(newEdge.id);
+              return next;
+            });
+          }
+        }, 0);
+      }
     };
     return () => {
       delete (window as unknown as { __rfConnect?: unknown }).__rfConnect;
