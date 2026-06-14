@@ -1,10 +1,9 @@
-// V4: SSO 最小实现(企微扫码 dev mock)helpers
+// V6a: SSO helpers 调真后端(V4 dev mock 已移除)
 // - ssoInitiate(): 调 /api/auth/sso/wechat/initiate 拿 QR code URL
-// - ssoCallback(token): 调 /api/auth/sso/wechat/callback 拿 JWT
-// - ssoMockImConfirm(token): 在假 IM 页面调,confirm 后走 ssoCallback
+// - ssoCallback(code, state): 企微跳回后调 /api/auth/sso/wechat/callback 拿 JWT
+// - ssoRefresh(refresh): 调 /api/auth/sso/refresh 拿新 JWT
 //
-// 全前端 mock:后端没有,fetch 走 nginx 5173 → 实际 nginx 没 /api/auth/sso/*,
-// dev mode 用 try/catch fallback 到本地 mock
+// 全部走真 fetch + 错误抛错(后端 401/5xx 由调用方 toast 处理)
 
 export interface SsoTokenResponse {
   jwt: string;
@@ -20,39 +19,30 @@ export interface SsoInitiateResponse {
 const SSO_BASE = '/api/auth/sso';
 
 async function safeJson<T>(res: Response): Promise<T> {
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`SSO ${res.status}${errText ? `: ${errText}` : ''}`);
+  }
   return (await res.json()) as T;
 }
 
 export async function ssoInitiate(): Promise<SsoInitiateResponse> {
-  try {
-    const r = await fetch(`${SSO_BASE}/wechat/initiate`, { method: 'POST' });
-    return await safeJson<SsoInitiateResponse>(r);
-  } catch {
-    // dev fallback: nginx 没这端点,直接造个 one-time token + 走 mock IM 路径
-    const oneTimeToken = `mock-${Math.random().toString(36).slice(2, 10)}-${Date.now()}`;
-    return {
-      qr_url: `/portal/sso-mock-im?token=${oneTimeToken}`,
-      one_time_token: oneTimeToken,
-    };
-  }
+  const r = await fetch(`${SSO_BASE}/wechat/initiate`, { method: 'POST' });
+  return await safeJson<SsoInitiateResponse>(r);
 }
 
-export async function ssoCallback(oneTimeToken: string): Promise<SsoTokenResponse> {
-  try {
-    const r = await fetch(`${SSO_BASE}/wechat/callback?token=${encodeURIComponent(oneTimeToken)}`);
-    return await safeJson<SsoTokenResponse>(r);
-  } catch {
-    // dev fallback: 直接返 mock JWT
-    return {
-      jwt: `mock-jwt-${oneTimeToken}-${Date.now()}`,
-      refresh: `mock-refresh-${oneTimeToken}`,
-      expires_in: 3600,
-    };
-  }
+export async function ssoCallback(code: string, state: string): Promise<SsoTokenResponse> {
+  const r = await fetch(
+    `${SSO_BASE}/wechat/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`,
+  );
+  return await safeJson<SsoTokenResponse>(r);
 }
 
-export async function ssoMockImConfirm(oneTimeToken: string): Promise<SsoTokenResponse> {
-  // 假 IM "确认登录" 按钮 → 等价 callback
-  return ssoCallback(oneTimeToken);
+export async function ssoRefresh(refresh: string): Promise<SsoTokenResponse> {
+  const r = await fetch(`${SSO_BASE}/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh }),
+  });
+  return await safeJson<SsoTokenResponse>(r);
 }

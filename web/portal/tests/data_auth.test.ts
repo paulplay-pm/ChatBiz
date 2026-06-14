@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ssoInitiate, ssoCallback, ssoMockImConfirm } from '@/data/auth';
+import { ssoInitiate, ssoCallback, ssoRefresh } from '@/data/auth';
 
-describe('SSO auth helpers (V4 企微扫码 dev mock)', () => {
+describe('SSO auth helpers (V6a 真后端,无 dev mock)', () => {
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -18,26 +18,27 @@ describe('SSO auth helpers (V4 企微扫码 dev mock)', () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          qr_url: '/portal/sso-mock-im?token=abc123',
-          one_time_token: 'abc123',
+          qr_url: 'https://open.weixin.qq.com/connect/oauth2/authorize?appid=...',
+          one_time_token: 'ott-abc123',
         }),
       });
       const r = await ssoInitiate();
-      expect(r.qr_url).toContain('/portal/sso-mock-im?token=abc123');
-      expect(r.one_time_token).toBe('abc123');
+      expect(r.qr_url).toContain('open.weixin.qq.com');
+      expect(r.one_time_token).toBe('ott-abc123');
     });
 
-    it('falls back to dev mock when fetch fails (nginx 没端点)', async () => {
+    it('throws on fetch network failure (no dev fallback)', async () => {
       fetchMock.mockRejectedValueOnce(new Error('NetworkError'));
-      const r = await ssoInitiate();
-      expect(r.qr_url).toMatch(/\/portal\/sso-mock-im\?token=mock-/);
-      expect(r.one_time_token).toMatch(/^mock-/);
+      await expect(ssoInitiate()).rejects.toThrow(/NetworkError/);
     });
 
-    it('falls back to dev mock on HTTP error', async () => {
-      fetchMock.mockResolvedValueOnce({ ok: false, status: 404 });
-      const r = await ssoInitiate();
-      expect(r.qr_url).toMatch(/\/portal\/sso-mock-im/);
+    it('throws on HTTP error with status code', async () => {
+      fetchMock.mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        text: async () => 'Unauthorized',
+      });
+      await expect(ssoInitiate()).rejects.toThrow(/SSO 401/);
     });
   });
 
@@ -47,29 +48,27 @@ describe('SSO auth helpers (V4 企微扫码 dev mock)', () => {
         ok: true,
         json: async () => ({ jwt: 'jwt-xyz', refresh: 'ref-xyz', expires_in: 3600 }),
       });
-      const r = await ssoCallback('one-time-tok');
+      const r = await ssoCallback('code-abc', 'state-xyz');
       expect(r.jwt).toBe('jwt-xyz');
       expect(r.refresh).toBe('ref-xyz');
       expect(r.expires_in).toBe(3600);
     });
 
-    it('falls back to dev mock JWT on fetch failure', async () => {
+    it('throws on fetch network failure (no dev fallback)', async () => {
       fetchMock.mockRejectedValueOnce(new Error('NetworkError'));
-      const r = await ssoCallback('one-time-tok');
-      expect(r.jwt).toMatch(/^mock-jwt-one-time-tok-/);
-      expect(r.refresh).toMatch(/^mock-refresh-one-time-tok$/);
-      expect(r.expires_in).toBe(3600);
+      await expect(ssoCallback('code-abc', 'state-xyz')).rejects.toThrow(/NetworkError/);
     });
   });
 
-  describe('ssoMockImConfirm', () => {
-    it('等价 ssoCallback:返回 jwt 等', async () => {
+  describe('ssoRefresh', () => {
+    it('returns new jwt on 200', async () => {
       fetchMock.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ jwt: 'jwt-confirm', refresh: 'ref-confirm', expires_in: 3600 }),
+        json: async () => ({ jwt: 'jwt-new', refresh: 'ref-new', expires_in: 3600 }),
       });
-      const r = await ssoMockImConfirm('confirm-tok');
-      expect(r.jwt).toBe('jwt-confirm');
+      const r = await ssoRefresh('ref-old');
+      expect(r.jwt).toBe('jwt-new');
+      expect(r.refresh).toBe('ref-new');
     });
   });
 });
