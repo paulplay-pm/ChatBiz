@@ -20,7 +20,18 @@ export default function LoginPage() {
     const password = String(fd.get('password') ?? '');
     setLoading(true);
     try {
-      const r = await api.post('/api/auth/login', { username, password });
+      // V4: 如果 localStorage 含 SSO via(从 SsoMockImPage 写),透传到 dev IAM
+      let viaParam = '';
+      try {
+        const authRaw = window.localStorage.getItem('chatbiz.auth');
+        if (authRaw) {
+          const parsed = JSON.parse(authRaw);
+          if (parsed?.via) viaParam = `?via=${encodeURIComponent(parsed.via)}`;
+        }
+      } catch {
+        // localStorage 解析失败忽略,走默认 password 路径
+      }
+      const r = await api.post(`/api/auth/login${viaParam}`, { username, password });
       setAuth(r.data.token, r.data.user);
       toast.info(`欢迎,${r.data.user.name}`);
       const redirect = params.get('redirect') || '/workflows';

@@ -38,10 +38,12 @@ test('canvas: can delete an edge by clicking it and pressing Backspace or Delete
     function fire(el: Element, type: string, dt: DataTransfer) {
       el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dt } as any));
     }
-    const items = document.querySelectorAll('[draggable="true"]');
+    const items = document.querySelectorAll('[data-node-type]');
     const pane = document.querySelector('.react-flow__pane, .react-flow__renderer') as Element | null;
     if (!pane || items.length < 2) return;
-    const it1 = items[2]!; const it2 = items[5]!;
+    const it1 = document.querySelector('[data-node-type="llm"]') as Element | null;
+    const it2 = document.querySelector('[data-node-type="code"]') as Element | null;
+    if (!it1 || !it2) return;
     const dt1 = new DataTransfer();
     fire(it1, 'dragstart', dt1); fire(pane, 'dragenter', dt1); fire(pane, 'dragover', dt1);
     pane.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt1, clientX: 700, clientY: 400 } as any));
@@ -97,10 +99,10 @@ test('canvas: can delete an edge by clicking it and pressing Backspace or Delete
     function fire(el: Element, type: string, dt: DataTransfer) {
       el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dt } as any));
     }
-    const items = document.querySelectorAll('[draggable="true"]');
     const pane = document.querySelector('.react-flow__pane, .react-flow__renderer') as Element | null;
     if (!pane) return;
-    const it3 = items[7]!;
+    const it3 = document.querySelector('[data-node-type="http"]') as Element | null;
+    if (!it3) return;
     const dt = new DataTransfer();
     fire(it3, 'dragstart', dt); fire(pane, 'dragenter', dt); fire(pane, 'dragover', dt);
     pane.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt, clientX: 850, clientY: 600 } as any));
