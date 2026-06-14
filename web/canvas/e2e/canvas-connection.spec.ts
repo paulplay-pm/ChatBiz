@@ -35,12 +35,13 @@ test('canvas: can connect two nodes by drag from source handle to target handle'
     function fire(el: Element, type: string, dt: DataTransfer) {
       el.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dt } as any));
     }
-    const items = document.querySelectorAll('[draggable="true"]');
+    const items = document.querySelectorAll('[data-node-type]');
     const pane = document.querySelector('.react-flow__pane, .react-flow__renderer') as Element | null;
     if (!pane || items.length < 2) return;
-    // pick two non-start types
-    const item1 = items[2]!; // LLM
-    const item2 = items[5]!; // code
+    // pick by data-node-type (V4 协议对齐,不再依赖 items 数组索引)
+    const item1 = document.querySelector('[data-node-type="llm"]') as Element | null;
+    const item2 = document.querySelector('[data-node-type="code"]') as Element | null;
+    if (!item1 || !item2) return;
     const dt1 = new DataTransfer();
     fire(item1, 'dragstart', dt1);
     fire(pane, 'dragenter', dt1);

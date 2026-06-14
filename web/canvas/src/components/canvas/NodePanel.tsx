@@ -39,6 +39,7 @@ export function NodePanel() {
           {cat.items.map((n) => (
             <div
               key={n.type}
+              data-node-type={n.type}
               className="mb-1 p-2 bg-white border border-ink-200 rounded cursor-grab hover:border-brand-500 text-sm flex items-center gap-2"
               draggable
               onDragStart={(e) => {
