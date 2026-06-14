@@ -60,14 +60,14 @@
 
 ## 6. admin views 6 文件 vitest 单测
 
-- [ ] 6.1 新建 `web/admin/tests/views_UsersPage.test.tsx` 断言 3 行 + 7 列
-- [ ] 6.2 新建 `web/admin/tests/views_UserAuditPage.test.tsx` 断言只显示 pending 行
-- [ ] 6.3 新建 `web/admin/tests/views_RolesPage.test.tsx` 断言 4 角色卡 + 权限矩阵
-- [ ] 6.4 新建 `web/admin/tests/views_DepartmentsPage.test.tsx` 断言树状节点数
-- [ ] 6.5 新建 `web/admin/tests/views_PermissionsPage.test.tsx` 断言 7 模块 11 权限点
-- [ ] 6.6 新建 `web/admin/tests/views_DataPermissionsPage.test.tsx` 断言 3 规则 + 4 共享记录
-- [ ] 6.7 跑 `pnpm exec vitest run web/admin/tests/views_*.test.tsx` 期望全部 PASS
-- [ ] 6.8 Commit: `test(admin): views 6 文件 vitest 单测`
+- [x] 6.1 新建 `web/admin/tests/unit/views_UsersPage.test.tsx` 断言 3 行 + 6 列 + 工具栏 + 状态 label
+- [x] 6.2 新建 `web/admin/tests/unit/views_UserAuditPage.test.tsx` 断言只显示 1 行 pending + badge + 通过/拒绝
+- [x] 6.3 新建 `web/admin/tests/unit/views_RolesPage.test.tsx` 断言 4 角色卡 + 4 角色名 + 蓝色 info bar + 矩阵
+- [x] 6.4 新建 `web/admin/tests/unit/views_DepartmentsPage.test.tsx` 断言 3 顶级 + 2 子 + +N badge + +添加部门
+- [x] 6.5 新建 `web/admin/tests/unit/views_PermissionsPage.test.tsx` 断言 11 点 × 6 操作 + 4 角色 dropdown + 只读 + 切角色
+- [x] 6.6 新建 `web/admin/tests/unit/views_DataPermissionsPage.test.tsx` 断言 3 规则 + 4 共享 + 部门隔离 badge
+- [x] 6.7 跑 `pnpm exec vitest run web/admin/tests/unit/views_*.test.tsx` → 6 files / 31 tests 全 PASS
+- [x] 6.8 Commit: `test(admin): views 6 文件 vitest 单测`(附加 PermissionsPage controlled+key 修复)
 
 ## 7. admin SideNav + AppShell 微调
 
