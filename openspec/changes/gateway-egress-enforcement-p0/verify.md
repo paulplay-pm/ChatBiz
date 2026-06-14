@@ -1,6 +1,6 @@
 # Verify: gateway-egress-enforcement-p0 (草稿,apply 阶段中)
 
-> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,1/12 个新 task 完成(task 1.1)。
+> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,4/12 个新 task 完成(task 1.1-1.4)。
 > 7 个 [EXISTING] 引用已在 6/12/2026 gap-analysis 阶段确认真实存在(grep 复核见下)。
 > apply 阶段**未完成** → 本 change **不可 archive**。`/retrospective.md` 在所有新 task
 > 完成后才写,本文件不替代。
@@ -22,14 +22,14 @@
 
 > 注:tasks.md 末尾"清单"是 7 条总结,展开是 10 条细分。表里 10 条细分(每条配 grep 行)是为了 verify 可追溯。
 
-## 2. 新 task 完成清单(1/12 推进,1.1 完成)
+## 2. 新 task 完成清单(4/12 推进,1.1-1.4 完成)
 
 | Task | 文件 | 验证 | 状态 |
 |---|---|---|---|
-| 1.1 服务骨架 | `services/gateway-scanner/{__init__.py, pyproject.toml, gateway_scanner/{__init__.py, __main__.py, scanner.py}, tests/{__init__.py, test_smoke.py}}` | `pytest tests/test_smoke.py` **7/7 PASS**(退出码 0/1/2 + 默认 cwd + 输出格式 + dep 数量) | ✅ **完成** |
-| 1.2 blocklist | — | 待 apply 阶段 | ⏳ pending |
-| 1.3 allowlist | — | 待 apply 阶段 | ⏳ pending |
-| 1.4 AST 核心 | — | 待 apply 阶段 | ⏳ pending |
+| 1.1 服务骨架 | `services/gateway-scanner/{__init__.py, pyproject.toml, gateway_scanner/{__init__.py, __main__.py, scanner.py}, tests/{__init__.py, test_smoke.py}}` | `pytest tests/test_smoke.py` **7/7 PASS** | ✅ **完成** |
+| 1.2 blocklist | `services/gateway-scanner/blocklist.yaml` + `tests/test_blocklist.py` | `pytest tests/test_blocklist.py` **8/8 PASS**(16 个 LLM provider SDK 含 6 个 spec 必含项) | ✅ **完成** |
+| 1.3 allowlist | `services/gateway-scanner/allowlist.yaml` + `tests/test_allowlist.py` | `pytest tests/test_allowlist.py` **7/7 PASS**(2 个 entry:gateway-scanner 自身 + workflow-engine conftest.py,全部路径存在) | ✅ **完成** |
+| 1.4 AST 核心 | `services/gateway-scanner/gateway_scanner/scanner.py` + `tests/test_ast_scanner.py` + 5 个 fixture | `pytest tests/test_ast_scanner.py` **7/7 PASS**(4 pattern 全部覆盖:bare import / `from X import Y` / `__import__("X")` / `getattr(__import__("X"), ...)`) | ✅ **完成** |
 | 1.5 GitHub Actions | — | 待 apply 阶段 | ⏳ pending |
 | 2.1 preStop | — | 待 apply 阶段 | ⏳ pending |
 | 2.2 K8s manifest | — | 待 apply 阶段 | ⏳ pending |
@@ -43,7 +43,7 @@
 | 5.1 perf contracts | — | 待 apply 阶段 | ⏳ pending |
 | 5.2 /metrics 端点 | — | 待 apply 阶段 | ⏳ pending |
 | 5.3 嵌入 chat.py | — | 待 apply 阶段 | ⏳ pending |
-| 6.1 architecture.md §4.3.Y | — | 待 apply 阶段(本 spec `gateway-llm-blacklist` 内的"doc 段") | ⏳ pending |
+| 6.1 architecture.md §4.3.Y | — | 待 apply 阶段 | ⏳ pending |
 | 7.1 pytest cov 100% | — | 待 apply 阶段(收尾) | ⏳ pending |
 | 7.2 写 verify.md 最终 | — | 收尾 | ⏳ pending |
 
@@ -82,12 +82,89 @@ tests/test_smoke.py::test_pyproject_declares_only_three_runtime_deps PASSED [100
 | 1 | 扫完有违规 | 在非 allowlist 路径下发现 blocklist 内的 import |
 | 2 | setup 错误 | path 不存在 / 是 file 不是 dir / config 解析失败 |
 
-## 4. 范围说明(scope reduction 决策)
+## 4. Task 1.2 blocklist 详细证据
 
-task 1.1 交付的 `scanner.py` 只覆盖 **bare `import X`** 1 种 pattern(plan.md 1.1 段 step 1.1.3 提到,但实际 plan 1.4 才是完整 4 pattern 实现)。当前最小可工作集满足 plan.md 1.1.3 step "3 档退出码" 要求;**完整 4 pattern (import as / `__import__` / `getattr(__import__())`) 由 task 1.4 扩展**。这是 PoC 范围控制 — 1.1 目标是契约稳定(API + 退出码),1.4 目标是覆盖完整(4 pattern + 5 fixture)。
+### 4.1 文件清单
+```
+services/gateway-scanner/blocklist.yaml    (16 个 LLM provider SDK 包名)
+services/gateway-scanner/tests/test_blocklist.py  (8 个 case)
+```
 
-## 5. 后续
+### 4.2 `pytest tests/test_blocklist.py` 输出
+```
+============================== 8 passed in 0.02s ===============================
+```
 
-- **本 verify.md 草稿会在 1.2 ~ 1.5 推进时增量更新**。每完成 1 个 task,加 1 行证据。
+8 个 case 覆盖:文件存在 / YAML list 解析 / entries 是 str / 标识符形态 / `import X` 编译 / 6 必含 provider / 无重复 / 文件首行是注释。
+
+### 4.3 blocklist 内容(16 项)
+openai / openaipublic / anthropic / cohere / google.generativeai / google.genai / mistralai / deepseek / deepseekai / groq / together / replicate / fireworks / perplexity / voyage / litellm
+
+## 5. Task 1.3 allowlist 详细证据
+
+### 5.1 文件清单
+```
+services/gateway-scanner/allowlist.yaml    (2 个豁免路径)
+services/gateway-scanner/tests/test_allowlist.py  (7 个 case)
+```
+
+### 5.2 `pytest tests/test_allowlist.py` 输出
+```
+============================== 7 passed in 0.01s ===============================
+```
+
+7 个 case 覆盖:文件存在 / YAML list 解析 / entries 是 str / 路径全部存在 / 文件首行是注释 / 不豁免 scanner 自身源 / 不豁免 .venv / __pycache__ / node_modules。
+
+### 5.3 allowlist 内容(2 项)
+- `services/gateway-scanner/` — 自身(测试 fixture 用 "import openai" 字符串)
+- `services/workflow-engine/tests/conftest.py` — pytest fixture 可能要 mock LLM client
+
+## 6. Task 1.4 AST 扫描 4 pattern 详细证据
+
+### 6.1 文件清单
+```
+services/gateway-scanner/gateway_scanner/scanner.py  (扩 _extract_imports + _is_blocked + scan_path 支持单文件)
+services/gateway-scanner/tests/test_ast_scanner.py    (7 个 case)
+services/gateway-scanner/tests/fixtures/
+  direct_import.py      (pattern 1: bare `import X` + pattern 2: `from X import Y`)
+  as_import.py          (alias: `import X as Y` + `from X import Y as Z`)
+  dynamic_import.py     (pattern 3: `__import__("X")` + pattern 4: `getattr(__import__("X"), "...")`)
+  commented_import.py   (注释里的 import 不命中)
+  multiline_import.py   (parenthesised `from X import (A, B, C)`)
+```
+
+### 6.2 `pytest tests/test_ast_scanner.py` 输出
+```
+============================== 7 passed in 0.01s ===============================
+```
+
+7 个 case 覆盖:5 fixture + SyntaxError 容错 + allowlist 跳过。
+
+### 6.3 4 pattern 实现要点
+| Pattern | AST node | 实现 |
+|---|---|---|
+| 1 | `ast.Import` | `alias.name` → `_root_pkg(name)` → `_is_blocked(pkg, blocklist)` |
+| 2 | `ast.ImportFrom` | `node.module` (level > 0 相对导入跳过)→ `_root_pkg` |
+| 3 | `ast.Call(Name("__import__"))` | 第一个 `ast.Constant(str)` arg → `_root_pkg` |
+| 4 | `ast.Call(Attribute(Call(Name("__import__"))))` | 递归进入 `node.func.value`(就是 pattern 3) |
+
+`_is_blocked` 用 longest-prefix 匹配,支持 `google.generativeai` blocklist 项命中 `google.generativeai.foo` 这种 sub-module。
+
+## 7. 范围说明(scope reduction 决策)
+
+task 1.1-1.4 阶段交付的 `scanner.py` 实现完整 4 pattern(`ast.Import` / `ast.ImportFrom` / `__import__("X")` / `getattr(__import__("X"), ...)`),longest-prefix blocklist 匹配,SyntaxError 容错,allowlist 跳过。
+
+剩余 8 个新 task(1.5 / 2.1-2.4 / 3.1 / 4.1-4.4 / 5.1-5.3 / 6.1 / 7.1-7.2 — 共 16 个)涉及:
+- **1.5** CI 集成(GitHub Actions `gateway-static-scan` job)
+- **2.x** HA 拓扑(K8s manifest + NGINX L4 LB + preStop)
+- **3.x** 客户端重试(`RetryWithIdempotency`)
+- **4.x** 跨实例 trace 查询 + MinIO 冷归档
+- **5.x** perf contracts + `/metrics` 端点
+- **6.1** 文档(`docs/architecture.md` §4.3.Y)
+- **7.x** 收尾(覆盖率 100% + verify.md 最终版)
+
+## 8. 后续
+
+- **本 verify.md 草稿会在 1.5 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
 - **最终 verify.md**(7.2 task)在所有 12 个新 task 完成后写,包含完整 18 个 requirement 的 requirement-by-requirement 证据。
-- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 1/12,剩 11 个。
+- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 4/12,剩 16 个 pending(表 §2 已展开)。

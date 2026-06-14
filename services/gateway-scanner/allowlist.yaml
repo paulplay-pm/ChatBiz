@@ -1,0 +1,23 @@
+# ChatBiz gateway-scanner allowlist
+#
+# Paths under which LLM SDK imports are tolerated. Every entry MUST be a
+# path that exists in the repo (verified by `tests/test_allowlist.py`).
+# Adding to this list is itself a policy decision — it must be reviewed in
+# a PR, not silently added.
+#
+# Format: flat YAML list of repo-relative paths. The scanner treats each as a
+# path prefix; a file is allowlisted if it lives under any listed path.
+#
+# Last reviewed: 2026-06-14.
+
+# gateway-scanner itself uses `import openai` in test fixtures to exercise
+# the violation path. The scanner's own source files don't import any LLM
+# SDK at runtime; the fixture string is just a string in test data, not an
+# actual import — but the allowlist is the safest belt-and-braces.
+- services/gateway-scanner/
+
+# workflow-engine has a conftest.py with pytest fixtures. The fixtures don't
+# currently import LLM SDKs, but allowlisting the conftest is cheap insurance
+# against future fixture additions that legitimately need to mock an LLM
+# client (e.g. `monkeypatch.setattr(sys.modules, "openai", fake)`).
+- services/workflow-engine/tests/conftest.py

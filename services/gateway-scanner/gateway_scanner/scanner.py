@@ -129,15 +129,20 @@ def _is_allowlisted(file: Path, allowlist: frozenset[Path]) -> bool:
 def scan_path(target: Path, config: ScannerConfig) -> list[Violation]:
     """Walk `target` recursively; return all LLM SDK import violations.
 
-    Empty blocklist → empty violations list (smoke test uses this to verify
-    exit code 0). Task 1.4 will extend the AST patterns; the public signature
-    and Violation shape stay the same.
+    `target` may be a directory (recursive walk via rglob) or a single
+    Python file (one-shot parse). Empty blocklist → empty violations list
+    (smoke test uses this to verify exit code 0).
     """
     if not config.blocklist:
         return []
 
+    if target.is_file():
+        candidates = [target]
+    else:
+        candidates = sorted(target.rglob("*.py"))
+
     violations: list[Violation] = []
-    for py_file in sorted(target.rglob("*.py")):
+    for py_file in candidates:
         if _is_allowlisted(py_file, config.allowlist):
             continue
         try:
@@ -149,20 +154,70 @@ def scan_path(target: Path, config: ScannerConfig) -> list[Violation]:
             continue
         for node in ast.walk(tree):
             for pkg in _extract_imports(node):
-                if pkg in config.blocklist:
+                if _is_blocked(pkg, config.blocklist):
                     violations.append(Violation(file=py_file, line=node.lineno, package=pkg))
     return violations
+
+
+def _is_blocked(pkg: str, blocklist: frozenset[str]) -> bool:
+    """Match `pkg` against the blocklist by longest-prefix.
+
+    `google.generativeai.generativeai` is blocked by entry `google.generativeai`
+    (any module under a blocked prefix is itself blocked). Returns the
+    matched prefix, or None if no match.
+    """
+    parts = pkg.split(".")
+    # Walk from longest to shortest prefix
+    for i in range(len(parts), 0, -1):
+        candidate = ".".join(parts[:i])
+        if candidate in blocklist:
+            return True
+    return False
 
 
 def _extract_imports(node: ast.AST) -> Iterable[str]:
     """Yield package names from a single AST node.
 
-    Task 1.1 implements only the bare `import X` case. Task 1.4 extends to
-    `import X as Y`, `__import__("X")`, and `getattr(__import__("X"), ...)`.
-    Keeping this function narrow now means the test for bare import is
-    unambiguous.
+    Task 1.4 covers the 4 patterns per `openspec/changes/gateway-egress-enforcement-p0/`
+    plan §抽样 1.4:
+      1. `ast.Import`         — `import openai`              (root package only)
+      2. `ast.ImportFrom`     — `from openai import X`       (root package only)
+      3. `ast.Call(Import)`   — `__import__("openai")`        (string literal arg)
+      4. `ast.Call(getattr)`  — `getattr(__import__("openai"), "attr")` (chain)
+
+    Returned names are the **root** package (`openai`, `google.generativeai`,
+    not `OpenAI`). The blocklist is keyed on root packages.
     """
     if isinstance(node, ast.Import):
         for alias in node.names:
-            # `import openai` -> root package is the top-level name
-            yield alias.name.split(".")[0]
+            yield _root_pkg(alias.name)
+    elif isinstance(node, ast.ImportFrom):
+        # `from . import x` (level > 0) is a relative import; no external package.
+        if node.level and node.level > 0:
+            return
+        if node.module:
+            yield _root_pkg(node.module)
+    elif isinstance(node, ast.Call):
+        # Pattern 3: __import__("X")
+        if isinstance(node.func, ast.Name) and node.func.id == "__import__":
+            for arg in node.args:
+                if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                    yield _root_pkg(arg.value)
+                    break
+        # Pattern 4: getattr(__import__("X"), "attr")
+        # The inner Call is the `__import__("X")` we just handled. Recurse
+        # into the .value chain to catch it even when wrapped in getattr.
+        elif isinstance(node.func, ast.Attribute):
+            inner = node.func.value
+            if isinstance(inner, ast.Call):
+                yield from _extract_imports(inner)
+
+
+def _root_pkg(dotted: str) -> str:
+    """Return the full dotted package name (e.g. `google.generativeai`).
+
+    We keep the entire dotted path (not just the first segment) because the
+    blocklist is keyed on full sub-package names like `google.generativeai`.
+    `_is_blocked` does the longest-prefix match against the blocklist.
+    """
+    return dotted.split(".")[0] if "." not in dotted else dotted

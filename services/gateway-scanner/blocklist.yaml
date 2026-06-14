@@ -1,0 +1,32 @@
+# ChatBiz gateway-scanner blocklist
+#
+# LLM provider SDK package names that MUST NOT be imported by any ChatBiz
+# service. The only path for LLM upstream calls is the
+# `services/audit-and-isolation/` data-isolation gateway (egress enforcement
+# point, eng-review decision #1). Any direct import here is a policy bypass.
+#
+# This file is consumed by `services/gateway-scanner/` (compile-time guard)
+# and by GitHub Actions job `gateway-static-scan` (task 1.5, blocks PRs that
+# add to this list without a corresponding allowlist entry).
+#
+# Format: flat YAML list of top-level package names. The scanner matches the
+# root package only (`import openai.chat` -> "openai" matches). Aliasing
+# (`import openai as oai`) is detected by AST pattern in task 1.4.
+#
+# Last verified: 2026-06-14. Source: provider SDK package names on PyPI.
+- openai
+- openaipublic
+- anthropic
+- cohere
+- google.generativeai
+- google.genai
+- mistralai
+- deepseek
+- deepseekai
+- groq
+- together
+- replicate
+- fireworks
+- perplexity
+- voyage
+- litellm
