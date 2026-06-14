@@ -7,14 +7,14 @@
 
 ## 1. V6 准备 + 后端 scaffold
 
-- [ ] 1.1 读 `services/credential/` 完整结构,定 chatbiz-sso 复制模板
-- [ ] 1.2 `cd services/sso && cp -r ../credential/{app,alembic,alembic.ini,pyproject.toml,Dockerfile,requirements*.txt,Madefile,verify.py} .` + 改 `pyproject.toml` name = "chatbiz-sso"
-- [ ] 1.3 改 `services/sso/Dockerfile`:FROM python:3.12-slim + 安装 requirements + 暴露 port 8007
-- [ ] 1.4 写 `services/sso/.env.example` 4 个 env:`WECHAT_CORP_ID` / `WECHAT_AGENT_ID` / `WECHAT_SECRET` / `WECHAT_REDIRECT_URI`(默认 `http://localhost:5173/portal/sso-callback`)
-- [ ] 1.5 写 `services/sso/.gitignore`:`secrets/*.pem` + `__pycache__` + `.env.local`
-- [ ] 1.6 写 `services/sso/secrets/.gitkeep`
-- [ ] 1.7 跑 `cd services/sso && pip install -e .` 验 pyproject 可装
-- [ ] 1.8 Commit: `chore(sso): V6 T1 后端 services/sso scaffold`
+- [x] 1.1 读 `services/credential/` 完整结构,定 chatbiz-sso 复制模板
+- [x] 1.2 `cp -r services/credential services/sso` + 清 alembic/docs/locust/perf/verify.py/tests/README
+- [x] 1.3 改 `services/sso/Dockerfile`:EXPOSE 8000 → 8007(CLAUDE.md 端口表"未来"区)+ healthcheck 8007 + user chatbiz-sso(uid 10001)+ WORKDIR /home/sso
+- [x] 1.4 写 `services/sso/.env.example`(5 env:WECHAT_CORP_ID/AGENT_ID/SECRET/REDIRECT_URI + JWT 6 可选 + Postgres + Redis)
+- [x] 1.5 写 `services/sso/.gitignore`(.env.local + secrets/*.pem + Python __pycache__ + IDE)
+- [x] 1.6 写 `services/sso/secrets/.gitkeep`(RSA 私钥占位)
+- [x] 1.7 `pip install -e .` → Done(create_app import OK,app/lifespan.py 空导致 ImportError 预期,T2 写)
+- [x] 1.8 Commit: `chore(sso): V6a T1 services/sso scaffold`
 
 ## 2. 后端业务代码
 
