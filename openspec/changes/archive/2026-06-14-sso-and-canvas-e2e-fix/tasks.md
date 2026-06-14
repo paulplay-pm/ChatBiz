@@ -109,9 +109,10 @@
 
 ## 10. archive V4 change
 
-- [ ] 10.1 `openspec archive sso-and-canvas-e2e-fix --yes`
-- [ ] 10.2 验证 `openspec/changes/archive/2026-06-14-sso-and-canvas-e2e-fix/` 含 5 文件 + 6 specs
-- [ ] 10.3 Commit archive + V4 worktree 等合并 main
+- [x] 10.1 `openspec archive sso-and-canvas-e2e-fix --yes` → 移入 archive/2026-06-14-sso-and-canvas-e2e-fix/ + 13 spec apply 到 openspec/specs/
+- [x] 10.2 验证 archive 目录含 .openspec.yaml + brainstorm.md(10853B) + design.md(6480B) + proposal.md(8994B) + tasks.md(9719B) + specs/(6 文件:sso/chatflow/mcp/approval/audit/canvas-auth)
+- [x] 10.3 Commit archive → V4 worktree 等合并 main
+- [ ] 10.4 V4 branch push 由用户发起,或 merge 到 main(后续 V5 由独立 change 接管)
 
 ## 任务统计
 
