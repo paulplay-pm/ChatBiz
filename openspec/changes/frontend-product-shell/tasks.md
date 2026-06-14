@@ -19,13 +19,13 @@
 
 ## 2. portal Sidebar 5 分组
 
-- [ ] 2.1 改 `web/portal/src/data/menu.ts`:SECTIONS 5 项(工作区/探索/配置中心/运维/系统管理)+ MenuItem 加 `external: boolean` 字段
-- [ ] 2.2 把 ~24 个 menu item 按 5 分组填好(系统管理 7 项 `external: true` 跳 admin,工作流/Agent/知识库 3 项 `external: true` 跳 canvas)
-- [ ] 2.3 改 `web/portal/src/components/AppLayout.tsx`:`handleSelect` 检测 `item.external` → `window.location.assign(item.href)`,否则 `useNavigate`
-- [ ] 2.4 改 `web/portal/tests/data_menu.test.ts` 断言 5 section + 24 item + system 7 项全部 `external: true`
-- [ ] 2.5 跑 `pnpm exec vitest run web/portal/tests/data_menu.test.ts` 期望 PASS
-- [ ] 2.6 跑 `pnpm exec tsc --noEmit` 在 portal 期望 EXIT 0
-- [ ] 2.7 Commit: `refactor(portal): menu 5 分组 + external 跨 app 跳转`
+- [x] 2.1 改 `web/portal/src/data/menu.ts`:SECTIONS 5 项(工作区/探索/配置中心/运维/系统管理)+ MenuItem 加 `external: boolean` 字段
+- [x] 2.2 把 ~24 个 menu item 按 5 分组填好(系统管理 6 项 `external: true` 跳 admin,工作流/Chatflow/Agent 3 项 `external: true` 跳 canvas)
+- [x] 2.3 改 `web/portal/src/components/AppLayout.tsx`:`handleSelect` 检测 `item.external` → `window.location.assign(item.href)`,否则 `useNavigate`
+- [x] 2.4 改 `web/portal/tests/menu.test.ts` 断言 5 section + 24 item + system 6 项全部 `external: true`
+- [x] 2.5 跑 `pnpm exec vitest run web/portal/tests/menu.test.ts` → 8/8 PASS
+- [x] 2.6 跑 `pnpm exec tsc --noEmit` 在 portal → EXIT 0
+- [x] 2.7 Commit: `refactor(portal): menu 5 分组 + external 跨 app 跳转` → `e5f38dc`
 
 ## 3. portal DashboardPage 4 metric + 快速开始 + 最近访问/动态
 
