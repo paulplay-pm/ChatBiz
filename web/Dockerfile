@@ -3,6 +3,7 @@
 # ChatBiz Web — unified SPA runtime
 #
 # 前置：先在本地分别 build 好：
+#   cd web/portal    && VITE_APP_BASE=/portal/    pnpm exec vite build
 #   cd web/canvas    && VITE_APP_BASE=/canvas/    pnpm exec vite build
 #   cd web/admin && VITE_APP_BASE=/admin/ pnpm build
 #
@@ -11,6 +12,7 @@
 
 FROM nginx:1.27-alpine AS runtime
 COPY index.html /usr/share/nginx/html/index.html
+COPY portal/dist /usr/share/nginx/html/portal
 COPY canvas/dist /usr/share/nginx/html/canvas
 COPY admin/dist /usr/share/nginx/html/admin
 COPY nginx.conf /etc/nginx/conf.d/default.conf

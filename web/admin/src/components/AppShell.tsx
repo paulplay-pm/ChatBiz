@@ -13,7 +13,7 @@ export function AppShell(): JSX.Element {
       <SideNav />
       <main className="flex-1 flex flex-col h-full min-w-0">
         <header className="h-14 bg-white border-b border-ink-200 flex items-center px-5 gap-4 shrink-0">
-          <h1 className="font-semibold text-sm text-ink-800">ChatBiz Admin</h1>
+          <h1 className="font-semibold text-sm text-ink-800">系统管理</h1>
           <div className="ml-auto flex items-center gap-3">
             <HealthIndicator />
             <div

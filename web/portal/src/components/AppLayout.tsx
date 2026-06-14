@@ -1,5 +1,5 @@
 import { Outlet, useNavigate } from 'react-router-dom';
-import { Sidebar } from '@/components/primitives/Sidebar';
+import { Sidebar } from 'ui/primitives/Sidebar';
 import { MenuItem, MenuSection } from '@/data/menu';
 
 export function AppLayout({ menuItems, sections, activeId }: {
@@ -9,7 +9,8 @@ export function AppLayout({ menuItems, sections, activeId }: {
   const handleSelect = (id: string) => {
     const item = menuItems.find((i) => i.id === id);
     if (item) {
-      if (item.href.startsWith('/canvas/') || item.href.startsWith('/admin/')) {
+      if (item.external) {
+        // 跨 app 跳转:portal → canvas / admin
         window.location.assign(`http://localhost:5173${item.href}`);
       } else {
         nav(item.href);

@@ -1,4 +1,3 @@
-import { Card, Tag } from 'antd';
 import { useState } from 'react';
 import { NodeSearchModal } from './NodeSearchModal';
 
@@ -31,27 +30,26 @@ export function NodePanel() {
   const [searchOpen, setSearchOpen] = useState(false);
 
   return (
-    <div style={{ width: 220, padding: 12, background: '#fafafa', borderRight: '1px solid #f0f0f0', height: '100%', overflow: 'auto' }}>
-      <div style={{ fontWeight: 600, marginBottom: 8 }}>节点</div>
-      <div style={{ color: '#999', fontSize: 12, marginBottom: 12 }}>按 / 搜索</div>
+    <div className="w-[220px] p-3 bg-ink-50 border-r border-ink-200 h-full overflow-auto">
+      <div className="font-semibold text-ink-900 mb-2">节点</div>
+      <div className="text-xs text-ink-500 mb-3">按 / 搜索</div>
       {CATEGORIES.map((cat) => (
-        <div key={cat.label} style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 12, color: '#999', marginBottom: 4 }}>{cat.label}</div>
+        <div key={cat.label} className="mb-3">
+          <div className="text-xs text-ink-500 mb-1">{cat.label}</div>
           {cat.items.map((n) => (
-            <Card
+            <div
               key={n.type}
-              size="small"
-              style={{ marginBottom: 4, cursor: 'grab' }}
+              className="mb-1 p-2 bg-white border border-ink-200 rounded cursor-grab hover:border-brand-500 text-sm flex items-center gap-2"
               draggable
               onDragStart={(e) => {
                 e.dataTransfer.setData('application/chatbiz-node', n.type);
               }}
               onClick={() => setSearchOpen(true)}
             >
-              <span style={{ marginRight: 4 }}>{n.icon}</span>
-              {n.name}
-              <Tag style={{ marginLeft: 4, fontSize: 10 }}>{n.type}</Tag>
-            </Card>
+              <span>{n.icon}</span>
+              <span className="flex-1">{n.name}</span>
+              <span className="rounded px-1.5 py-0.5 text-[10px] bg-ink-100 text-ink-700">{n.type}</span>
+            </div>
           ))}
         </div>
       ))}

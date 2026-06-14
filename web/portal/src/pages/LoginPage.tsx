@@ -1,8 +1,8 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/primitives/Button';
-import { Input } from '@/components/primitives/Input';
-import { Form } from '@/components/primitives/Form';
+import { Button } from 'ui/primitives/Button';
+import { Input } from 'ui/primitives/Input';
+import { Form } from 'ui/primitives/Form';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');

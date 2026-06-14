@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { Card } from '@/components/primitives/Card';
-import { MetricCard } from '@/components/primitives/MetricCard';
-import { StatusDot } from '@/components/primitives/StatusDot';
+import { Card } from 'ui/primitives/Card';
+import { MetricCard } from 'ui/primitives/MetricCard';
+import { StatusDot } from 'ui/primitives/StatusDot';
 
 describe('Card', () => {
   it('renders children', () => {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Tag, Descriptions, Spin, Result, Select } from 'antd';
+import { Card } from 'ui/index';
 import { api } from '@/lib/apiClient';
 import { useRunEvents } from '@/hooks/useRunEvents';
 import { NodeEventTimeline, NodeEvent } from '@/components/debugger/NodeEventTimeline';
@@ -21,13 +21,13 @@ interface RunData {
   events: NodeEvent[];
 }
 
-const statusTagColor: Record<string, string> = {
-  pending: 'default',
-  running: 'processing',
-  paused: 'warning',
-  completed: 'success',
-  failed: 'error',
-  cancelled: 'default',
+const statusTagColors: Record<string, string> = {
+  pending: 'bg-ink-100 text-ink-700',
+  running: 'bg-blue-100 text-blue-700',
+  paused: 'bg-yellow-100 text-yellow-700',
+  completed: 'bg-green-100 text-green-700',
+  failed: 'bg-red-100 text-red-700',
+  cancelled: 'bg-ink-100 text-ink-700',
 };
 
 export default function RunDebuggerPage() {
@@ -35,7 +35,7 @@ export default function RunDebuggerPage() {
   const navigate = useNavigate();
   const [run, setRun] = useState<RunData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [eventFilter, setEventFilter] = useState<string | undefined>();
+  const [eventFilter, setEventFilter] = useState<string>('');
 
   useRunEvents(runId || null);
 
@@ -55,54 +55,92 @@ export default function RunDebuggerPage() {
       });
   }, [runId, navigate]);
 
-  if (loading) return <Spin />;
-  if (!run) return <Result status="404" title="运行不存在" subTitle={`run_id: ${runId}`} />;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12 text-ink-500 text-sm">
+        <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+        </svg>
+        加载运行…
+      </div>
+    );
+  }
+  if (!run) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12">
+        <h1 className="text-4xl font-semibold text-ink-900 mb-2">运行不存在</h1>
+        <p className="text-sm text-ink-500 mb-4">run_id: {runId}</p>
+        <button
+          onClick={() => navigate('/workflows')}
+          className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white rounded-lg text-sm"
+        >
+          回工作流
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <Card title={`运行: ${runId?.slice(0, 8)}...`} style={{ marginBottom: 16 }}>
-        <Descriptions column={3} size="small">
-          <Descriptions.Item label="状态">
-            <Tag color={statusTagColor[run.status] || 'default'}>{run.status}</Tag>
-          </Descriptions.Item>
-          <Descriptions.Item label="模式">{run.mode}</Descriptions.Item>
-          <Descriptions.Item label="启动者">{run.started_by}</Descriptions.Item>
-          <Descriptions.Item label="启动时间">
-            {run.started_at ? new Date(run.started_at).toLocaleString() : '—'}
-          </Descriptions.Item>
-          <Descriptions.Item label="结束时间">
-            {run.ended_at ? new Date(run.ended_at).toLocaleString() : '—'}
-          </Descriptions.Item>
-          <Descriptions.Item label="thread_id">{run.thread_id?.slice(0, 12)}...</Descriptions.Item>
-        </Descriptions>
+    <div className="space-y-4">
+      <Card>
+        <h2 className="text-base font-semibold text-ink-900 mb-3">
+          运行: {runId?.slice(0, 8)}...
+        </h2>
+        <div className="grid grid-cols-3 gap-3 text-sm">
+          <div>
+            <div className="text-xs text-ink-500">状态</div>
+            <span className={`inline-block rounded px-2 py-0.5 text-xs ${statusTagColors[run.status] || 'bg-ink-100 text-ink-700'}`}>
+              {run.status}
+            </span>
+          </div>
+          <div>
+            <div className="text-xs text-ink-500">模式</div>
+            <div className="text-ink-900">{run.mode}</div>
+          </div>
+          <div>
+            <div className="text-xs text-ink-500">启动者</div>
+            <div className="text-ink-900">{run.started_by}</div>
+          </div>
+          <div>
+            <div className="text-xs text-ink-500">启动时间</div>
+            <div className="text-ink-900">{run.started_at ? new Date(run.started_at).toLocaleString() : '—'}</div>
+          </div>
+          <div>
+            <div className="text-xs text-ink-500">结束时间</div>
+            <div className="text-ink-900">{run.ended_at ? new Date(run.ended_at).toLocaleString() : '—'}</div>
+          </div>
+          <div>
+            <div className="text-xs text-ink-500">thread_id</div>
+            <div className="text-ink-900">{run.thread_id?.slice(0, 12)}...</div>
+          </div>
+        </div>
         {run.error_class && (
-          <div style={{ marginTop: 12, padding: 12, background: '#fff2f0', borderRadius: 8, color: '#ff4d4f' }}>
+          <div className="mt-3 p-3 bg-red-50 rounded-lg text-red-600 text-sm">
             [{run.error_class}] {run.error_message}
           </div>
         )}
-        <div style={{ marginTop: 16 }}>
+        <div className="mt-4">
           <RetryCancelButtons workflowId={run.workflow_id} />
         </div>
       </Card>
 
-      <Card
-        title="节点事件"
-        extra={
-          <Select
-            placeholder="过滤状态"
+      <Card>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-ink-900">节点事件</h3>
+          <select
             value={eventFilter}
-            onChange={setEventFilter}
-            allowClear
-            style={{ width: 120 }}
+            onChange={(e) => setEventFilter(e.target.value)}
+            className="px-2 py-1 rounded border border-ink-200 text-sm w-32 focus:outline-none focus:border-brand-500"
           >
-            <Select.Option value="running">running</Select.Option>
-            <Select.Option value="completed">completed</Select.Option>
-            <Select.Option value="failed">failed</Select.Option>
-            <Select.Option value="skipped">skipped</Select.Option>
-          </Select>
-        }
-      >
-        <NodeEventTimeline events={run.events || []} filter={eventFilter} />
+            <option value="">全部状态</option>
+            <option value="running">running</option>
+            <option value="completed">completed</option>
+            <option value="failed">failed</option>
+            <option value="skipped">skipped</option>
+          </select>
+        </div>
+        <NodeEventTimeline events={run.events || []} filter={eventFilter || undefined} />
       </Card>
     </div>
   );

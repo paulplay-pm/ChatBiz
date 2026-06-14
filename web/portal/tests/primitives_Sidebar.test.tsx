@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { Sidebar } from '@/components/primitives/Sidebar';
+import { Sidebar } from 'ui/primitives/Sidebar';
 import { MENU, SECTIONS } from '@/data/menu';
 
 describe('Sidebar', () => {

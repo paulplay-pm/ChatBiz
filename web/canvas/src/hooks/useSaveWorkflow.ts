@@ -1,11 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/apiClient';
 import { useCanvasEditStore } from '@/store/useCanvasEditStore';
-import { message } from 'antd';
+import { useToast } from 'ui/primitives/Toast';
 
 export function useSaveWorkflow() {
   const qc = useQueryClient();
   const { workflowId, nodes, edges, markClean, setInitial } = useCanvasEditStore();
+  const toast = useToast();
 
   return useMutation({
     mutationFn: async (overrides?: { name?: string }) => {
@@ -24,7 +25,7 @@ export function useSaveWorkflow() {
     },
     onSuccess: (data: any) => {
       markClean();
-      message.success('已保存');
+      toast.info('已保存');
       qc.invalidateQueries({ queryKey: ['workflows'] });
       if (!workflowId && data?.id) {
         // newly created: refresh store + let caller navigate
@@ -36,7 +37,7 @@ export function useSaveWorkflow() {
       return data;
     },
     onError: (e: any) => {
-      message.error(e.response?.data?.detail?.error_message || '保存失败');
+      toast.error(e.response?.data?.detail?.error_message || '保存失败');
     },
   });
 }
