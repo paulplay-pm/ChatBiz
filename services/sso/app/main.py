@@ -1,141 +1,67 @@
-"""ASGI entrypoint for the SSO identity service service.
+"""V6a SSO service: ASGI entrypoint — create_app factory + 4 错误边界 exception handlers.
 
-Wires the FastAPI application:
-
-* ``lifespan`` — loads the master key + DB engine + Redis client,
-  aborts with ``sys.exit(1)`` if the master key is missing per spec
-  §主密钥缺失.
-* CORS — permissive defaults; production deployments tighten this via
-  an environment variable list.
-* Global exception handlers — map every domain exception from
-  ``app.services`` / ``app.permissions`` / ``app.rate_limit`` to the
-  correct HTTP status with a stable JSON body.
-* ``/healthz`` — 200 iff the DB is reachable (used by k8s readiness).
-
-Routers register at ``/api/v1/auth/sso`` per spec.
+完全重写 credential main.py:V6a 不需 crypto/notifications/permissions/rate_limit/credentials router。
 """
-
 from __future__ import annotations
 
 import logging
-import os
-from typing import Any
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
 
-from app.lifespan import lifespan
-from app.permissions import PermissionDeniedError
-from app.rate_limit import RateLimitExceededError
-from app.routers import credentials as credentials_router
-from app.services import (
-    CredentialExpiredError,
-    CredentialNotFoundError,
-    WorkspaceMismatchError,
-)
+from .jwt_utils import SecurityError, UserError, WorkflowRuntimeError, InternalError
+from .lifespan import lifespan
+from .routers import sso as sso_router
 
 logger = logging.getLogger(__name__)
 
 
-def _err(message: str, code: str) -> dict[str, Any]:
-    """Stable error envelope shared by every handler."""
+def _err(message: str, code: str) -> dict:
+    """4 错误边界稳定 envelope(eng-review Quality #3 锁定)。"""
     return {"error": {"code": code, "message": message}}
 
 
 def create_app() -> FastAPI:
-    """Application factory.
+    app = FastAPI(title="chatbiz-sso", version="0.1.0", lifespan=lifespan)
 
-    A factory (rather than a module-level singleton) keeps test
-    isolation easy: each test that wants a fresh app calls
-    ``create_app()`` and overrides dependencies on its private
-    instance. Production uses ``app = create_app()`` below for
-    ``uvicorn app.main:app``.
-    """
-    app = FastAPI(
-        title="ChatBiz Credential Management",
-        version="0.1.0",
-        lifespan=lifespan,
-    )
-
-    cors_origins = [
-        o.strip()
-        for o in os.environ.get("CREDENTIAL_CORS_ORIGINS", "*").split(",")
-        if o.strip()
-    ]
+    # CORS(dev 宽松,prod 收紧)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=cors_origins or ["*"],
+        allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
 
-    app.include_router(credentials_router.router)
+    # 4 错误边界(eng-review Quality #3)
+    @app.exception_handler(SecurityError)
+    async def _sec(req: Request, e: SecurityError):
+        if "expired" in e.code or "invalid_token" in e.code or "unauthorized" in e.code:
+            status = 401
+        else:
+            status = 403
+        return JSONResponse(status_code=status, content=_err(str(e), e.code))
 
-    # ------------------------------------------------------------------
-    # Health
-    # ------------------------------------------------------------------
+    @app.exception_handler(UserError)
+    async def _usr(req: Request, e: UserError):
+        return JSONResponse(status_code=400, content=_err(str(e), e.code))
 
-    @app.get("/healthz")
-    async def healthz(request: Request) -> dict[str, str]:
-        """200 if a trivial ``SELECT 1`` round-trips through the engine."""
-        engine = request.app.state.engine
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
-        return {"status": "ok"}
+    @app.exception_handler(WorkflowRuntimeError)
+    async def _rt(req: Request, e: WorkflowRuntimeError):
+        if "timeout" in e.code:
+            status = 504
+        else:
+            status = 502
+        return JSONResponse(status_code=status, content=_err(str(e), e.code))
 
-    # ------------------------------------------------------------------
-    # Exception handlers
-    # ------------------------------------------------------------------
+    @app.exception_handler(InternalError)
+    async def _int(req: Request, e: InternalError):
+        return JSONResponse(status_code=500, content=_err(str(e), e.code))
 
-    @app.exception_handler(CredentialNotFoundError)
-    async def _not_found(_request: Request, exc: CredentialNotFoundError) -> JSONResponse:
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content=_err(str(exc), "credential_not_found"),
-        )
-
-    @app.exception_handler(CredentialExpiredError)
-    async def _expired(_request: Request, exc: CredentialExpiredError) -> JSONResponse:
-        return JSONResponse(
-            status_code=status.HTTP_410_GONE,
-            content=_err(str(exc), "credential_expired"),
-        )
-
-    @app.exception_handler(WorkspaceMismatchError)
-    async def _ws_mismatch(_request: Request, exc: WorkspaceMismatchError) -> JSONResponse:
-        # We deliberately surface a 403 (not 404) for workspace mismatch:
-        # the credential id exists, the caller just lacks access. Hiding
-        # the existence under a 404 would defeat audit-log correlation.
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content=_err(str(exc), "workspace_mismatch"),
-        )
-
-    @app.exception_handler(PermissionDeniedError)
-    async def _perm(_request: Request, exc: PermissionDeniedError) -> JSONResponse:
-        return JSONResponse(
-            status_code=status.HTTP_403_FORBIDDEN,
-            content=_err(str(exc), "permission_denied"),
-        )
-
-    @app.exception_handler(RateLimitExceededError)
-    async def _ratelimit(
-        _request: Request, exc: RateLimitExceededError
-    ) -> JSONResponse:
-        return JSONResponse(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            content=_err(str(exc), "rate_limit_exceeded"),
-            headers={"Retry-After": str(exc.retry_after_seconds)},
-        )
-
+    app.include_router(sso_router.router)
     return app
 
 
-# Production entrypoint. Tests build their own app via ``create_app()``.
+# Production entrypoint.
 app = create_app()
-
-
-__all__ = ["app", "create_app"]
