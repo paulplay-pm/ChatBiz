@@ -31,11 +31,11 @@
 
 ## 3. 后端 alembic migration + 3 表
 
-- [ ] 3.1 改 `services/sso/alembic/versions/001_init.py`:建 `sso_users` / `sso_sessions` / `sso_audit` 3 表
-- [ ] 3.2 写 `infrastructure/postgres-init-test/001_sso.sql` 测试容器初始化 DDL
-- [ ] 3.3 `cd services/sso && alembic upgrade head` 验 schema
-- [ ] 3.4 跑 `psql -h chatbiz-postgres -U chatbiz -d chatbiz_test -c "\dt sso*"` 验 3 表存在
-- [ ] 3.5 Commit
+- [x] 3.1 改 `services/sso/alembic/versions/001_init.py`:建 `sso_users` / `sso_sessions` / `sso_audit` 3 表 + 4 错误类埋点字段 error_class
+- [x] 3.2 改 `infrastructure/postgres-init-test/02-create-databases.sql` 加 `chatbiz_sso` DB 创建(测试容器自动创库)
+- [x] 3.3 `cd services/sso && alembic upgrade head` → **3 表建表成功**
+- [x] 3.4 跑 `docker exec chatbiz-postgres psql -U chatbiz -d chatbiz_sso -c "\dt sso*"` → 3 表(sso_audit + sso_sessions + sso_users)都存在 ✓
+- [x] 3.5 Commit: `feat(sso): alembic migration + 3 表建表`
 
 ## 4. 后端 pytest 单元测试
 
