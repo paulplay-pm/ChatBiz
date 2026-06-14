@@ -61,14 +61,19 @@
 
 ## 6. 5 spec 落地(高密度,每 spec 单独 verify)
 
-- [ ] 6.1 新建 `openspec/changes/sso-and-canvas-e2e-fix/specs/sso-integration/spec.md`(已完成草稿)
-- [ ] 6.2 新建 `openspec/changes/sso-and-canvas-e2e-fix/specs/chatflow-runtime/spec.md`(已完成草稿)
-- [ ] 6.3 新建 `openspec/changes/sso-and-canvas-e2e-fix/specs/mcp-tool-registry/spec.md`(已完成草稿)
-- [ ] 6.4 新建 `openspec/changes/sso-and-canvas-e2e-fix/specs/manual-approval-flow-runtime/spec.md`(已完成草稿)
-- [ ] 6.5 新建 `openspec/changes/sso-and-canvas-e2e-fix/specs/audit-isolation-prod-readiness/spec.md`(已完成草稿)
-- [ ] 6.6 跑 `openspec schema validate superpowers-bridge` 期望 0 error
-- [ ] 6.7 跑 `openspec status --change sso-and-canvas-e2e-fix` 期望 specs artifact status done
-- [ ] 6.8 Commit: `docs(openspec): V4 5 spec 落地 (SSO + chatflow + mcp + approval + audit)`
+- [x] 6.1-6.5 5 spec 草稿已写(commit `b6c8262` V4 4 artifact)
+  - sso-integration:5 Requirement + 4 Scenario
+  - chatflow-runtime:2 + 4
+  - mcp-tool-registry:2 + 4
+  - manual-approval-flow-runtime:2 + 4
+  - audit-isolation-prod-readiness:4 + 4
+  - canvas-auth (Modify):1 + 2
+- [x] 6.6 `openspec schema validate superpowers-bridge` → ✓ Schema valid
+- [x] 6.7 `openspec status --change sso-and-canvas-e2e-fix` → 5/8 artifact done
+  - brainstorm/design/proposal/specs/tasks = done
+  - plan = pending(apply 后写)
+  - verify + retrospective = blocked
+- [x] 6.8 3 tsc:portal EXIT 0 / canvas EXIT 0(ui/Toast 5 错误非阻塞)/ admin EXIT 0(baseUrl 弃用警告非阻塞)
 
 ## 7. portal LoginPage SSO 按钮 + dev IM mock
 
