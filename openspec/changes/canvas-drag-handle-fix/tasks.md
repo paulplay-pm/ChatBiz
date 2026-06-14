@@ -54,10 +54,10 @@
 
 ## 6. bundle size + build 验证
 
-- [ ] 6.1 `pnpm exec vite build` 在 canvas → 记录 build 后大小
-- [ ] 6.2 grep prod bundle 确认 `__rfConnect` 不存在
-- [ ] 6.3 bundle delta < 10 KB → ✓
-- [ ] 6.4 Commit: `chore(ops): V5 canvas bundle size verify`
+- [x] 6.1 `pnpm exec vite build` 在 canvas → 819.0 KB(V4 baseline 818.7 KB)
+- [x] 6.2 grep prod bundle 确认 `__rfConnect` 不存在 → **0 出现**(import.meta.env.DEV 守卫 + Vite DCE 成功)
+- [x] 6.3 bundle delta = +0.3 KB → ✓ 远 < 10 KB 阈值
+- [x] 6.4 Commit: `chore(ops): V5 T6 bundle + build 验证` → `ec6263e`
 
 ## 7. 全量回归(14-gate)
 
