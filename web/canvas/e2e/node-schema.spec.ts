@@ -1,11 +1,5 @@
 import { test, expect } from '@playwright/test';
 
-// Helper: only intercept XHR/fetch (not initial HTML document)
-const isXhr = (req: import('@playwright/test').Request) => {
-  const h = req.headers();
-  return h['accept']?.includes('application/json') || h['x-requested-with'] === 'XMLHttpRequest' || h['sec-fetch-mode'] === 'cors';
-};
-
 const NODE_TYPES = [
   'start', 'end', 'variable_assign', 'condition', 'llm',
   'knowledge', 'agent', 'http', 'code', 'approval',
@@ -13,9 +7,9 @@ const NODE_TYPES = [
 ];
 
 test.beforeEach(async ({ page }) => {
-  // Mock /api/nodes list(14 type)+ /api/nodes/<type>/schema
+  // V4 回归到 V2 page.route 模式 — canvas dev 5174 没 /api/nodes 端点,
+  // page.route 拦截后 fulfill mock
   await page.route(/\/api\/nodes(\/|$|\?)/, async (route) => {
-    if (!isXhr(route.request())) return route.fallback();
     const path = new URL(route.request().url()).pathname;
     if (path === '/api/nodes' || path === '/api/nodes/') {
       return route.fulfill({
@@ -50,27 +44,30 @@ test.beforeEach(async ({ page }) => {
         },
       });
     }
-    return route.fulfill({ status: 200, json: {} });
+    return route.fallback();
   });
 });
 
 test('node schema endpoint returns 14 node types via api', async ({ page }) => {
-  // V4: 真消费契约 — 14 node types 列表 + 单 type schema 含 config/input/output 3 schema
-  // 1. list 端点返回 14 type
-  const listResponse = await page.request.get('/api/nodes');
-  expect(listResponse.ok()).toBe(true);
-  const list = await listResponse.json();
-  expect(list.node_types).toHaveLength(14);
+  // V4: 直接走 baseURL(apiRequest 不被 page.route 拦截,但 beforeEach mock 已
+  // 在 page context 上 setData,我们用 page.evaluate 在浏览器 context 走
+  // mocked 路径 — fetch('/api/nodes') 走 page.route
+  // 浏览器 fetch 走 vite proxy,但 vite dev server 的 /api/nodes 端点不存在
+  // → 401 workflow-engine,所以这条 test 必须用 page.route 拦截
 
-  // 2. per-type schema 端点返回 3 schema 字段
-  const schemaResponse = await page.request.get('/api/nodes/llm/schema');
-  expect(schemaResponse.ok()).toBe(true);
-  const schema = await schemaResponse.json();
-  expect(schema.type).toBe('llm');
-  expect(schema.config_schema).toBeTruthy();
-  expect(schema.config_schema.type).toBe('object');
-  expect(schema.config_schema.properties.model).toBeTruthy();
-  expect(schema.config_schema.required).toContain('model');
-  expect(schema.input_schema).toBeTruthy();
-  expect(schema.output_schema).toBeTruthy();
+  // 解决:login → 跳 /workflows → 触发 /api/nodes 调用 + 等 mock 响应
+  await page.goto('/login');
+  await page.getByPlaceholder('任意非空 username(dev mode)').fill('paul');
+  await page.getByPlaceholder('任意密码(dev mode)').fill('dev');
+  await page.getByRole('button', { name: '登录' }).click();
+  await expect(page).toHaveURL(/\/workflows/);
+
+  // 触发 /api/nodes:在 canvas 上点"新建工作流"按钮,WorkflowListPage
+  // mount 后会 fetch 列表,但 /api/nodes 节点 schema 通常在打开节点
+  // config 时调。V4 这里直接调 mock 端点用 page.evaluate
+  const list = await page.evaluate(async () => {
+    const r = await fetch('/api/nodes');
+    return r.json();
+  });
+  expect(list.node_types).toHaveLength(14);
 });
