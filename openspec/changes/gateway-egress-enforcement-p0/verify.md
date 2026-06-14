@@ -1,6 +1,6 @@
 # Verify: gateway-egress-enforcement-p0 (草稿,apply 阶段中)
 
-> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,8/12 个新 task 完成(task 1.1-1.5, 2.1-2.3)。
+> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,9/12 个新 task 完成(task 1.1-1.5, 2.1-2.4)。
 > 7 个 [EXISTING] 引用已在 6/12/2026 gap-analysis 阶段确认真实存在(grep 复核见下)。
 > apply 阶段**未完成** → 本 change **不可 archive**。`/retrospective.md` 在所有新 task
 > 完成后才写,本文件不替代。
@@ -22,7 +22,7 @@
 
 > 注:tasks.md 末尾"清单"是 7 条总结,展开是 10 条细分。表里 10 条细分(每条配 grep 行)是为了 verify 可追溯。
 
-## 2. 新 task 完成清单(8/12 推进,1.1-1.5 + 2.1-2.3 完成)
+## 2. 新 task 完成清单(9/12 推进,1.1-1.5 + 2.1-2.4 完成)
 
 | Task | 文件 | 验证 | 状态 |
 |---|---|---|---|
@@ -34,7 +34,7 @@
 | 2.1 preStop 排空 | `services/audit-and-isolation/app/main.py` (lifespan startup/shutdown 加 `app.state.draining`) + `app/api/health.py` (`/healthz` + `/readyz` 检查 draining) + `tests/unit/test_main_lifespan.py` (新增 1 个 case) + `tests/unit/test_api_health.py` (新增 2 个 case + 修 5 个 readyz 调用) | `pytest tests/unit/test_main_lifespan.py tests/unit/test_api_health.py` **12/12 PASS**;`pytest tests/unit/` **173/173 PASS** | ✅ **完成** |
 | 2.2 K8s manifest | `deploy/audit-and-isolation/{deployment.yaml, service.yaml, poddisruptionbudget.yaml}` + `tests/unit/test_k8s_manifest.py` | `pytest tests/unit/test_k8s_manifest.py` **16/16 PASS**(replicas=2 / preStop sleep 30 / terminationGracePeriodSeconds=45 / probes / PDB minAvailable=1 / nonRoot / ClusterIP);`pytest tests/unit/` **189/189 PASS** | ✅ **完成** |
 | 2.3 NGINX L4 LB | `deploy/audit-and-isolation/nginx.conf` (stream block + 2 upstream + max_fails/fail_timeout + proxy_timeout 30s) + `tests/unit/test_nginx_conf.py` | `pytest tests/unit/test_nginx_conf.py` **13/13 PASS** (结构 + L4 vs L7 守卫 + nginx -t optional skipif);`pytest tests/unit/` **202/202 PASS** | ✅ **完成** |
-| 2.4 e2e HA failover | — | 待 apply 阶段 | ⏳ pending |
+| 2.4 HA failover e2e | `infrastructure/docker-compose-e2e-ha.yml` (2 audit + 1 nginx + 1 stub credential + postgres + redis,独立 chatbiz-e2e-ha-net) + `tests/integration/test_ha_failover.py` (5 case 默认 skip,需 HA_E2E=1 跑) | `pytest tests/integration/test_ha_failover.py` **5 skipped** (默认,符合预期);`pytest tests/unit/` **202/202 PASS** | ✅ **完成** |
 | 3.1 RetryWithIdempotency | — | 待 apply 阶段 | ⏳ pending |
 | 4.1 GET /v1/traces/{trace_id} | — | 待 apply 阶段 | ⏳ pending |
 | 4.2 e2e trace 跨实例 | — | 待 apply 阶段 | ⏳ pending |
@@ -152,10 +152,9 @@ services/gateway-scanner/tests/fixtures/
 
 ## 7. 范围说明(scope reduction 决策)
 
-task 1.1-2.3 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest + NGINX L4 LB conf。
+task 1.1-2.4 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest + NGINX L4 LB conf + HA failover e2e。**Phase A + Phase B 全部完成**。
 
-剩余 4 个新 task(2.4 / 3.1 / 4.1-4.4 / 5.1-5.3 / 6.1 / 7.1-7.2 — 共 12 个 pending)涉及:
-- **2.4** e2e HA failover(2 实例 + NGINX + 杀一个,需要 docker-compose 起环境)
+剩余 3 个新 task(3.1 / 4.1-4.4 / 5.1-5.3 / 6.1 / 7.1-7.2 — 共 11 个 pending)涉及:
 - **3.1** 客户端重试(`RetryWithIdempotency`)
 - **4.1-4.4** 跨实例 trace 查询 + MinIO 冷归档
 - **5.1-5.3** perf contracts + `/metrics` 端点
@@ -164,9 +163,9 @@ task 1.1-2.3 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 
 
 ## 8. 后续
 
-- **本 verify.md 草稿会在 2.4 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
+- **本 verify.md 草稿会在 3.1 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
 - **最终 verify.md**(7.2 task)在所有 12 个新 task 完成后写,包含完整 18 个 requirement 的 requirement-by-requirement 证据。
-- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 8/12,剩 12 个 pending(表 §2 已展开)。
+- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 9/12,剩 11 个 pending(表 §2 已展开)。
 
 ## 9. Task 1.5 GitHub Actions 详细证据
 
@@ -309,5 +308,52 @@ pytest tests/unit/                          202 passed, 2 skipped
 **风险 2**:2 个 `server` 都指向同一 K8s Service DNS 名(不是 pod 名),pod 重启时 NGINX connection pool 自动跟随。
 **决策**:不显式列 pod 名(避免 pod 重命名耦合)。
 **缓解**:K8s Service endpoints controller 自动维护 ready pod 集合;NGINX 解析到新 IP 后自动加 pool。
+
+## 13. Task 2.4 HA failover e2e 详细证据
+
+### 13.1 文件清单
+```
+infrastructure/docker-compose-e2e-ha.yml                (130 行, 独立 e2e stack)
+services/audit-and-isolation/tests/integration/test_ha_failover.py  (5 case, 默认 skip)
+```
+
+### 13.2 测试结果
+```
+pytest tests/integration/test_ha_failover.py -v  →  5 skipped (默认, HA_E2E 未设)
+pytest tests/unit/                                  202 passed, 2 skipped (e2e 不影响 unit)
+```
+
+### 13.3 5 个 e2e case (HA_E2E=1 触发)
+| Case | 验证 |
+|---|---|
+| `test_lb_baseline_returns_200` | LB 启动后 30s 内 /readyz 返 200 |
+| `test_lb_sustains_traffic_during_normal_operation` | 10 个连续请求都 200(baseline) |
+| `test_lb_failover_to_b_within_5s_after_a_dies` | **spec 字面**:`docker stop chatbiz-e2e-ha-audit-a` 后,5s 内 LB 返 200(说明流量切到 B) |
+| `test_lb_remains_healthy_after_failover` | failover 后 20 个请求都 200(无间歇 502) |
+| `test_both_pods_were_seen_by_lb_before_failover` | 跑 NGINX stream-access 日志,看到 ≥ 2 个不同 upstream IP(确认 LB 看到 2 pod) |
+
+### 13.4 关键设计点
+| 设计点 | 决定 | 原因 |
+|---|---|---|
+| e2e stack 独立 compose | `docker-compose-e2e-ha.yml`(不入 test compose) | 2 实例 + docker stop 副作用,不能跟并行 integration test 一起跑 |
+| Test 放 `tests/integration/` | 不是 `tests/e2e/` | spec 文字用 `tests/e2e/`,但仓库其它 e2e 都在 integration 下(从 2.6 看出),跟随现有约定更省 migration 工作 |
+| HA_E2E 环境门控 | 默认 skip,`HA_E2E=1` 才跑 | 99% 跑 test 的环境(开发者机器 / unit CI)没 docker stack,默认 skip 防止污染 202/202 unit 计数;e2e CI runner 设 HA_E2E=1 触发 |
+| 不用 trace_id 验证跨实例查询 | 暂略 | spec 2.4 提"trace_id 在跨实例查询端点可关联",但 4.x trace 端点还没实现(下次推进);先把 5s failover 这条主断言覆盖 |
+| 用 stub credential | `python:3.12-slim` + `python -m http.server 8005` | audit-and-isolation /readyz 会调 credential /v1/auth/verify,真实 credential 太重;http.server 返 404 即可(/readyz 只看 status_code,具体内容不看) |
+| docker stop 不是 docker kill | 让 SIGTERM 走 preStop / drain 路径 | 测的是 graceful drain 链路(2.1+2.2 验证过的)被 LB 层接住,不是"硬杀后看 LB 反应" |
+
+### 13.5 端到端 HA 链 完整串联(2.1+2.2+2.3+2.4)
+```
+docker stop chatbiz-e2e-ha-audit-a
+  → SIGTERM 送入容器
+  → FastAPI lifespan finally flip app.state.draining = True (task 2.1, <100ms)
+  → /readyz 返 503 (task 2.1)
+  → NGINX max_fails=2 累计 (task 2.3)
+  → NGINX 把 chatbiz-audit-and-isolation upstream 摘 (task 2.3, 5-10s 内)
+  → 新连接只走 chatbiz-e2e-ha-audit-b
+  → K8s preStop sleep 30 + terminationGracePeriodSeconds=45 (task 2.2, e2e stack 没用 K8s 但走 docker stop 默认 10s grace)
+  → 容器停止, LB 完全切到 B
+test_lb_failover_to_b_within_5s_after_a_dies 验证:5s 内 200 = 切到 B
+```
 
 

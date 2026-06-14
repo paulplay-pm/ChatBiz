@@ -1,0 +1,152 @@
+# =============================================================================
+# HA failover E2E stack — 2 audit-and-isolation replicas + 1 NGINX L4 LB
+#
+# Per task 2.4 of `openspec/changes/gateway-egress-enforcement-p0/`. This is
+# a STANDALONE compose file (not part of the regular test stack) for one
+# reason: it needs the audit-and-isolation service to run as TWO replicas
+# with different container names so the test can target each one
+# individually with `docker stop`. The regular test compose has only
+# one instance.
+#
+# Usage (e2e test runner):
+#
+#   docker compose -f infrastructure/docker-compose-e2e-ha.yml up -d
+#   # wait for "chatbiz-e2e-ha-lb" to be ready
+#   pytest services/audit-and-isolation/tests/integration/test_ha_failover.py
+#   docker compose -f infrastructure/docker-compose-e2e-ha.yml down
+#
+# The test itself orchestrates the lifecycle: bring up stack, hit LB
+# (verify both pods get traffic), kill pod A, hit LB again, verify all
+# traffic goes to pod B within ~5s.
+#
+# This file is intentionally NOT in `docker-compose-test.yml` (which is
+# a parallel isolation test stack). The e2e HA test is a one-shot
+# destroy-then-verify flow, not a parallel-running integration suite.
+# =============================================================================
+name: chatbiz-e2e-ha
+
+services:
+
+  chatbiz-e2e-ha-postgres:
+    image: postgres:16-alpine
+    container_name: chatbiz-e2e-ha-postgres
+    environment:
+      POSTGRES_USER: chatbiz
+      POSTGRES_PASSWORD: chatbiz
+      POSTGRES_DB: audit_isolation
+    volumes:
+      - chatbiz-e2e-ha-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatbiz -d audit_isolation"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+    networks:
+      - chatbiz-e2e-ha-net
+
+  chatbiz-e2e-ha-redis:
+    image: redis:7-alpine
+    container_name: chatbiz-e2e-ha-redis
+    command: ["redis-server", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+    networks:
+      - chatbiz-e2e-ha-net
+
+  # ---------- 2 audit-and-isolation instances (HA pair) ----------
+
+  # Instance A — first replica, target of the kill test.
+  chatbiz-e2e-ha-audit-a:
+    build:
+      context: ../services/audit-and-isolation
+      dockerfile: Dockerfile
+    image: chatbiz/audit-and-isolation:dev
+    container_name: chatbiz-e2e-ha-audit-a
+    command:
+      - uvicorn
+      - app.main:app
+      - --host=0.0.0.0
+      - --port=8080
+    environment:
+      ENVIRONMENT: e2e-ha
+      # Per-instance label is queryable via /v1/info or env, but the
+      # e2e test relies on the container name + an extra response
+      # header injected by a tiny test-only middleware (see
+      # `app/api/info.py` for the /v1/info endpoint the test polls).
+      INSTANCE_ID: A
+      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@chatbiz-e2e-ha-postgres:5432/audit_isolation
+      REDIS_URL: redis://chatbiz-e2e-ha-redis:6379/0
+      CREDENTIAL_SERVICE_URL: http://chatbiz-e2e-ha-credential:8005
+    depends_on:
+      chatbiz-e2e-ha-postgres:
+        condition: service_healthy
+      chatbiz-e2e-ha-redis:
+        condition: service_healthy
+    networks:
+      - chatbiz-e2e-ha-net
+    # No host port mapping — the LB fronts everything.
+
+  # Instance B — second replica, takes over when A dies.
+  chatbiz-e2e-ha-audit-b:
+    image: chatbiz/audit-and-isolation:dev
+    container_name: chatbiz-e2e-ha-audit-b
+    command:
+      - uvicorn
+      - app.main:app
+      - --host=0.0.0.0
+      - --port=8080
+    environment:
+      ENVIRONMENT: e2e-ha
+      INSTANCE_ID: B
+      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@chatbiz-e2e-ha-postgres:5432/audit_isolation
+      REDIS_URL: redis://chatbiz-e2e-ha-redis:6379/0
+      CREDENTIAL_SERVICE_URL: http://chatbiz-e2e-ha-credential:8005
+    depends_on:
+      chatbiz-e2e-ha-postgres:
+        condition: service_healthy
+      chatbiz-e2e-ha-redis:
+        condition: service_healthy
+    networks:
+      - chatbiz-e2e-ha-net
+
+  # Standalone credential (audit-and-isolation calls /v1/auth/verify
+  # as part of /readyz; if credential is down, /readyz returns 503
+  # which would mask our HA test signal). A real credential is
+  # overkill for this test — we just need a service that returns any
+  # 4xx on the auth/verify endpoint. Using a tiny stub.
+  chatbiz-e2e-ha-credential:
+    image: python:3.12-slim
+    container_name: chatbiz-e2e-ha-credential
+    command:
+      - python
+      - -m
+      - http.server
+      - "8005"
+    networks:
+      - chatbiz-e2e-ha-net
+
+  # NGINX stream L4 LB (task 2.3 conf baked in)
+  chatbiz-e2e-ha-lb:
+    image: nginx:1.27-alpine
+    container_name: chatbiz-e2e-ha-lb
+    volumes:
+      - ../deploy/audit-and-isolation/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      # LB is the only thing exposed to the host — the test hits
+      # 127.0.0.1:8080 from outside the container.
+      - "8080:8080"
+    depends_on:
+      - chatbiz-e2e-ha-audit-a
+      - chatbiz-e2e-ha-audit-b
+    networks:
+      - chatbiz-e2e-ha-net
+
+volumes:
+  chatbiz-e2e-ha-pg-data:
+
+networks:
+  chatbiz-e2e-ha-net:
+    name: chatbiz-e2e-ha-net
