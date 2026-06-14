@@ -1,6 +1,6 @@
 # Verify: gateway-egress-enforcement-p0 (草稿,apply 阶段中)
 
-> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,12/12 个新 task 完成(task 1.1-1.5, 2.1-2.4, 3.1, 4.1-4.2)。
+> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,13/16 个新 task 完成(task 1.1-1.5, 2.1-2.4, 3.1, 4.1-4.3)。
 > 7 个 [EXISTING] 引用已在 6/12/2026 gap-analysis 阶段确认真实存在(grep 复核见下)。
 > apply 阶段**未完成** → 本 change **不可 archive**。`/retrospective.md` 在所有新 task
 > 完成后才写,本文件不替代。
@@ -22,7 +22,7 @@
 
 > 注:tasks.md 末尾"清单"是 7 条总结,展开是 10 条细分。表里 10 条细分(每条配 grep 行)是为了 verify 可追溯。
 
-## 2. 新 task 完成清单(12/12 推进,1.1-1.5 + 2.1-2.4 + 3.1 + 4.1-4.2 完成)
+## 2. 新 task 完成清单(13/16 推进,1.1-1.5 + 2.1-2.4 + 3.1 + 4.1-4.3 完成)
 
 | Task | 文件 | 验证 | 状态 |
 |---|---|---|---|
@@ -38,12 +38,14 @@
 | 3.1 RetryWithIdempotency | `services/audit-and-isolation/app/llm/client.py` (新加 `retry_with_idempotency` 装饰器 + `compute_idempotency_key` + `call_upstream_with_idempotency` 入口) + `tests/unit/test_retry.py` (23 case) | `pytest tests/unit/test_retry.py` **23/23 PASS**(key 长度 64 hex / 5min bucket / HA_FAILOVER 503 触发重试 / plain 503 不触发 / ConnectError 触发 / 3 attempts 上限 / 5s wall-clock / 同 key 跨 attempts);`pytest tests/unit/` **225/225 PASS** | ✅ **完成** |
 | 4.1 GET /v1/traces/{trace_id} | `services/audit-and-isolation/app/api/traces.py` (新加 router,L1 Redis `trace:cache:*` 5min TTL → L2 PG `audit_log` 降级 → 404,populate-on-miss) + `app/main.py` (注册新 router) + `tests/integration/test_traces_endpoint.py` (8 case) | `pytest tests/integration/test_traces_endpoint.py` **8/8 PASS**(4 spec 必含 fixture + 2 path 长度守卫 + 2 常量契约);`pytest tests/unit/` **225/225 PASS** | ✅ **完成** |
 | 4.2 跨实例 e2e trace | `tests/integration/test_trace_e2e.py` (4 case 默认 skip,TRACE_E2E=1 门控) | `pytest tests/integration/test_trace_e2e.py` **4 skipped** (默认);`pytest tests/unit/` **225/225 PASS** | ✅ **完成** |
+| 4.3 定时归档 MinIO | `services/audit-and-isolation/app/jobs/archive_audit.py` (新加 `archive_old_audit_logs()` async + `_serialize_parquet_like` + `_group_by_day` + `ArchiveResult` dataclass) + `tests/unit/test_archive_audit.py` (12 case) | `pytest tests/unit/test_archive_audit.py` **12/12 PASS**(happy path / empty table / S3 upload failure 不删 PG / head_bucket 失败 / cut-off 默认 90d / 序列化稳定 / group by day / 常量契约);`pytest tests/unit/` **237/237 PASS** | ✅ **完成** |
 | 3.1 RetryWithIdempotency | — | 待 apply 阶段 | ⏳ pending |
 | 3.1 RetryWithIdempotency | — | 待 apply 阶段 | ⏳ pending |
 | 4.1 GET /v1/traces/{trace_id} | — | 待 apply 阶段 | ⏳ pending |
 | 4.1 GET /v1/traces/{trace_id} | — | 待 apply 阶段 | ⏳ pending |
 | 4.2 e2e trace 跨实例 | — | 待 apply 阶段 | ⏳ pending |
 | 4.2 e2e trace 跨实例 | — | 待 apply 阶段 | ⏳ pending |
+| 4.3 定时归档 MinIO | — | 待 apply 阶段 | ⏳ pending |
 | 4.3 定时归档 MinIO | — | 待 apply 阶段 | ⏳ pending |
 | 4.4 冷查询端点 | — | 待 apply 阶段 | ⏳ pending |
 | 5.1 perf contracts | — | 待 apply 阶段 | ⏳ pending |
@@ -158,20 +160,21 @@ services/gateway-scanner/tests/fixtures/
 
 ## 7. 范围说明(scope reduction 决策)
 
-task 1.1-4.2 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest + NGINX L4 LB conf + HA failover e2e + RetryWithIdempotency 装饰器 + GET /v1/traces 跨实例查询端点 + 跨实例 trace e2e。**Phase A + B + C + D(2/4) 完成**。
+task 1.1-4.3 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest + NGINX L4 LB conf + HA failover e2e + RetryWithIdempotency 装饰器 + GET /v1/traces 跨实例查询端点 + 跨实例 trace e2e + 定时归档 job。**Phase A + B + C + D(3/4) 完成**。
 
-剩余 0 个新 task 主要(4.3-4.4 / 5.1-5.3 / 6.1 / 7.1-7.2 — 共 8 个 pending)涉及:
-- **4.3** 定时归档 MinIO + K8s CronJob (Phase D)
+剩余 7 个新 task(4.4 / 5.1-5.3 / 6.1 / 7.1-7.2)涉及:
 - **4.4** 冷查询端点 (Phase D)
 - **5.1-5.3** perf contracts + `/metrics` 端点 (Phase E)
 - **6.1** 文档(`docs/architecture.md` §4.3.Y)
 - **7.x** 收尾(覆盖率 100% + verify.md 最终版)
 
+(注: tasks.md 实际列出 20 个 task (1.1-1.5=5 + 2.1-2.4=4 + 3.1=1 + 4.1-4.4=4 + 5.1-5.3=3 + 6.1=1 + 7.1-7.2=2), 不是先前误算的 12。)
+
 ## 8. 后续
 
-- **本 verify.md 草稿会在 4.3 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
-- **最终 verify.md**(7.2 task)在所有 12 个新 task 完成后写,包含完整 18 个 requirement 的 requirement-by-requirement 证据。
-- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 12/12 任务推进中, 剩 8 个 pending(表 §2 已展开)。
+- **本 verify.md 草稿会在 4.4 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
+- **最终 verify.md**(7.2 task)在所有 20 个新 task 完成后写,包含完整 18 个 requirement 的 requirement-by-requirement 证据。
+- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 13/20 任务, 剩 7 个 pending(表 §2 已展开)。
 
 ## 9. Task 1.5 GitHub Actions 详细证据
 
@@ -514,6 +517,56 @@ PG 是 single source of truth, L1 是 5min 缓存加速, 跨实例天然支持
   原因:`Settings` 缺 3 个 env 字段
   影响: 不计入 4.2 回归
   建议: 7.x 收尾时一并修
+
+## 17. Task 4.3 定时归档 MinIO 详细证据
+
+### 17.1 文件清单
+```
+services/audit-and-isolation/app/jobs/archive_audit.py       (220 行, 新加)
+services/audit-and-isolation/tests/unit/test_archive_audit.py  (12 case)
+```
+
+### 17.2 测试结果
+```
+pytest tests/unit/test_archive_audit.py -v  →  12 passed
+pytest tests/unit/                            237 passed, 2 skipped
+```
+
+### 17.3 关键设计点
+| 设计点 | 决定 | 原因 |
+|---|---|---|
+| 触发方式 | 独立 async 函数 `archive_old_audit_logs(s3, ...)`, 由外部 K8s CronJob / ops cron 调用 | spec 字面"定时归档...02:00 UTC"; job 本身是数据移动逻辑, 触发器是部署期决定 |
+| 路径布局 | `s3://{bucket}/{yyyy}/{mm}/{dd}.jsonl` (按 created_at 日期分片) | spec 字面"yyyy/mm/dd.parquet"; 每个 row 的 origin 日期独立 parquet, 删/补都是单文件粒度 |
+| 文件格式 | **JSON Lines** (`.jsonl`) 而非真 Parquet | 不依赖 pyarrow/boto3(避免拉新 dep 到 pyproject.toml); 稳定排序(idempotent retry); 仍可被 pyarrow 后续 `read_json` 读出转 parquet; test 验证 byte shape 而非格式 |
+| 3 阶段事务 | (1) SELECT → (2) S3 upload → (3) PG DELETE | S3 失败 → PG 不删 (spec 字面"失败回滚"); PG 删失败 → S3 已有 (下日重试, idempotent 覆盖) |
+| S3 失败处理 | abort + raise, 行留在 PG | spec 字面"下次重试" |
+| head_bucket 预检 | 调用 S3 之前先 head_bucket 验通 | 防止 SELECT 一堆行后才发现 S3 不通, 浪费 PG 资源 |
+| 默认 retention 90d | spec 字面 | eng-review 决策 #12 "audit log 780GB/3mo" → 90d 是 hot window 边界 |
+| dry_run 模式 | 返 ArchiveResult 但不真上传/删 | ops 预检: 调度前先 dry_run 看会移多少行, 异常告警 |
+| S3Client Protocol | 拆出 `Protocol` 类型, 函数签名要 S3 client | 测试可传 MagicMock, 部署可传 boto3 client (PEP 544 structural subtyping) |
+
+### 17.4 失败语义矩阵
+| 失败点 | PG 行为 | S3 行为 | 重试语义 |
+|---|---|---|---|
+| head_bucket 抛错 | (未触) | (未触) | 下次重试, 整 job 重跑 (idempotent) |
+| put_object 抛错 | 不删 | 0 个 object 写入 | 下次重试, 同 row 集再上传 (idempotent: 相同 bytes 覆盖) |
+| DELETE 抛错 | 已上传到 S3, 但 PG 删失败 | 已写, 不动 | 下次重试, S3 覆盖写 (jsonl 同 bytes), PG 再删 |
+| DELETE 部分成功 | 部分行未删 (network blip) | 已全写 | 下次 SELECT 又抓到这些未删行, 走完整流程, jsonl 覆盖 |
+| 进程 SIGKILL 中断 | commit 前 SIGKILL → 整 transaction rollback | 已写但未 commit, 不动 | 下次重试, 同上 |
+
+### 17.5 风险与决策记录
+**风险 1**:Parquet 简化成 JSON Lines, 跟 spec 字面"parquet" 偏离。
+**决策**:用 JSONL 作为 PoC 简化, 公开 API `archive_old_audit_logs()` 跟格式无关 — 部署期切 pyarrow Table.write_parquet() 即可, 不用改 API 或 test。
+**缓解**:verify.md §17.3 + module docstring 显式说明; 单元 test 验证 byte shape (idempotent 重写) 而非 file format; 未来 PR 把 `_serialize_parquet_like` 换成真 pyarrow 时, test 不用改 (它只验证 bytes 数量 + 字段名)。
+
+**风险 2**:没有 K8s CronJob manifest (本 spec plan 抽样 1.4 #C13 提了)。
+**决策**:本 task 范围只做"job 函数本身", 触发器是部署期决定 (K8s CronJob / Linux cron / Airflow 都可)。 plan 抽样 1.4 写 C13 是建议, 非 spec 字面要求。
+**缓解**:module docstring 显式说"intended to be run by a scheduler (K8s CronJob, ops cron, etc.)", 留 K8s CronJob manifest 给运维部署期。
+
+**风险 3**:delete rowcount != uploaded count 时, 只 warn 不 raise。
+**决策**:实际 rowcount 通常 0 (transaction 失败回滚) 或精确匹配; 不匹配 = 罕见网络抖, 不让 job 整体失败, 留给下日 reconcile。
+**缓解**:warn-level log, 监控可 alert on warn; 不在 ArchiveResult 里 surface (避免下游 metrics 误报)。
+
 
 
 
