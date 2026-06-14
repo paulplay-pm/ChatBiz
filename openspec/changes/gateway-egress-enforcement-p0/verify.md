@@ -1,6 +1,6 @@
 # Verify: gateway-egress-enforcement-p0 (草稿,apply 阶段中)
 
-> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,7/12 个新 task 完成(task 1.1-1.5, 2.1-2.2)。
+> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,8/12 个新 task 完成(task 1.1-1.5, 2.1-2.3)。
 > 7 个 [EXISTING] 引用已在 6/12/2026 gap-analysis 阶段确认真实存在(grep 复核见下)。
 > apply 阶段**未完成** → 本 change **不可 archive**。`/retrospective.md` 在所有新 task
 > 完成后才写,本文件不替代。
@@ -22,7 +22,7 @@
 
 > 注:tasks.md 末尾"清单"是 7 条总结,展开是 10 条细分。表里 10 条细分(每条配 grep 行)是为了 verify 可追溯。
 
-## 2. 新 task 完成清单(7/12 推进,1.1-1.5 + 2.1-2.2 完成)
+## 2. 新 task 完成清单(8/12 推进,1.1-1.5 + 2.1-2.3 完成)
 
 | Task | 文件 | 验证 | 状态 |
 |---|---|---|---|
@@ -33,7 +33,7 @@
 | 1.5 GitHub Actions | `.github/workflows/gateway-static-scan.yml` + `services/gateway-scanner/tests/test_workflow.py` | `pytest tests/test_workflow.py` **11/11 PASS**(YAML 解析 / trigger paths / job/step 顺序 / scanner 调用 / pinned actions / 最小权限) | ✅ **完成** |
 | 2.1 preStop 排空 | `services/audit-and-isolation/app/main.py` (lifespan startup/shutdown 加 `app.state.draining`) + `app/api/health.py` (`/healthz` + `/readyz` 检查 draining) + `tests/unit/test_main_lifespan.py` (新增 1 个 case) + `tests/unit/test_api_health.py` (新增 2 个 case + 修 5 个 readyz 调用) | `pytest tests/unit/test_main_lifespan.py tests/unit/test_api_health.py` **12/12 PASS**;`pytest tests/unit/` **173/173 PASS** | ✅ **完成** |
 | 2.2 K8s manifest | `deploy/audit-and-isolation/{deployment.yaml, service.yaml, poddisruptionbudget.yaml}` + `tests/unit/test_k8s_manifest.py` | `pytest tests/unit/test_k8s_manifest.py` **16/16 PASS**(replicas=2 / preStop sleep 30 / terminationGracePeriodSeconds=45 / probes / PDB minAvailable=1 / nonRoot / ClusterIP);`pytest tests/unit/` **189/189 PASS** | ✅ **完成** |
-| 2.3 NGINX L4 LB | — | 待 apply 阶段 | ⏳ pending |
+| 2.3 NGINX L4 LB | `deploy/audit-and-isolation/nginx.conf` (stream block + 2 upstream + max_fails/fail_timeout + proxy_timeout 30s) + `tests/unit/test_nginx_conf.py` | `pytest tests/unit/test_nginx_conf.py` **13/13 PASS** (结构 + L4 vs L7 守卫 + nginx -t optional skipif);`pytest tests/unit/` **202/202 PASS** | ✅ **完成** |
 | 2.4 e2e HA failover | — | 待 apply 阶段 | ⏳ pending |
 | 3.1 RetryWithIdempotency | — | 待 apply 阶段 | ⏳ pending |
 | 4.1 GET /v1/traces/{trace_id} | — | 待 apply 阶段 | ⏳ pending |
@@ -152,11 +152,10 @@ services/gateway-scanner/tests/fixtures/
 
 ## 7. 范围说明(scope reduction 决策)
 
-task 1.1-2.2 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest(2 replicas + preStop + PDB)。
+task 1.1-2.3 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest + NGINX L4 LB conf。
 
-剩余 5 个新 task(2.3-2.4 / 3.1 / 4.1-4.4 / 5.1-5.3 / 6.1 / 7.1-7.2 — 共 13 个 pending)涉及:
-- **2.3** NGINX L4 LB conf(stream + health_check + 2 upstream)
-- **2.4** e2e HA failover(2 实例 + NGINX + 杀一个)
+剩余 4 个新 task(2.4 / 3.1 / 4.1-4.4 / 5.1-5.3 / 6.1 / 7.1-7.2 — 共 12 个 pending)涉及:
+- **2.4** e2e HA failover(2 实例 + NGINX + 杀一个,需要 docker-compose 起环境)
 - **3.1** 客户端重试(`RetryWithIdempotency`)
 - **4.1-4.4** 跨实例 trace 查询 + MinIO 冷归档
 - **5.1-5.3** perf contracts + `/metrics` 端点
@@ -165,9 +164,9 @@ task 1.1-2.2 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 
 
 ## 8. 后续
 
-- **本 verify.md 草稿会在 2.3 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
+- **本 verify.md 草稿会在 2.4 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
 - **最终 verify.md**(7.2 task)在所有 12 个新 task 完成后写,包含完整 18 个 requirement 的 requirement-by-requirement 证据。
-- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 7/12,剩 13 个 pending(表 §2 已展开)。
+- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 8/12,剩 12 个 pending(表 §2 已展开)。
 
 ## 9. Task 1.5 GitHub Actions 详细证据
 
@@ -275,4 +274,40 @@ pytest tests/unit/                            189 passed, 1 skipped
 5. preStop `sleep 30` 继续,等 in-flight 请求完成
 6. 30s 后 preStop 退出,容器收 SIGKILL
 7. pod 删除;总耗时 < 45s grace
+
+## 12. Task 2.3 NGINX L4 LB 详细证据
+
+### 12.1 文件清单
+```
+deploy/audit-and-isolation/nginx.conf              (95 行, stream L4 LB)
+services/audit-and-isolation/tests/unit/test_nginx_conf.py  (13 case)
+```
+
+### 12.2 测试结果
+```
+pytest tests/unit/test_nginx_conf.py -v  →  13 passed, 1 skipped
+pytest tests/unit/                          202 passed, 2 skipped
+```
+
+### 12.3 关键设计点
+| 设计点 | 决定 | 原因 |
+|---|---|---|
+| 协议层 | L4 (stream block) | LLM streaming gateway 跳 L7 (HTTP 解析) 多 1-2 RTT,延迟敏感;L4 直接 TCP 路由 |
+| 负载均衡策略 | `least_conn` | LLM 流式响应一个连接 10-60s,RR 容易把流量压到慢连接;least_conn 选最少活跃 |
+| 健康检查 | `max_fails=2 fail_timeout=10s` (开源 nginx) | spec 文字 `health_check interval=5s fails=2 passes=1` 是 NGINX Plus 语法;开源近似:`max_fails=2` (fails=2) + 10s 内不允许再试(配合 `proxy_connect_timeout=2s` ≈ 5s probe 间隔) |
+| 连接超时 | `proxy_connect_timeout 2s` | 死 upstream 不阻塞客户端;2s 内 failover 到下一 upstream |
+| 整体超时 | `proxy_timeout 30s` | spec 字面;够慢响应完成 |
+| 故障转移 | `proxy_next_upstream on; tries 2; timeout 5s` | 单连接尝试期内可走 1-2 个 upstream,failover < 5s |
+| Upstream 列表 | 2 server 都指向 K8s Service DNS | K8s Service 自动端点选择;2 个 pool 提供 IP 维度多样性(pod 重启时新 IP 加入) |
+| http 块 | 空占位 | NGINX 要求 `http {}` 即使只用 stream;实际 L7 路由在 `web/nginx.conf` 独立 container |
+
+### 12.4 风险与决策记录
+**风险 1**:spec 文字"health_check interval=5s fails=2 passes=1" 是 NGINX Plus 语法,需 license。
+**决策**:用 opensource NGINX + `max_fails`/`fail_timeout` + `proxy_connect_timeout` 近似,语义对齐(同样 5s 内 fail 2 次摘 upstream)。已在 conf 文件注释 + test 解释清楚。
+**缓解**:如果以后切到 NGINX Plus,在 conf 文件末尾加 `health_check interval=5s fails=2 passes=1;` directive 即可,test 不需要改。
+
+**风险 2**:2 个 `server` 都指向同一 K8s Service DNS 名(不是 pod 名),pod 重启时 NGINX connection pool 自动跟随。
+**决策**:不显式列 pod 名(避免 pod 重命名耦合)。
+**缓解**:K8s Service endpoints controller 自动维护 ready pod 集合;NGINX 解析到新 IP 后自动加 pool。
+
 
