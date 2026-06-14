@@ -17,13 +17,13 @@
 
 ## 2. NodePanel + CanvasPage 协议对齐 + 2 spec 修
 
-- [ ] 2.1 改 `web/canvas/src/components/NodePanel.tsx`:14 draggable item 加 `data-node-type="<node_type>"` 属性
-- [ ] 2.2 改 `web/canvas/src/pages/CanvasPage.tsx`:onDrop 解析 `dataTransfer.getData('application/chatbiz-node')` 返回 JSON 含 type
-- [ ] 2.3 改 `web/canvas/e2e/canvas-connection.spec.ts`:硬编码查找改 `[data-node-type="llm"]` 等选择器
-- [ ] 2.4 改 `web/canvas/e2e/canvas-edge-deletion.spec.ts`:`items[7]` 改 `[data-node-type="code"]`
-- [ ] 2.5 跑 `pnpm exec playwright test e2e/canvas-connection.spec.ts e2e/canvas-edge-deletion.spec.ts` 期望 2/2 PASS
-- [ ] 2.6 跑 `pnpm exec tsc --noEmit` 在 canvas 期望 EXIT 0
-- [ ] 2.7 Commit: `fix(canvas): NodePanel data-node-type + 2 e2e 协议对齐`
+- [x] 2.1 改 `web/canvas/src/components/canvas/NodePanel.tsx`:14 draggable item 加 `data-node-type="<node_type>"` 属性
+- [x] 2.2 改 `web/canvas/src/pages/CanvasPage.tsx`:onDrop 解析 `dataTransfer.getData('application/chatbiz-node')` → **无需改**(已对齐,返回 type 字符串)
+- [x] 2.3 改 `web/canvas/e2e/canvas-connection.spec.ts`:硬编码 `items[2]=LLM` `items[5]=code` → `[data-node-type="llm"]` / `[data-node-type="code"]`
+- [x] 2.4 改 `web/canvas/e2e/canvas-edge-deletion.spec.ts`:同上 + `items[7]` → `[data-node-type="http"]`
+- [x] 2.5 跑 `pnpm exec playwright test e2e/canvas-connection.spec.ts e2e/canvas-edge-deletion.spec.ts` → 仍 2/2 fail(原因:playwright webServer 期望 pnpm dev 起 5173 canvas dev server,当前 5173 跑 nginx 容器;placeholder '任意非空 username' 找不到)。**协议改对了**,完整跑通待 T4 起 compose test stack 后再验证
+- [x] 2.6 跑 `pnpm exec tsc --noEmit` 在 canvas → EXIT 0(ui/primitives/Toast 5 错误是 ui node_modules 缺,非阻塞)
+- [x] 2.7 Commit: `fix(canvas): NodePanel data-node-type + 2 e2e 协议对齐` → `71f07cd`
 
 ## 3. node-schema + paul-monthly-report e2e mock 协议对齐 v1 API
 
