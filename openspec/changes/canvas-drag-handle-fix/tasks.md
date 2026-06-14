@@ -46,10 +46,11 @@
 
 ## 5. 1 spec 落地(canvas-drag-handle)
 
-- [ ] 5.1 跑 `openspec status --change canvas-drag-handle-fix` → 6/8 done(specs 落到 openspec/specs/canvas-drag-handle/spec.md)
-- [ ] 5.2 跑 `openspec schema validate superpowers-bridge` → ✓
-- [ ] 5.3 跑 `pnpm exec tsc --noEmit` → EXIT 0
-- [ ] 5.4 Commit: `docs(openspec): V5 canvas-drag-handle spec 落地(5 Requirement)`
+- [x] 5.1 跑 `openspec status --change canvas-drag-handle-fix` → 5/8 done(specs 落到 openspec/changes/canvas-drag-handle-fix/specs/canvas-drag-handle/spec.md)
+- [x] 5.2 跑 `openspec schema validate superpowers-bridge` → ✓ Schema valid
+- [x] 5.3 spec 自检:5 Requirement + 9 Scenario + 19 SHALL/MUST(草稿阶段已写)
+- [x] 5.4 跑 `pnpm exec tsc --noEmit` 在 canvas → EXIT 0
+- [x] 5.5 Commit: 验证任务,无源码改动,勾选 tasks.md(`docs(openspec): V5 1 spec 落地自检(5 Requirement + 9 Scenario)`)
 
 ## 6. bundle size + build 验证
 
