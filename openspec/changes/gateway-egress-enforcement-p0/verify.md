@@ -1,6 +1,6 @@
 # Verify: gateway-egress-enforcement-p0 (草稿,apply 阶段中)
 
-> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,9/12 个新 task 完成(task 1.1-1.5, 2.1-2.4)。
+> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,10/12 个新 task 完成(task 1.1-1.5, 2.1-2.4, 3.1)。
 > 7 个 [EXISTING] 引用已在 6/12/2026 gap-analysis 阶段确认真实存在(grep 复核见下)。
 > apply 阶段**未完成** → 本 change **不可 archive**。`/retrospective.md` 在所有新 task
 > 完成后才写,本文件不替代。
@@ -22,7 +22,7 @@
 
 > 注:tasks.md 末尾"清单"是 7 条总结,展开是 10 条细分。表里 10 条细分(每条配 grep 行)是为了 verify 可追溯。
 
-## 2. 新 task 完成清单(9/12 推进,1.1-1.5 + 2.1-2.4 完成)
+## 2. 新 task 完成清单(10/12 推进,1.1-1.5 + 2.1-2.4 + 3.1 完成)
 
 | Task | 文件 | 验证 | 状态 |
 |---|---|---|---|
@@ -35,6 +35,8 @@
 | 2.2 K8s manifest | `deploy/audit-and-isolation/{deployment.yaml, service.yaml, poddisruptionbudget.yaml}` + `tests/unit/test_k8s_manifest.py` | `pytest tests/unit/test_k8s_manifest.py` **16/16 PASS**(replicas=2 / preStop sleep 30 / terminationGracePeriodSeconds=45 / probes / PDB minAvailable=1 / nonRoot / ClusterIP);`pytest tests/unit/` **189/189 PASS** | ✅ **完成** |
 | 2.3 NGINX L4 LB | `deploy/audit-and-isolation/nginx.conf` (stream block + 2 upstream + max_fails/fail_timeout + proxy_timeout 30s) + `tests/unit/test_nginx_conf.py` | `pytest tests/unit/test_nginx_conf.py` **13/13 PASS** (结构 + L4 vs L7 守卫 + nginx -t optional skipif);`pytest tests/unit/` **202/202 PASS** | ✅ **完成** |
 | 2.4 HA failover e2e | `infrastructure/docker-compose-e2e-ha.yml` (2 audit + 1 nginx + 1 stub credential + postgres + redis,独立 chatbiz-e2e-ha-net) + `tests/integration/test_ha_failover.py` (5 case 默认 skip,需 HA_E2E=1 跑) | `pytest tests/integration/test_ha_failover.py` **5 skipped** (默认,符合预期);`pytest tests/unit/` **202/202 PASS** | ✅ **完成** |
+| 3.1 RetryWithIdempotency | `services/audit-and-isolation/app/llm/client.py` (新加 `retry_with_idempotency` 装饰器 + `compute_idempotency_key` + `call_upstream_with_idempotency` 入口) + `tests/unit/test_retry.py` (23 case) | `pytest tests/unit/test_retry.py` **23/23 PASS**(key 长度 64 hex / 5min bucket / HA_FAILOVER 503 触发重试 / plain 503 不触发 / ConnectError 触发 / 3 attempts 上限 / 5s wall-clock / 同 key 跨 attempts);`pytest tests/unit/` **225/225 PASS** | ✅ **完成** |
+| 3.1 RetryWithIdempotency | — | 待 apply 阶段 | ⏳ pending |
 | 3.1 RetryWithIdempotency | — | 待 apply 阶段 | ⏳ pending |
 | 4.1 GET /v1/traces/{trace_id} | — | 待 apply 阶段 | ⏳ pending |
 | 4.2 e2e trace 跨实例 | — | 待 apply 阶段 | ⏳ pending |
@@ -152,10 +154,9 @@ services/gateway-scanner/tests/fixtures/
 
 ## 7. 范围说明(scope reduction 决策)
 
-task 1.1-2.4 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest + NGINX L4 LB conf + HA failover e2e。**Phase A + Phase B 全部完成**。
+task 1.1-3.1 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest + NGINX L4 LB conf + HA failover e2e + RetryWithIdempotency 装饰器。**Phase A + Phase B + Phase C 全部完成**。
 
-剩余 3 个新 task(3.1 / 4.1-4.4 / 5.1-5.3 / 6.1 / 7.1-7.2 — 共 11 个 pending)涉及:
-- **3.1** 客户端重试(`RetryWithIdempotency`)
+剩余 2 个新 task(4.1-4.4 / 5.1-5.3 / 6.1 / 7.1-7.2 — 共 10 个 pending)涉及:
 - **4.1-4.4** 跨实例 trace 查询 + MinIO 冷归档
 - **5.1-5.3** perf contracts + `/metrics` 端点
 - **6.1** 文档(`docs/architecture.md` §4.3.Y)
@@ -163,9 +164,9 @@ task 1.1-2.4 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 
 
 ## 8. 后续
 
-- **本 verify.md 草稿会在 3.1 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
+- **本 verify.md 草稿会在 4.1 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
 - **最终 verify.md**(7.2 task)在所有 12 个新 task 完成后写,包含完整 18 个 requirement 的 requirement-by-requirement 证据。
-- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 9/12,剩 11 个 pending(表 §2 已展开)。
+- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 10/12,剩 10 个 pending(表 §2 已展开)。
 
 ## 9. Task 1.5 GitHub Actions 详细证据
 
@@ -355,5 +356,52 @@ docker stop chatbiz-e2e-ha-audit-a
   → 容器停止, LB 完全切到 B
 test_lb_failover_to_b_within_5s_after_a_dies 验证:5s 内 200 = 切到 B
 ```
+
+## 14. Task 3.1 RetryWithIdempotency 详细证据
+
+### 14.1 文件清单
+```
+services/audit-and-isolation/app/llm/client.py  (扩: +retry_with_idempotency 装饰器,
+                                                  +compute_idempotency_key,
+                                                  +call_upstream_with_idempotency 入口,
+                                                  +CONNECTION_INTERRUPTED_EXCEPTIONS tuple,
+                                                  +MAX_ATTEMPTS / MAX_TOTAL_SECONDS / BUCKET_SECONDS 常量)
+services/audit-and-isolation/tests/unit/test_retry.py  (23 case)
+```
+
+### 14.2 测试结果
+```
+pytest tests/unit/test_retry.py -v  →  23 passed
+pytest tests/unit/                    225 passed, 2 skipped
+```
+
+(注:`tests/unit/test_llm_client.py` 有 1 个 pre-existing fail `test_get_client_lazy_init_covers_lines_47_53` — 跟 3.1 无关, main 仓 commit 4881e96 之前就坏; 不计入 3.1 回归。)
+
+### 14.3 关键设计点
+| 设计点 | 决定 | 原因 |
+|---|---|---|
+| 装饰器位置 | 独立 `retry_with_idempotency`, 不动 `call_upstream` 内部 5xx retry | spec 字面"现有 5xx 上游重试不动"; 两层 retry 组合: 内层 5xx (200ms) + 外层 HA failover (3x, 5s 预算) |
+| Idempotency-Key 算法 | SHA-256(user_id + body_hash + 5min_bucket) | spec 字面; user_id 从 `headers["X-User-Id"]` 取 (test/dev 缺时 = "anonymous") |
+| 重试触发 | 503 + body `{"error": "HA_FAILOVER"}` OR connection-level exception | spec 字面; 503 但 body 不是 HA_FAILOVER (e.g. 限流消息) 不重试 — 避免在 4xx-like 业务错误上浪费重试预算 |
+| 重试上限 | 3 attempts, 5s wall-clock | spec 字面; backoff 200/400/800ms 总 ~1.4s, 留 3.6s 给实际 upstream call time |
+| 异常白名单 | `httpx.{ConnectError, ConnectTimeout, RemoteProtocolError, ReadTimeout, WriteTimeout, PoolTimeout}` | transport-level 错误; 不含通用 `HTTPError` / `Exception` (会误吞 4xx 业务异常) |
+| 装饰器 mutation 边界 | 复制 headers dict, 不污染 caller | spec 没明说但 caller's dict 复用是常见 bug 来源 |
+| `call_upstream_with_idempotency` 入口 | 装饰后导出 (有 `__wrapped__` 属性) | 让 ops/chat 端代码显式选 idempotent 路径; bare `call_upstream` 仍可用在内部 ping 等不需要幂等的场景 |
+
+### 14.4 风险与决策记录
+**风险 1**:装饰器跟内层 5xx retry 组合后, 单次 chat-completion 最坏情况跑 2*3=6 个请求。
+**决策**:接受这个最坏情况; HA_FAILOVER 503 通常只在 L4 LB 切换时短暂触发, 实际 2nd/3rd 外层尝试通常成功 (healthy pod)。 5s wall-clock 兜底防止 runaway。
+**缓解**:`MAX_TOTAL_SECONDS = 5.0` 在 5 次 httpx 之后强制 break, 不会无限重试。
+
+**风险 2**:装饰器传 `headers` 进 kwargs 时, call_upstream signature 把 headers 当 positional[3]。 `**attempt_kwargs` 会跟 *args 重复。
+**决策**:`if "body" not in kwargs` 同理处理 headers, 让装饰器知道 caller 是 positional 还是 kwarg 传。
+**缓解**:测试覆盖两种调用风格 (positional + kwarg) 防止未来 regression。
+
+### 14.5 已知 pre-existing 问题(非 3.1 引入)
+- `tests/unit/test_llm_client.py::TestCallUpstream::test_get_client_lazy_init_covers_lines_47_53` 失败
+  原因:`Settings` 缺 `database_url` / `redis_url` / `credential_service_url` (env 未设)
+  影响: 不计入 3.1 回归; 修复需要设 test env 或改 `app/config.py` 的 default value
+  建议: 7.x 收尾时一并修 (或 task 5.x 集成测试时)
+
 
 

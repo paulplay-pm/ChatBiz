@@ -21,7 +21,7 @@
 
 ## 3. 客户端 SDK `RetryWithIdempotency`(2h 内,1 个 task)
 
-- [ ] 3.1 在 `services/audit-and-isolation/app/llm/client.py` 加 `RetryWithIdempotency` 装饰器:`Idempotency-Key` = SHA-256 of `user_id + body_hash + 5min_timestamp_bucket`,收到 `503 HA_FAILOVER` / 连接中断时 5s 内重试,最多 3 次,3.1 验证:`tests/unit/test_retry.py` 用 mock 网关(2 次失败后第 3 次成功)覆盖;现有 5xx 上游重试不动
+- [x] 3.1 在 `services/audit-and-isolation/app/llm/client.py` 加 `RetryWithIdempotency` 装饰器:`Idempotency-Key` = SHA-256 of `user_id + body_hash + 5min_timestamp_bucket`,收到 `503 HA_FAILOVER` / 连接中断时 5s 内重试,最多 3 次,3.1 验证:`tests/unit/test_retry.py` 用 mock 网关(2 次失败后第 3 次成功)覆盖;现有 5xx 上游重试不动 ✅ 2026-06-14 完成(23/23 PASS)
 
 ## 4. 跨实例 trace 查询 + 定时归档(2h 内,4 个 task)
 
