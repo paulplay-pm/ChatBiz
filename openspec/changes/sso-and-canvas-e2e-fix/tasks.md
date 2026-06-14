@@ -7,11 +7,13 @@
 
 ## 1. canvas e2e 前置 + baseline
 
-- [ ] 1.1 `cd web/canvas && pnpm install` 装 vite + playwright + 依赖
-- [ ] 1.2 跑 `pnpm exec playwright test` 取真实 baseline 7+1 结果(确认 fail 列表)
-- [ ] 1.3 确认 `web/canvas/src/vite-env.d.ts` 在 git tree(canvas-tsc-health 已 merge)
-- [ ] 1.4 确认 `openspec/changes/web-integration-test-suite/` 已 apply(V4 T5 依赖)
-- [ ] 1.5 Commit: `chore(canvas): e2e baseline 7+1 重跑`
+- [x] 1.1 `cd web/canvas && pnpm install` 装 vite + playwright + 依赖 → Done 1.1s
+- [x] 1.2 跑 `pnpm exec playwright test` 取真实 baseline → **7 fail / 1 pass**(与 V3 T8 + Plan agent 报告一致,0 回归)
+  - fail 7:auth / canvas-connection / canvas-edge-deletion / 2 integration / node-schema / paul-monthly-report
+  - pass 1:integration paul-monthly-report SPA loads through nginx(5173 容器在跑)
+- [x] 1.3 确认 `web/canvas/src/vite-env.d.ts` 在 git tree → `git ls-files` 确认 ✓
+- [x] 1.4 确认 `openspec/changes/web-integration-test-suite/` 已 8/8 artifact complete + `infrastructure/docker-compose-test.yml` 存在 → 满足 T4 依赖
+- [x] 1.5 Commit: 验证任务,无源码改动(安装产物在 node_modules 不进 git)
 
 ## 2. NodePanel + CanvasPage 协议对齐 + 2 spec 修
 
