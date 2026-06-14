@@ -1,6 +1,6 @@
 # Verify: gateway-egress-enforcement-p0 (草稿,apply 阶段中)
 
-> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,10/12 个新 task 完成(task 1.1-1.5, 2.1-2.4, 3.1)。
+> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,11/12 个新 task 完成(task 1.1-1.5, 2.1-2.4, 3.1, 4.1)。
 > 7 个 [EXISTING] 引用已在 6/12/2026 gap-analysis 阶段确认真实存在(grep 复核见下)。
 > apply 阶段**未完成** → 本 change **不可 archive**。`/retrospective.md` 在所有新 task
 > 完成后才写,本文件不替代。
@@ -22,7 +22,7 @@
 
 > 注:tasks.md 末尾"清单"是 7 条总结,展开是 10 条细分。表里 10 条细分(每条配 grep 行)是为了 verify 可追溯。
 
-## 2. 新 task 完成清单(10/12 推进,1.1-1.5 + 2.1-2.4 + 3.1 完成)
+## 2. 新 task 完成清单(11/12 推进,1.1-1.5 + 2.1-2.4 + 3.1 + 4.1 完成)
 
 | Task | 文件 | 验证 | 状态 |
 |---|---|---|---|
@@ -36,8 +36,10 @@
 | 2.3 NGINX L4 LB | `deploy/audit-and-isolation/nginx.conf` (stream block + 2 upstream + max_fails/fail_timeout + proxy_timeout 30s) + `tests/unit/test_nginx_conf.py` | `pytest tests/unit/test_nginx_conf.py` **13/13 PASS** (结构 + L4 vs L7 守卫 + nginx -t optional skipif);`pytest tests/unit/` **202/202 PASS** | ✅ **完成** |
 | 2.4 HA failover e2e | `infrastructure/docker-compose-e2e-ha.yml` (2 audit + 1 nginx + 1 stub credential + postgres + redis,独立 chatbiz-e2e-ha-net) + `tests/integration/test_ha_failover.py` (5 case 默认 skip,需 HA_E2E=1 跑) | `pytest tests/integration/test_ha_failover.py` **5 skipped** (默认,符合预期);`pytest tests/unit/` **202/202 PASS** | ✅ **完成** |
 | 3.1 RetryWithIdempotency | `services/audit-and-isolation/app/llm/client.py` (新加 `retry_with_idempotency` 装饰器 + `compute_idempotency_key` + `call_upstream_with_idempotency` 入口) + `tests/unit/test_retry.py` (23 case) | `pytest tests/unit/test_retry.py` **23/23 PASS**(key 长度 64 hex / 5min bucket / HA_FAILOVER 503 触发重试 / plain 503 不触发 / ConnectError 触发 / 3 attempts 上限 / 5s wall-clock / 同 key 跨 attempts);`pytest tests/unit/` **225/225 PASS** | ✅ **完成** |
+| 4.1 GET /v1/traces/{trace_id} | `services/audit-and-isolation/app/api/traces.py` (新加 router,L1 Redis `trace:cache:*` 5min TTL → L2 PG `audit_log` 降级 → 404,populate-on-miss) + `app/main.py` (注册新 router) + `tests/integration/test_traces_endpoint.py` (8 case) | `pytest tests/integration/test_traces_endpoint.py` **8/8 PASS**(4 spec 必含 fixture + 2 path 长度守卫 + 2 常量契约);`pytest tests/unit/` **225/225 PASS** | ✅ **完成** |
 | 3.1 RetryWithIdempotency | — | 待 apply 阶段 | ⏳ pending |
 | 3.1 RetryWithIdempotency | — | 待 apply 阶段 | ⏳ pending |
+| 4.1 GET /v1/traces/{trace_id} | — | 待 apply 阶段 | ⏳ pending |
 | 4.1 GET /v1/traces/{trace_id} | — | 待 apply 阶段 | ⏳ pending |
 | 4.2 e2e trace 跨实例 | — | 待 apply 阶段 | ⏳ pending |
 | 4.3 定时归档 MinIO | — | 待 apply 阶段 | ⏳ pending |
@@ -154,19 +156,21 @@ services/gateway-scanner/tests/fixtures/
 
 ## 7. 范围说明(scope reduction 决策)
 
-task 1.1-3.1 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest + NGINX L4 LB conf + HA failover e2e + RetryWithIdempotency 装饰器。**Phase A + Phase B + Phase C 全部完成**。
+task 1.1-4.1 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest + NGINX L4 LB conf + HA failover e2e + RetryWithIdempotency 装饰器 + GET /v1/traces 跨实例查询端点。**Phase A + B + C + D(部分) 完成**。
 
-剩余 2 个新 task(4.1-4.4 / 5.1-5.3 / 6.1 / 7.1-7.2 — 共 10 个 pending)涉及:
-- **4.1-4.4** 跨实例 trace 查询 + MinIO 冷归档
-- **5.1-5.3** perf contracts + `/metrics` 端点
+剩余 1 个新 task(4.2-4.4 / 5.1-5.3 / 6.1 / 7.1-7.2 — 共 9 个 pending)涉及:
+- **4.2** 配对 e2e:实例 A 写 trace, 实例 B 通过本端点查到 (Phase D)
+- **4.3** 定时归档 MinIO + K8s CronJob (Phase D)
+- **4.4** 冷查询端点 (Phase D)
+- **5.1-5.3** perf contracts + `/metrics` 端点 (Phase E)
 - **6.1** 文档(`docs/architecture.md` §4.3.Y)
 - **7.x** 收尾(覆盖率 100% + verify.md 最终版)
 
 ## 8. 后续
 
-- **本 verify.md 草稿会在 4.1 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
+- **本 verify.md 草稿会在 4.2 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
 - **最终 verify.md**(7.2 task)在所有 12 个新 task 完成后写,包含完整 18 个 requirement 的 requirement-by-requirement 证据。
-- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 10/12,剩 10 个 pending(表 §2 已展开)。
+- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 11/12,剩 9 个 pending(表 §2 已展开)。
 
 ## 9. Task 1.5 GitHub Actions 详细证据
 
@@ -402,6 +406,60 @@ pytest tests/unit/                    225 passed, 2 skipped
   原因:`Settings` 缺 `database_url` / `redis_url` / `credential_service_url` (env 未设)
   影响: 不计入 3.1 回归; 修复需要设 test env 或改 `app/config.py` 的 default value
   建议: 7.x 收尾时一并修 (或 task 5.x 集成测试时)
+
+## 15. Task 4.1 GET /v1/traces/{trace_id} 详细证据
+
+### 15.1 文件清单
+```
+services/audit-and-isolation/app/api/traces.py        (160 行, 新加 router)
+services/audit-and-isolation/app/main.py               (改: import + include_router)
+services/audit-and-isolation/tests/integration/test_traces_endpoint.py  (8 case)
+```
+
+### 15.2 测试结果
+```
+pytest tests/integration/test_traces_endpoint.py -v  →  8 passed
+pytest tests/unit/                                     225 passed, 2 skipped
+```
+
+### 15.3 关键设计点
+| 设计点 | 决定 | 原因 |
+|---|---|---|
+| L1 namespace | `trace:cache:<trace_id>` | spec 字面; redis db 0 是 chatbiz-redis 默认 db |
+| L1 TTL | 300s (5 min) | spec 字面; 同 trace 跨 chat turn 的合理窗口 |
+| L2 表 | `audit_log` (已有模型) | spec 字面; trace_id 是 nullable=False 字段, 现成 join key |
+| Populate-on-miss | L1 miss + L2 hit → 写回 L1 | 读穿透到 L2 后回填, 减少下次 L2 查询 |
+| 失败降级语义 | Redis 抛错 → 走 L2 (不 503) | 防止 Redis 故障 surface 成 503, audit log 仍是 source of truth |
+| Response 标记 source | `"cache"` 或 `"db"` | 调试时一眼看是从哪 tier 服务的 |
+| Path 长度 [8, 128] | 跟 chat 端 `X-Trace-Id` Header 验证一致 | 不接受离谱 trace_id, 防止 SQL/Redis 注入或误用 |
+| 测试策略 | TestClient + patch redis_client + patch get_session | 不起真 Redis/PG, 8 case 跑 < 1s |
+
+### 15.4 端点行为矩阵
+| L1 (Redis) | L2 (PG) | Response | source 字段 |
+|---|---|---|---|
+| 命中 | (不查) | 200 + events | `"cache"` |
+| miss | 命中 | 200 + events, L1 populate | `"db"` |
+| miss | miss | 404 | (无) |
+| **抛错** | 命中 | 200 + events (L2 降级成功) | `"db"` |
+| 抛错 | miss | 404 | (无) |
+| 抛错 | 抛错 | 500 (DB 真挂, 没法降级) | (无) |
+
+### 15.5 跨实例查询场景
+spec 2.4 提"trace_id 在跨实例查询端点可关联"。本任务让该属性成立:
+- chat 在 instance A 处理 (写 L1 在 A 的本地 Redis, L2 写到 PG)
+- query 在 instance B 处理 (B 的本地 Redis miss → L2 PG 命中 → populate B 的 L1)
+- 后续 query 在 B 上命中 L1
+即: PG 是 single source of truth, 跨实例查询天然支持。
+
+### 15.6 风险与决策记录
+**风险**:L1 populate 用 `setex(300)` 但实际 L1 miss 后 L2 查询本身也要 50-500ms, populate 期间另一并发请求可能也 miss L1 → 双写。但 Redis set 是原子的, 后写覆盖前写, 不会留不一致状态。
+**决策**:接受这个理论上的双写 (实际很少发生, 同一 trace 同一秒内多次跨实例 miss 罕见)
+**缓解**:5min TTL 自动收敛, 不会无限累积不一致
+
+**风险**:L1 cache 内容是 5min 前的快照, L2 是最新数据。 5min 内 L1 hit 但 L2 已经新增行 (新 chat turn) 的话, query 看到的 events 不全。
+**决策**:spec 接受这个 trade-off ("5min TTL" 是 spec 决定的)。 调试场景下, 5min 内的最新事件可从 L2 拿到 (用 chat 端知道新 chat turn 在跑, 直接查 L2 即可)。
+**缓解**:docs 显式说明 cache 5min 内可能漏新事件。
+
 
 
 
