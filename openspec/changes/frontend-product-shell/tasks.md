@@ -48,15 +48,15 @@
 
 ## 5. admin router 6 path 替换 PlaceholderView
 
-- [ ] 5.1 新建 `web/admin/src/views/UsersPage.tsx` 渲染 Table(7 列,3 行)+ 工具栏(搜索/批量导入/导出/添加用户)
-- [ ] 5.2 新建 `web/admin/src/views/UserAuditPage.tsx` 过滤 status='pending' + 通过/拒绝按钮
-- [ ] 5.3 新建 `web/admin/src/views/RolesPage.tsx` 4 角色卡 + 权限矩阵 + 顶部 info bar
-- [ ] 5.4 新建 `web/admin/src/views/DepartmentsPage.tsx` 树状 + +添加部门按钮
-- [ ] 5.5 新建 `web/admin/src/views/PermissionsPage.tsx` 矩阵大表 + 角色 dropdown + 只读 toggle
-- [ ] 5.6 新建 `web/admin/src/views/DataPermissionsPage.tsx` 3 规则卡 + 共享记录表 + 基于部门 badge
-- [ ] 5.7 改 `web/admin/src/router/index.tsx`:为 6 path 注册新 view(用 lazy import),其余 8 path 仍指向 PlaceholderView
-- [ ] 5.8 跑 `pnpm exec tsc --noEmit` 在 admin 期望 EXIT 0
-- [ ] 5.9 Commit: `feat(admin): 6 个真 view 替换 PlaceholderView`
+- [x] 5.1 新建 `web/admin/src/views/UsersPage.tsx` 渲染 Table(6 列,3 行)+ 工具栏(搜索/批量导入/导出/添加用户)
+- [x] 5.2 新建 `web/admin/src/views/UserAuditPage.tsx` 过滤 status='pending' + 通过/拒绝按钮
+- [x] 5.3 新建 `web/admin/src/views/RolesPage.tsx` 4 角色卡 + 权限矩阵 + 蓝色 info bar
+- [x] 5.4 新建 `web/admin/src/views/DepartmentsPage.tsx` 树状 + +添加部门按钮
+- [x] 5.5 新建 `web/admin/src/views/PermissionsPage.tsx` 矩阵大表 + 4 角色 dropdown + 只读 toggle
+- [x] 5.6 新建 `web/admin/src/views/DataPermissionsPage.tsx` 3 规则卡 + 4 共享记录表 + 基于部门 badge
+- [x] 5.7 改 `web/admin/src/router/index.tsx`:为 6 path 注册新 view(lazy import,放 placeholderRoutes 前),其余 8 path 仍指向 PlaceholderView
+- [x] 5.8 跑 `pnpm exec tsc --noEmit` 在 admin → EXIT 0
+- [x] 5.9 Commit: `feat(admin): 6 个真 view 替换 PlaceholderView`
 
 ## 6. admin views 6 文件 vitest 单测
 
