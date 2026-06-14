@@ -103,10 +103,10 @@
 
 ## 11. archive V3 change
 
-- [ ] 11.1 `openspec archive frontend-product-shell --yes`
-- [ ] 11.2 验证 `openspec/changes/archive/2026-06-14-frontend-product-shell/` 含 design.md + tasks.md + specs/ + proposal.md + brainstorm.md
-- [ ] 11.3 Commit archive + push branch
-- [ ] 11.4 V3 worktree 等合并到 main,后续 PR 由 V4 接管 SSO + react-flow e2e 修
+- [x] 11.1 `openspec archive frontend-product-shell --yes` → 移入 archive/2026-06-14-frontend-product-shell/ + 13 spec apply 到 openspec/specs/
+- [x] 11.2 验证 `openspec/changes/archive/2026-06-14-frontend-product-shell/` 含 `.openspec.yaml` + `brainstorm.md`(3096B)+ `design.md`(9353B)+ `proposal.md`(4601B)+ `tasks.md`(9069B)+ `specs/`(10 文件)
+- [x] 11.3 Commit archive → git log 含 archive commit
+- [ ] 11.4 V3 worktree 等合并到 main,后续 PR 由 V4 接管 SSO + react-flow e2e 修(branch push 由你发起,或 merge 到 main)
 
 ---
 
