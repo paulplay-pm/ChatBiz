@@ -7,13 +7,13 @@
 
 ## 1. V5 准备 + 协议对齐诊断
 
-- [ ] 1.1 `cd web/canvas && pnpm install` 装 vite + playwright + 依赖
-- [ ] 1.2 跑 `pnpm exec playwright test` 取真实 baseline → 期望 6/8 + 2 fail
-- [ ] 1.3 在 `web/canvas/e2e/canvas-connection.spec.ts` 第 92 行加诊断:`page.evaluate` 查 `document.elementFromPoint(target.x, target.y)` className
-- [ ] 1.4 同 1.3 给 `canvas-edge-deletion.spec.ts`
-- [ ] 1.5 关键产出:确认根因是 H1(elementFromPoint 落点精度)还是其他
-- [ ] 1.6 跑 `pnpm exec vitest run` → 期望 84/84 PASS(0 回归)
-- [ ] 1.7 Commit: `chore(canvas): V5 T1 baseline + 落点诊断`
+- [x] 1.1 `cd web/canvas && pnpm install` 装 vite + playwright + 依赖 → Done 1.1s
+- [x] 1.2 跑 `pnpm exec playwright test` 取真实 baseline → **5/8 PASS**(V4 6/8 → V5 5/8,**降 1 个** = integration paul-monthly-report 'canvas SPA loads' 因 V5 worktree 容器没 --network chatbiz-net 启动 nginx 502;V5 T7/T8 rebuild 容器时修复)
+- [x] 1.3 canvas-connection.spec.ts 加诊断:target 落点 (740, 849) → `elementFromPoint` 返 `cls=''` + `isHandle=false`(拿到空 class 元素)
+- [x] 1.4 同 1.3 给 canvas-edge-deletion(同样 fail,根因一致)
+- [x] 1.5 **关键产出:根因 = H1(elementFromPoint 落点精度)确认** → 走 Option A(dev-only `__rfConnect` hook)方案
+- [x] 1.6 跑 `pnpm exec vitest run` → 32 files / 84 tests PASS(V4 baseline 0 回归)
+- [x] 1.7 Commit: `chore(openspec): V5 T1 baseline + 落点诊断` → `774814b`
 
 ## 2. CanvasPage 加 dev-only `__rfConnect` hook
 
