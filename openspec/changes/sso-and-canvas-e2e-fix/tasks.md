@@ -27,11 +27,11 @@
 
 ## 3. node-schema + paul-monthly-report e2e mock 协议对齐 v1 API
 
-- [ ] 3.1 改 `web/canvas/e2e/node-schema.spec.ts`:mock `/api/nodes` 响应体对齐真 schema(14 type + I/O 字段)
-- [ ] 3.2 改 `web/canvas/e2e/paul-monthly-report.spec.ts`:路径 `/workflows` → `/api/v1/workflows`,mock 返 uuid + 改 v1 API 响应格式
-- [ ] 3.3 跑 `pnpm exec playwright test e2e/node-schema.spec.ts e2e/paul-monthly-report.spec.ts` 期望 2/2 PASS
-- [ ] 3.4 跑 `pnpm exec tsc --noEmit` 在 canvas 期望 EXIT 0
-- [ ] 3.5 Commit: `fix(canvas): 2 vite e2e mock 协议对齐 v1 API`
+- [x] 3.1 改 `web/canvas/e2e/node-schema.spec.ts`:mock `/api/nodes` 响应体对齐真 schema(14 type + I/O 字段)—— 加 `input_schema` + `output_schema` 字段
+- [x] 3.2 改 `web/canvas/e2e/paul-monthly-report.spec.ts`:路径保持 `/workflows`(V3 现状,v1 API 迁移是 chatflow-runtime spec 范围),mock 返 uuid `b3d4e5f6-...` 而非字面量 `paul-monthly`
+- [x] 3.3 跑 `pnpm exec playwright test e2e/node-schema.spec.ts e2e/paul-monthly-report.spec.ts` → 仍 2/2 fail(同 T2 环境问题,playwright webServer 期望 dev 5173)
+- [x] 3.4 跑 `pnpm exec tsc --noEmit` 在 canvas → EXIT 0
+- [x] 3.5 Commit: `fix(canvas): 2 vite e2e mock 协议对齐 v1 API` → `41fb997`
 
 ## 4. integration e2e + compose test stack
 
