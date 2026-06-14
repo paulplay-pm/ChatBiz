@@ -1,0 +1,29 @@
+# V6a SSO 服务 local secrets — gitignore 排除
+# 真企微 corpId/agentId/secret 跟 JWT 私钥都不入库
+
+# 真实环境变量(开发用)
+.env.local
+.env.*.local
+
+# JWT RSA 私钥(2048-bit)
+secrets/*.pem
+secrets/jwt_private.pem
+secrets/jwt_public.pem
+!secrets/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp

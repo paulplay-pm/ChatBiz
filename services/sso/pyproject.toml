@@ -1,0 +1,127 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chatbiz-sso"
+version = "0.1.0"
+description = "ChatBiz SSO identity service: WeChat Work + OIDC + SAML 2.0 with RS256 JWT signing (V6a V0 阶段)."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+authors = [
+    { name = "ChatBiz Platform Team" },
+]
+keywords = ["chatbiz", "sso", "wechat-work", "oidc", "saml", "jwt", "fastapi"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Framework :: FastAPI",
+    "Framework :: AsyncIO",
+    "Topic :: Security :: Cryptography",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "License :: Other/Proprietary License",
+]
+dependencies = [
+    "fastapi>=0.110,<1.0",
+    "uvicorn[standard]>=0.27,<1.0",
+    "sqlalchemy[asyncio]>=2.0,<3.0",
+    "asyncpg>=0.29,<1.0",
+    "alembic>=1.13,<2.0",
+    "pydantic>=2.6,<3.0",
+    "cryptography>=42,<46",
+    "python-jose[cryptography]>=3.3,<4.0",
+    "httpx>=0.27,<1.0",
+    "redis>=5.0,<9.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0,<9.0",
+    "pytest-asyncio>=0.23,<1.0",
+    "testcontainers[postgres]>=4.0,<5.0",
+    "fakeredis>=2.20,<3.0",
+    "locust>=2.30,<3.0",
+    "ruff>=0.5.0,<1.0",
+    "mypy>=1.10,<2.0",
+    "bandit>=1.7,<2.0",
+    "pre-commit>=3.7,<5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/chatbiz/chatbiz"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+exclude = ["tests*", "alembic*", "locust*"]
+
+# ---------------------------------------------------------------------------
+# Tool configuration (consumed by pre-commit and `make lint` / `make sec`)
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "N",   # pep8-naming
+    "S",   # flake8-bandit (security)
+    "ASYNC", # flake8-async
+]
+ignore = [
+    "S101", # Use of `assert` (OK in tests; we use plain `assert` deliberately)
+    "B008", # Function call in default argument (FastAPI uses Depends())
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106"]  # Hard-coded creds in fixtures are fine.
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+plugins = ["pydantic.mypy"]
+exclude = ["alembic/versions/"]
+
+[[tool.mypy.overrides]]
+module = "testcontainers.*"
+ignore_missing_imports = true
+
+[tool.bandit]
+exclude_dirs = ["alembic/versions", "tests/"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+]
+markers = [
+    "integration: integration tests (require Postgres via testcontainers)",
+    "e2e: end-to-end tests (require full docker-compose stack)",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["tests/*", "alembic/*"]
