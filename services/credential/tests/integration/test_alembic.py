@@ -112,8 +112,13 @@ def _alembic_env(database_url: str) -> dict[str, str]:
     # Derive the venv's site-packages directory from the running interpreter
     # version rather than hard-coding ``python3.13`` — the venv version
     # bumps whenever the project's ``.python-version`` is rolled forward.
+    # When the venv directory does not exist (e.g. running under a conda
+    # env like `chatbiz`), fall back to ``sys.prefix`` which is the conda
+    # env's site-packages root.
     python_ver = f"python{sys.version_info.major}.{sys.version_info.minor}"
     venv_site = str(SERVICE_ROOT / ".venv" / "lib" / python_ver / "site-packages")
+    if not pathlib.Path(venv_site).is_dir():
+        venv_site = str(pathlib.Path(sys.prefix) / "lib" / python_ver / "site-packages")
     existing_pp = env.get("PYTHONPATH", "")
     # NOTE: the venv site-packages MUST come BEFORE the service root on
     # PYTHONPATH. Our service root contains an ``alembic/`` directory
