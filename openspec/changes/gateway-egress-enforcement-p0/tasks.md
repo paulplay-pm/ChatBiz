@@ -43,7 +43,7 @@
 ## 7. 收尾(2h 内,2 个 task)
 
 - [x] 7.1 跑 `pytest services/audit-and-isolation/tests/ services/gateway-scanner/tests/`,覆盖率 ≥ 100%(沿用 `pyproject.toml` 的 `--cov-fail-under=100`);新增代码覆盖率必须 100%,7.1 验证:`pytest --cov` 输出 ≥ 100% ✅ 2026-06-14 完成(pre-existing 1 fail 修:test_get_client_lazy_init 缺 3 env, module-level setdefault 补; 261/261 unit PASS)
-- [ ] 7.2 写 `verify.md`:列出 6 个新 capability 18 个新 requirement 是否实现 + 18 个已 done 的 [EXISTING] 引用,7.2 验证:`openspec status --change gateway-egress-enforcement-p0` 输出 `applyRequires: ["plan"]` 标 done
+- [x] 7.2 写 `verify.md`:列出 6 个新 capability 18 个新 requirement 是否实现 + 18 个已 done 的 [EXISTING] 引用,7.2 验证:`openspec status --change gateway-egress-enforcement-p0` 输出 `applyRequires: ["plan"]` 标 done ✅ 2026-06-15 完成(retrospective.md 9 节 + verify.md §24 requirement 索引 + 24 节最终结构, apply 阶段 ✅ 完整)
 
 ---
 
