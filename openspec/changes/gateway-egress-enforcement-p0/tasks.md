@@ -38,7 +38,7 @@
 
 ## 6. 文档同步(2h 内,1 个 task)
 
-- [ ] 6.1 在 `docs/architecture.md` §4.3 末尾补 §4.3.Y PII 规则集段落(6 类正则 + mask-only 可逆 + trace 关联),**先在 CLAUDE.md surface** `[FUTURE-IMPLEMENTATION]`,6.1 验证:`tests/test_architecture_md.py` 用 grep 验证新段存在 + 内容含 6 类正则名
+- [x] 6.1 在 `docs/architecture.md` §4.3 末尾补 §4.3.Y PII 规则集段落(6 类正则 + mask-only 可逆 + trace 关联),**先在 CLAUDE.md surface** `[FUTURE-IMPLEMENTATION]`,6.1 验证:`tests/test_architecture_md.py` 用 grep 验证新段存在 + 内容含 6 类正则名 ✅ 2026-06-14 完成(13/13 PASS)
 
 ## 7. 收尾(2h 内,2 个 task)
 

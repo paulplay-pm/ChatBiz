@@ -1123,6 +1123,45 @@ credential service 路径承担,属于 §4.3.5 凭证未授权的 security 边�
 
 **eng-review 之外的决策**(本 spec D1-D9):Boundary #1 独立类(不继承 UserError)/ 422 Unprocessable Entity 状态 / 既有 middleware 不动 / cycle edges 列表含在 error_message。
 
+#### 4.3.Y PII 规则集(数据隔离网关详设)
+
+**PII 规则集是数据隔离网关的核心策略** —— 任何用户消息离开 `services/audit-and-isolation/` 之前,都必须经过一遍 PII 扫描,被命中的字段会被就地替换为占位符(例如 `[身份证_ab12]`),原始值只存在 Redis 的 per-trace placeholder map 中,响应回来时再回填。
+
+**eng-review 决策引用**:
+- 决策 #1(数据隔离网关 = egress 强制点,任何 PII 必须在网关被拦截)
+- Quality #2(critical path 100% 覆盖,PII redact/reverse 是 paul 财务月报 4 场景之一)
+
+**权威实现**:`services/audit-and-isolation/app/pii/{rules,detector,redactor,reverser}.py`
+
+**6 类 PII 正则规则集**(eng-review 财务月报场景强制):
+
+| # | 类别 | 正则 | 二次校验 | 占位符前缀 |
+|---|---|---|---|---|
+| 1 | 身份证 | `\b\d{17}[\dXx]\b` | 校验码算法(GB 11643-1999) | `[身份证_<hash4>]` |
+| 2 | 手机 | `\b1[3-9]\d{9}\b` | 无(11 位 + 1[3-9] 段已足够精确) | `[手机_<hash4>]` |
+| 3 | 银行卡 | `\b\d{16,19}\b` | Luhn 校验(prune false positives) | `[银行卡_<hash4>]` |
+| 4 | 邮箱 | `\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b` | 无 | `[邮箱_<hash4>]` |
+| 5 | 统一社会信用代码 | `\b[0-9A-HJ-NPQRTUWXY]{18}\b` | GB 32100-2015 校验位算法 | `[信用代码_<hash4>]` |
+| 6 | 营收金额 | 上下文 regex(数字 + 营收/收入/营业额/利润/万元/亿元关键词邻近 16 字符内) | 单位规范化(万/亿 → 元) | `[营收_<hash4>]` |
+
+**设计要点**:
+
+1. **6 类都支持"mask-only 可逆"** —— 脱敏是 placeholder 替换,响应回填是 reverse 替换。回填失败(Redis cache miss + PG audit_log 也没找到)会返原始 placeholder,保证**绝不泄漏原文**(fail-closed 安全语义)。
+
+2. **trace_id 关联** —— 占位符里的 `<hash4>` 是 4 字符的 trace_id 前缀(`trace_id[:4]`,SHA-256 不必要,只要本地碰撞概率低即可)。这样下游 reviewer 看到 `[身份证_a3f2]` 能立刻知道这个 placeholder 来自哪个 trace,便于跨实例查询 `GET /v1/traces/{trace_id}` 定位原始 PII 的 audit 行 + placeholder map(per task 4.1)。
+
+3. **审计字段** —— `audit_log.pii_detected_types`(ARRAY 字段)记录本次请求命中的 PII 类目列表(去重),`pii_redacted_count` 记录命中总次数(不去重,便于算 metric)。这两字段在 5.2 `/metrics` 端点暴露为 `pii_hits_total{pii_type, action}` Counter。
+
+4. **Fail-Open 配置** —— 默认 `pii_fail_open=true`,detector 异常时**放行原文** + WARN log + `pii_detector_fail_open_total` Counter 自增。生产建议 `pii_fail_open=false`,detector 异常返 503 阻断请求(更保守);5.3 集成时 chat 端点已经在 fail-open 时返 200(测试覆盖)。
+
+**eng-review 之外的决策**(本段 D1-D5):6 类覆盖财务月报 MVP 必需;二次校验只对 3 类(身份证/银行卡/信用代码)做,其余纯 regex 即可;hash4 而非全 hash 是可读性 vs 碰撞概率 trade-off;占位符 `[<类型>_<hash4>]` 格式不可改(下游 reviewer workflow 已写);不持久化 PII 原文到 PG(只 placeholder 格式 + count,完全 metadata-only,符合 spec §4.5 决策 #1)。
+
+**下游 spec 引用清单**:
+- T2 Node Contract:节点输入输出 PII 行为契约(每个节点在 redact/不 redact 模式)
+- T4 测试架构:`tests/integration/test_pii_subscenario_2_{1..8}.py` 8 个 PII 场景 + 4 critical path
+- (新) PII 规则热加载(eng-review 后)—— `[FUTURE-IMPLEMENTATION: see openspec/changes/pii-hot-reload/]`
+- (新) 自定义 PII 规则 per tenant —— `[FUTURE-IMPLEMENTATION: see openspec/changes/pii-per-tenant/]`
+
 ### 4.4 技术栈选型
 
 | 层级 | 技术选型 | 选型理由 |

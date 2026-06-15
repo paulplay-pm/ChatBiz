@@ -1,6 +1,6 @@
 # Verify: gateway-egress-enforcement-p0 (草稿,apply 阶段中)
 
-> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,17/20 个新 task 完成(task 1.1-1.5, 2.1-2.4, 3.1, 4.1-4.4, 5.1-5.3)。
+> **本文件是 2026-06-14 apply 阶段 partial verify 草稿**,18/20 个新 task 完成(task 1.1-1.5, 2.1-2.4, 3.1, 4.1-4.4, 5.1-5.3, 6.1)。
 > 7 个 [EXISTING] 引用已在 6/12/2026 gap-analysis 阶段确认真实存在(grep 复核见下)。
 > apply 阶段**未完成** → 本 change **不可 archive**。`/retrospective.md` 在所有新 task
 > 完成后才写,本文件不替代。
@@ -22,7 +22,7 @@
 
 > 注:tasks.md 末尾"清单"是 7 条总结,展开是 10 条细分。表里 10 条细分(每条配 grep 行)是为了 verify 可追溯。
 
-## 2. 新 task 完成清单(17/20 推进,1.1-1.5 + 2.1-2.4 + 3.1 + 4.1-4.4 + 5.1-5.3 完成)
+## 2. 新 task 完成清单(18/20 推进,1.1-1.5 + 2.1-2.4 + 3.1 + 4.1-4.4 + 5.1-5.3 + 6.1 完成)
 
 | Task | 文件 | 验证 | 状态 |
 |---|---|---|---|
@@ -43,6 +43,7 @@
 | 5.1 perf contracts | `services/audit-and-isolation/app/perf/contracts.py` (新加 4 个 Protocol:RateLimiter / ResponseCache / RequestBatcher / MetricsExporter + 4 个 Noop 默认实现) + `app/perf/__init__.py` (导出) + `tests/unit/test_perf_contracts.py` (24 case) | `pytest tests/unit/test_perf_contracts.py` **24/24 PASS**(4 Protocol 签名守卫 + 4 Noop 行为 + 4 real impl 满足 Protocol + cross-cutting 3 + 4 runtime_checkable 守卫);`pytest tests/unit/` **261/261 PASS** | ✅ **完成** |
 | 5.2 /metrics 端点 | `app/metrics.py` (扩: 加 5 个 V6b metric: `requests_total{method,path,status}` Counter + `duration_seconds` Histogram + `pii_hits_total{pii_type,action}` Counter + `active_connections` Gauge + `trace_cache_hits_total` Counter + `render_metrics()` helper) + `app/api/metrics.py` (新加 router,`GET /metrics` 返 Prometheus text format) + `app/main.py` (注册新 router) + `tests/integration/test_metrics_endpoint.py` (17 case) | `pytest tests/integration/test_metrics_endpoint.py` **17/17 PASS**(200 + Content-Type + 5 metric 都在 + 5 TYPE 守卫 + HELP 长度 + counter increment + gauge set + histogram bucket/sum/count + 路由注册);`pytest tests/unit/` **261/261 PASS** | ✅ **完成** |
 | 5.3 chat.py 嵌入 4 contract | `app/api/chat.py` (改: 4 个 contract 调用点 — RateLimiter.check @ step 4.5 → 429 / ResponseCache.get+put @ step 4.6 + 7.5 / RequestBatcher.submit @ step 6 替代 call_upstream(检测 Noop 走直调) / MetricsExporter.observe_request + observe_duration + observe_pii_hit @ 4 过渡点) + `app/api/dependencies.py` (新加: 4 个 getter + 4 个 state 常量 + Noop fallback) + `tests/integration/test_contract_integration.py` (6 case) | `pytest tests/integration/test_contract_integration.py` **6/6 PASS**(4 scenario 复用 + 429 + Noop 降级);`pytest tests/integration/test_e2e_4_scenarios.py` **4/4 PASS** (现有 4 场景不破坏);`pytest tests/unit/` **261/261 PASS** | ✅ **完成** |
+| 6.1 architecture.md §4.3.Y | `docs/architecture.md` (改: §4.3 末尾补 §4.3.Y PII 规则集段落 — 6 类正则表 + 二次校验 + 占位符格式 + trace_id 关联 + 4 引用 pii/ 模块) + `tests/test_architecture_md.py` (13 case) | `python3 -m pytest tests/test_architecture_md.py` **13/13 PASS**(文件存在 / §4.3.Y heading / TOC anchor / 6 PII 类目 / trace_id 关联 / mask-only 可逆 / pii/ 引用 / 决策 #1 / critical path / 位置 §4.3.5 后 / 6 规则代码对齐 / 段长度 ≥ 30 行) | ✅ **完成** |
 | 3.1 RetryWithIdempotency | — | 待 apply 阶段 | ⏳ pending |
 | 3.1 RetryWithIdempotency | — | 待 apply 阶段 | ⏳ pending |
 | 4.1 GET /v1/traces/{trace_id} | — | 待 apply 阶段 | ⏳ pending |
@@ -55,7 +56,7 @@
 | 4.4 冷查询端点 | — | 待 apply 阶段 | ⏳ pending |
 | 5.1 perf contracts | — | 待 apply 阶段 | ⏳ pending |
 | 5.3 嵌入 chat.py | — | 待 apply 阶段 | ⏳ pending |
-| 6.1 architecture.md §4.3.Y | — | 待 apply 阶段 | ⏳ pending |
+| 6.1 architecture.md §4.3.Y | ✅ **完成** | (行 46 已记录) |
 | 7.1 pytest cov 100% | — | 待 apply 阶段(收尾) | ⏳ pending |
 | 7.2 写 verify.md 最终 | — | 收尾 | ⏳ pending |
 
@@ -164,17 +165,17 @@ services/gateway-scanner/tests/fixtures/
 
 ## 7. 范围说明(scope reduction 决策)
 
-task 1.1-5.3 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest + NGINX L4 LB conf + HA failover e2e + RetryWithIdempotency 装饰器 + GET /v1/traces 跨实例查询端点 + 跨实例 trace e2e + 定时归档 job + 冷查询端点 + 4 perf contract Protocol + 4 Noop + /metrics Prometheus 端点 + chat.py 嵌入 4 contract。**Phase A + B + C + D + E 全部完成**。
+task 1.1-6.1 阶段交付:CLI + 4 pattern AST 扫描 + blocklist/allowlist + CI 集成 + preStop 排空 + K8s manifest + NGINX L4 LB conf + HA failover e2e + RetryWithIdempotency 装饰器 + GET /v1/traces 跨实例查询端点 + 跨实例 trace e2e + 定时归档 job + 冷查询端点 + 4 perf contract Protocol + 4 Noop + /metrics Prometheus 端点 + chat.py 嵌入 4 contract + docs/architecture.md §4.3.Y PII 规则集段落。**Phase A + B + C + D + E + F(1/2) 完成**。
 
-剩余 3 个新 task(6.1 / 7.1-7.2)涉及:
-- **6.1** 文档(`docs/architecture.md` §4.3.Y)
-- **7.x** 收尾(覆盖率 100% + verify.md 最终版)
+剩余 2 个新 task(7.1-7.2)涉及:
+- **7.1** 覆盖率 100% 收尾(改 pre-existing 1 个 test 失败 + pytest cov 100%)
+- **7.2** 写 verify.md 最终 + retrospective.md (收尾)
 
 ## 8. 后续
 
-- **本 verify.md 草稿会在 6.1 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
+- **本 verify.md 草稿会在 7.1 ~ 7.2 推进时增量更新**。每完成 1 个 task,加 1 行证据。
 - **最终 verify.md**(7.2 task)在所有 20 个新 task 完成后写,包含完整 18 个 requirement 的 requirement-by-requirement 证据。
-- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 17/20 任务, 剩 3 个 pending(表 §2 已展开)。
+- **本 change apply 阶段起点**:2026-06-14(task 1.1 完成时间)。完成 18/20 任务, 剩 2 个 pending(表 §2 已展开)。
 
 ## 9. Task 1.5 GitHub Actions 详细证据
 
@@ -772,6 +773,77 @@ pytest tests/unit/                                     ->  261 passed, 2 skipped
 **风险 3**:NoopRequestBatcher 返 never-resolve future, 集成时容易 hang。
 **决策**:chat 端**显式检测** isinstance(NoopRequestBatcher), 走直调 call_upstream, 让 dev/test 永远不死锁。
 **缓解**:5.1 perf_contracts test 验证 Noop 行为; contract_integration test 6 跑全 OK (Noop 路径完整 e2e); production lifespan 会用真 batcher 替 Noop。
+
+## 22. Task 6.1 docs/architecture.md §4.3.Y 详细证据
+
+### 22.1 文件清单
+```
+docs/architecture.md                                          (改: §4.3 末尾补 §4.3.Y 段)
+tests/test_architecture_md.py                                 (新加, 13 case)
+```
+
+### 22.2 测试结果
+```
+python3 -m pytest tests/test_architecture_md.py -v  →  13 passed in 0.01s
+```
+
+### 22.3 §4.3.Y 段落结构
+| 节内子段 | 内容 |
+|---|---|
+| 引子 | PII 规则集是数据隔离网关的核心策略 (egress 强制点) |
+| eng-review 决策引用 | 决策 #1 (egress 强制点) + Quality #2 (critical path 100%) |
+| 权威实现 | `services/audit-and-isolation/app/pii/{rules,detector,redactor,reverser}.py` (glob 形式) |
+| 6 类 PII 规则表 | 身份证/手机/银行卡/邮箱/统一社会信用代码/营收金额 + 正则 + 二次校验 + 占位符前缀 |
+| 设计要点 4 条 | mask-only 可逆 / trace_id 关联 / 审计字段 / Fail-Open 配置 |
+| eng-review 之外的决策 5 条 | 6 类覆盖 / 3 类二次校验 / hash4 / 占位符格式 / 不持久化原文 |
+| 下游 spec 引用 | T2 Node Contract / T4 测试架构 + 2 个 FUTURE-IMPLEMENTATION (热加载 / per-tenant) |
+
+### 22.4 6 类 PII 规则(eng-review 财务月报场景强制)
+| # | 类别 | 正则 | 二次校验 | 占位符前缀 |
+|---|---|---|---|---|
+| 1 | 身份证 | `\b\d{17}[\dXx]\b` | 校验码算法 GB 11643-1999 | `[身份证_<hash4>]` |
+| 2 | 手机 | `\b1[3-9]\d{9]\b` | 无 (regex 已精确) | `[手机_<hash4>]` |
+| 3 | 银行卡 | `\b\d{16,19}\b` | Luhn 校验 | `[银行卡_<hash4>]` |
+| 4 | 邮箱 | `\b[A-Za-z0-9._%+-]+@...` | 无 | `[邮箱_<hash4>]` |
+| 5 | 信用代码 | `\b[0-9A-HJ-NPQRTUWXY]{18}\b` | GB 32100-2015 | `[信用代码_<hash4>]` |
+| 6 | 营收金额 | 上下文 regex | 单位规范化 | `[营收_<hash4>]` |
+
+### 22.5 关键设计点
+| 设计点 | 决定 | 原因 |
+|---|---|---|
+| 段位置 | §4.3.5 之后, §4.4 之前 | PII 详设是 §4.3.5 企业安全与权限的子集,逻辑分组合理 |
+| 6 类 PII 命名 | 中文 (身份证/手机/银行卡/...) | 跟 gstack project reporter convention 一致; audit_log.pii_detected_types 列也用中文 |
+| 二次校验 | 3 类 (身份证/银行卡/信用代码) 做, 3 类 (手机/邮箱/营收) 不做 | 后 3 类 regex 已足够精确; 前 3 类 false positive 率高需算法校验 |
+| hash4 而非全 hash | trace_id[:4] | 可读性 vs 碰撞概率 trade-off; 4 字符 16 进制碰撞 65k trace 不太会发生 |
+| 占位符格式 | `[<类型>_<hash4>]` | 下游 reviewer workflow 已写, 不可改 |
+| 不持久化 PII 原文 | 仅 placeholder 格式 + count 进 PG | metadata-only 满足 spec §4.5 决策 #1 |
+
+### 22.6 13 case 覆盖矩阵
+| 类别 | 数量 |
+|---|---|
+| 文件存在 + 非空 | 2 |
+| §4.3.Y heading + TOC anchor | 2 |
+| 6 PII 类目都在 | 1 |
+| trace_id 关联 + hash4 机制 | 1 |
+| mask-only 可逆 | 1 |
+| pii/ 路径引用 4 模块 | 1 |
+| 决策 #1 + critical path | 2 |
+| 段位置 (§4.3.5 后 §4.4 前) | 1 |
+| 实施对齐 (rules.py 6 名字) | 1 |
+| 段长度 ≥ 30 行 | 1 |
+
+### 22.7 风险与决策记录
+**风险 1**:doc 1300+ 行, 段加入位置错位可能破坏 markdown 结构。
+**决策**:edit 严格保持 §4.3 末尾 "eng-review 之外的决策" 行, 在 "### 4.4 技术栈选型" 之前插入新段; section 编号 `#### 4.3.Y` 跟兄弟 §4.3.1-5 同级 (h4)。
+**缓解**:test_section_4_3_Y_appears_after_4_3_5 验证位置; test_section_length_is_substantial 验证 ≥ 30 行 (防 stub)。
+
+**风险 2**:CLAUDE.md line 31 之前已有 TOC anchor "4.3.Y PII 规则集(数据隔离网关详设)", 现在段存在,anchor 自动生成匹配, 不需改 CLAUDE.md。
+**决策**:CLAUDE.md 里的 anchor 占位已正确, 段存在后 anchor 自然生效。
+**缓解**:test_section_4_3_Y_in_table_of_contents 验证 anchor 字符串还在。
+
+**风险 3**:doc 文字 + 实施代码漂移 (某天 PII 类别新增/改名, 文档没跟上)。
+**决策**:test_doc_pii_types_align_with_implementation + test_all_6_pii_rule_types 双向守卫。
+**缓解**:13 case 守卫 doc-implementation 对齐, 未来 PII 类别变更需同时改 doc + 实施 + test。
 
 
 
