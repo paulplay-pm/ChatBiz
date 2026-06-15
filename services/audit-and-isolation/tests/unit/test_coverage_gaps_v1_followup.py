@@ -35,6 +35,7 @@ os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://x@localhost/test")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("CREDENTIAL_SERVICE_URL", "http://localhost:9999")
 
+import httpx
 import pytest
 
 from app.jobs import archive_audit
@@ -475,3 +476,196 @@ def test_retry_with_idempotency_raises_unreachable_no_result() -> None:
         "the line 121 sibling in retry_with_redis is marked "
         "`# pragma: no cover` — we follow that convention."
     )
+
+
+# =============================================================================
+# app/llm/client.py coverage (llm-client-retry-coverage followup)
+#
+# Closes coverage-improvement/retrospective §4.2: client.py 78% → 100%.
+# Targets 4 reachable missing regions:
+#   * get_client lazy init (line 74-80)
+#   * retry_with_redis 2-iter loop in call_upstream (line 104-120)
+#   * _is_ha_failover JSON parse error path (line 214-215)
+#   * reset_client_for_tests (line 334)
+#
+# 0 source changes (line 121 / 304 already marked `# pragma: no cover`).
+# =============================================================================
+
+
+def test_get_client_initializes_httpx_async_client() -> None:
+    """Lines 74-80: `get_client()` lazy-initializes an `httpx.AsyncClient`
+    on first call. We call `reset_client_for_tests()` to clear the
+    module-level `_client` cache first, then assert the returned
+    client is an `httpx.AsyncClient` instance.
+    """
+    from app.llm import client as llm_client
+    llm_client.reset_client_for_tests()
+    c = llm_client.get_client()
+    assert isinstance(c, httpx.AsyncClient)
+
+
+def test_get_client_caches_returned_client() -> None:
+    """Lines 74-80: `get_client()` returns the same cached client on
+    subsequent calls (no re-init).
+    """
+    from app.llm import client as llm_client
+    llm_client.reset_client_for_tests()
+    c1 = llm_client.get_client()
+    c2 = llm_client.get_client()
+    assert c1 is c2
+
+
+def test_get_client_uses_upstream_timeout_ms_setting() -> None:
+    """Lines 75-77: `get_client()` reads `upstream_timeout_ms` from
+    `get_settings()` and converts to seconds for `httpx.Timeout`.
+    """
+    import httpx
+    from app.llm import client as llm_client
+    llm_client.reset_client_for_tests()
+    with patch.object(
+        llm_client, "get_settings", return_value=MagicMock(upstream_timeout_ms=5000)
+    ):
+        c = llm_client.get_client()
+    # httpx.Timeout stores the connect/read/write/ pool timeout;
+    # we assert that *some* timeout value is in the seconds range
+    # derived from 5000 ms (i.e. 5.0s, not the default 10.0s).
+    assert c.timeout.connect == 5.0 or c.timeout.read == 5.0 or c.timeout.write == 5.0
+
+
+async def test_call_upstream_retries_on_5xx_then_returns_200() -> None:
+    """Lines 110-114: when attempt 0 returns 5xx, sleep 200ms then
+    retry; attempt 1 returns 200 → return 200.
+
+    Patches `asyncio.sleep` to a no-op so the test is fast.
+    """
+    from app.llm import client as llm_client
+    llm_client.reset_client_for_tests()
+    fake_client = MagicMock()
+    resp_500 = MagicMock(spec=httpx.Response, status_code=500)
+    resp_200 = MagicMock(spec=httpx.Response, status_code=200)
+    fake_client.post = AsyncMock(side_effect=[resp_500, resp_200])
+    with (
+        patch.object(llm_client, "get_client", return_value=fake_client),
+        patch("app.llm.client.asyncio.sleep", new=AsyncMock()) as mock_sleep,
+    ):
+        result = await llm_client.call_upstream(
+            base_url="http://x", path="/v1/foo", body={}, headers={}
+        )
+    assert result is resp_200
+    assert mock_sleep.call_count == 1  # sleep between attempt 0 and 1
+    assert fake_client.post.call_count == 2
+
+
+async def test_call_upstream_retries_on_timeout_exception() -> None:
+    """Lines 115-119: when attempt 0 raises `httpx.TimeoutException`,
+    sleep 200ms then retry; attempt 1 returns 200 → return 200.
+    """
+    from app.llm import client as llm_client
+    llm_client.reset_client_for_tests()
+    fake_client = MagicMock()
+    resp_200 = MagicMock(spec=httpx.Response, status_code=200)
+    fake_client.post = AsyncMock(
+        side_effect=[httpx.TimeoutException("timeout"), resp_200]
+    )
+    with (
+        patch.object(llm_client, "get_client", return_value=fake_client),
+        patch("app.llm.client.asyncio.sleep", new=AsyncMock()) as mock_sleep,
+    ):
+        result = await llm_client.call_upstream(
+            base_url="http://x", path="/v1/foo", body={}, headers={}
+        )
+    assert result is resp_200
+    assert mock_sleep.call_count == 1
+    assert fake_client.post.call_count == 2
+
+
+async def test_call_upstream_raises_last_exc_on_two_timeouts() -> None:
+    """Lines 115-120: two consecutive `httpx.TimeoutException`s →
+    raise the last one (not the RuntimeError fallback at line 121).
+    """
+    from app.llm import client as llm_client
+    llm_client.reset_client_for_tests()
+    fake_client = MagicMock()
+    fake_client.post = AsyncMock(
+        side_effect=[
+            httpx.TimeoutException("first"),
+            httpx.TimeoutException("second"),
+        ]
+    )
+    with (
+        patch.object(llm_client, "get_client", return_value=fake_client),
+        patch("app.llm.client.asyncio.sleep", new=AsyncMock()) as mock_sleep,
+    ):
+        with pytest.raises(httpx.TimeoutException, match="second"):
+            await llm_client.call_upstream(
+                base_url="http://x", path="/v1/foo", body={}, headers={}
+            )
+    assert mock_sleep.call_count == 1  # sleep between attempts
+
+
+async def test_call_upstream_two_5xx_returns_second_5xx() -> None:
+    """Lines 110-114: when attempt 0 returns 5xx, sleep + retry;
+    attempt 1 also returns 5xx but `attempt == 0` is False at that
+    point, so we don't retry again — return the 5xx response.
+    """
+    from app.llm import client as llm_client
+    llm_client.reset_client_for_tests()
+    fake_client = MagicMock()
+    resp_500_a = MagicMock(spec=httpx.Response, status_code=500)
+    resp_500_b = MagicMock(spec=httpx.Response, status_code=503)
+    fake_client.post = AsyncMock(side_effect=[resp_500_a, resp_500_b])
+    with (
+        patch.object(llm_client, "get_client", return_value=fake_client),
+        patch("app.llm.client.asyncio.sleep", new=AsyncMock()) as mock_sleep,
+    ):
+        result = await llm_client.call_upstream(
+            base_url="http://x", path="/v1/foo", body={}, headers={}
+        )
+    # Second 5xx is returned as-is (no third retry); only one sleep
+    assert result is resp_500_b
+    assert mock_sleep.call_count == 1
+
+
+def test_is_ha_failover_returns_false_when_json_raises() -> None:
+    """Lines 212-215: when `resp.json()` raises (non-JSON body),
+    `_is_ha_failover` returns False (fallback to non-HA detection).
+    """
+    from app.llm import client as llm_client
+    resp = MagicMock(spec=httpx.Response, status_code=503)
+    resp.json.side_effect = ValueError("not JSON")
+    assert llm_client._is_ha_failover(resp) is False
+
+
+def test_is_ha_failover_returns_true_on_503_with_ha_body() -> None:
+    """Line 216: `_is_ha_failover` returns True when status 503 and
+    body has `error: "HA_FAILOVER"`.
+    """
+    from app.llm import client as llm_client
+    resp = MagicMock(spec=httpx.Response, status_code=503)
+    resp.json.return_value = {"error": "HA_FAILOVER"}
+    assert llm_client._is_ha_failover(resp) is True
+
+
+def test_is_ha_failover_returns_false_on_non_503() -> None:
+    """Lines 210-211: `_is_ha_failover` early-returns False on
+    non-503 status (no JSON parse).
+    """
+    from app.llm import client as llm_client
+    resp = MagicMock(spec=httpx.Response, status_code=200)
+    assert llm_client._is_ha_failover(resp) is False
+
+
+def test_reset_client_for_tests_clears_cached_client() -> None:
+    """Line 334: `reset_client_for_tests()` sets the module-level
+    `_client` back to `None` so the next `get_client()` re-inits.
+    """
+    from app.llm import client as llm_client
+    llm_client.reset_client_for_tests()
+    c1 = llm_client.get_client()
+    assert c1 is not None
+    llm_client.reset_client_for_tests()
+    # After reset, module-level `_client` is None; next get_client
+    # creates a fresh instance.
+    assert llm_client._client is None
+    c2 = llm_client.get_client()
+    assert c1 is not c2

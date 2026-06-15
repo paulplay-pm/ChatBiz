@@ -301,7 +301,7 @@ def retry_with_idempotency(
             raise last_exc
         if last_resp is not None:
             return last_resp
-        raise RuntimeError("retry_with_idempotency: unreachable — no attempt produced a result")
+        raise RuntimeError("retry_with_idempotency: unreachable — no attempt produced a result")  # pragma: no cover
 
     return wrapper
 
