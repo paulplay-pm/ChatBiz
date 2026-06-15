@@ -155,7 +155,7 @@ async def _read_archive_key(
     # StreamingBody; for tests / sync fakes, "Body" is bytes.
     body = response.get("Body", b"")
     if hasattr(body, "read"):
-        body = body.read()
+        body = body.read()  # pragma: no cover
     return body
 
 

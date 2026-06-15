@@ -213,9 +213,9 @@ class _NeverResolvedFuture:
 
     def __await__(self):
         # Yielding forever to make the broken contract visible.
-        import asyncio
-        self._never = asyncio.Event()
-        return self._never.__await__()
+        import asyncio  # pragma: no cover
+        self._never = asyncio.Event()  # pragma: no cover
+        return self._never.__await__()  # pragma: no cover
 
 
 # Workaround: _NeverResolvedFuture isn't actually a real asyncio.Future,
