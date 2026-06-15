@@ -11,6 +11,15 @@ Covers the retry behaviour the plan calls out:
 
 from __future__ import annotations
 
+# Set required env vars BEFORE importing the app, because
+# app.config.Settings() validates them eagerly. The defaults below
+# are placeholder URLs; tests that actually exercise the LLM client
+# patch ``call_upstream`` so the values are never reached.
+import os
+os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://x@localhost/test")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+os.environ.setdefault("CREDENTIAL_SERVICE_URL", "http://localhost:8005")
+
 import asyncio
 import unittest
 from unittest.mock import AsyncMock, patch
