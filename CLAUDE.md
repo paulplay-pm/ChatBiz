@@ -166,6 +166,21 @@ OpenSpec CLI 用 `openspec-*`(`openspec-propose` / `openspec-explore` / `openspe
 
 **来源**:`openspec/changes/fix-compose-postgres-naming/`(2026-06-13 archive) + `openspec/changes/fix-compose-postgres-naming/tasks.md` V6b FU-3。
 
+### CI 触发约定(强制)
+
+所有 service 进 `.github/workflows/ci-cov.yml` matrix 时,**必须**同步
+更新(不允许 addopts `--cov-fail-under=100` 在 `pyproject.toml` 但不进
+workflow matrix)。当前 matrix 列表 = `[audit-and-isolation, credential,
+gateway-scanner, sso]`,新增 service 时:
+
+1. 写 `services/<new-service>/pyproject.toml` 含 `--cov=app` 或
+   `--cov=<module>` + `--cov-fail-under=100`
+2. 同步加进 `.github/workflows/ci-cov.yml` matrix
+3. PR 描述里登记端口表 + 新 service name
+
+**workflow-engine / mcp 2 service 仍是 0% cov,本约定未触发** — 他们
+cov matrix 收尾时一并加。
+
 ### 前端目录与端口约定(强制)
 
 - **所有前端页面代码统一放到 `web/` 目录下**,不要在 `apps/`、`clients/`、`ui/` 等其它地方新建前端项目。当前已有：

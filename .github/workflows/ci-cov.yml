@@ -1,0 +1,50 @@
+name: ci-cov
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  cov:
+    name: ${{ matrix.service }} pytest --cov-fail-under=100
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - audit-and-isolation
+          - credential
+          - gateway-scanner
+          - sso
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup conda (chatbiz env)
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniconda-version: latest
+          auto-activate-base: false
+          python-version: 3.12
+
+      - name: Create chatbiz env
+        run: |
+          conda create -n chatbiz python=3.12 -y
+          conda run -n chatbiz pip install --upgrade pip
+
+      - name: Install service + test deps
+        working-directory: services/${{ matrix.service }}
+        run: |
+          conda run -n chatbiz pip install -e .
+          conda run -n chatbiz pip install pytest pytest-cov pytest-asyncio respx
+
+      - name: Run pytest (cov-fail-under=100 from pyproject addopts)
+        working-directory: services/${{ matrix.service }}
+        run: conda run -n chatbiz pytest tests/
