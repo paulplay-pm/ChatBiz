@@ -28,4 +28,4 @@ include = ["gateway_scanner*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v"
+addopts = "-v --cov=gateway_scanner --cov-fail-under=100"

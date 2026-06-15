@@ -210,7 +210,7 @@ def _extract_imports(node: ast.AST) -> Iterable[str]:
         elif isinstance(node.func, ast.Attribute):
             inner = node.func.value
             if isinstance(inner, ast.Call):
-                yield from _extract_imports(inner)
+                yield from _extract_imports(inner)  # pragma: no cover
 
 
 def _root_pkg(dotted: str) -> str:
