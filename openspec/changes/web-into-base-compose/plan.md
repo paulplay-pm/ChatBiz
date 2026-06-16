@@ -220,7 +220,7 @@ Expected: `web:` matches at line 174; `chatbiz-web:` returns no match. Note the 
 Delete lines 174-184 (the entire current `web:` block including its blank line below) and insert this replacement in its place:
 
 ```yaml
-  web:
+  chatbiz-web:
     extends:
       file: docker-compose.yml
       service: chatbiz-web
@@ -253,7 +253,7 @@ Use `Edit` (or your editor). The replacement must occupy the same indentation co
 
 Run:
 ```bash
-grep -A 6 "^  web:" infrastructure/docker-compose-dev.yml
+grep -A 16 "^  chatbiz-web:" infrastructure/docker-compose-dev.yml
 ```
 
 Expected: 6-line window containing `extends:`, `file: docker-compose.yml`, `service: chatbiz-web`, and `depends_on:` with `sso` + `workflow-engine` + `mcp` (3 service health gate re-declared in dev overlay). Note: dev compose's SSO service key is `sso:` (with `container_name: chatbiz-sso`); `depends_on` uses the service key, not the container name.
@@ -276,7 +276,7 @@ Expected: `name: chatbiz-web-node-modules` (preserved from current line 257-258)
 
 ```bash
 git add infrastructure/docker-compose-dev.yml
-git commit -m "refactor(infrastructure): dev compose web block uses extends: chatbiz-web"
+git commit -m "refactor(infrastructure): dev compose chatbiz-web block uses extends: + redeclares 3-gate depends_on"
 ```
 
 ---
