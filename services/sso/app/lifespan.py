@@ -55,8 +55,8 @@ async def lifespan(app: FastAPI):
     app.state.redis = redis_async.from_url(redis_url, decode_responses=True)
 
     # 4. RSA 私钥 load_or_generate
-    private_path = Path(os.getenv("JWT_PRIVATE_KEY_PATH", "secrets/jwt_private.pem"))
-    public_path = Path(os.getenv("JWT_PUBLIC_KEY_PATH", "secrets/jwt_public.pem"))
+    private_path = Path(os.getenv("JWT_PRIVATE_KEY_PATH", "~/.sso/secrets/jwt_private.pem")).expanduser()
+    public_path = Path(os.getenv("JWT_PUBLIC_KEY_PATH", "~/.sso/secrets/jwt_public.pem")).expanduser()
     private_key, public_key = load_or_generate_keypair(private_path, public_path)
     app.state.rsa_private = private_key
     app.state.rsa_public = public_key
