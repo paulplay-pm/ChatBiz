@@ -249,6 +249,33 @@ sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)
       start_period: 20s
 
   # ---------------------------------------------------------------------------
+  # Web Frontend — unified SPA runtime (single-port nginx, all sub-apps)
+  # 多阶段构建见 web/Dockerfile (node:20-alpine builder + nginx:1.27-alpine runtime).
+  # 路径分发见 web/nginx.conf;依赖 nginx upstream (workflow-engine + mcp service)
+  # 等健康后起来。chatbiz-sso 走 dev overlay 才存在,见 docker-compose-dev.yml。
+  # ---------------------------------------------------------------------------
+  chatbiz-web:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    image: chatbiz/web:dev
+    container_name: chatbiz-web
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      workflow-engine:
+        condition: service_healthy
+      mcp:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ---------------------------------------------------------------------------
   # workflow-engine service
   # ---------------------------------------------------------------------------
   workflow-engine:

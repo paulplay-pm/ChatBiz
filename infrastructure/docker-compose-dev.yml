@@ -171,17 +171,33 @@ services:
   #   - http://localhost:5173/canvas/    画布前端
   #   - http://localhost:5173/admin/ 管理后台前端
   # =========================================================================
-  web:
-    build:
-      context: ../web
-      dockerfile: Dockerfile
-      target: runtime
+  chatbiz-web:
+    extends:
+      file: docker-compose.yml
+      service: chatbiz-web
+    # Re-declare container_name so dev-namespace lint visibility holds
+    # (V6b FU-3 rule 2, see tools/check-compose-naming.sh).
     container_name: chatbiz-web
-    restart: unless-stopped
+    image: chatbiz/web:dev
+    # Re-declare depends_on to ADD sso as the 3rd health gate
+    # (base compose only has workflow-engine + mcp; sso is a dev-only
+    # service that becomes available when the dev overlay is active).
+    # Note: `sso` is the service key in dev compose (its container_name
+    # is `chatbiz-sso`). Compose `depends_on` references service keys,
+    # not container names. Compose `extends:` does NOT merge lists, so
+    # the dev block must redeclare the full depends_on list.
     depends_on:
-      - workflow-engine
-    ports:
-      - "5173:80"
+      sso:
+        condition: service_healthy
+      workflow-engine:
+        condition: service_healthy
+      mcp:
+        condition: service_healthy
+    # Bind-mount the source for live reload of nginx config + dist rebuilds
+    # triggered by `docker compose build chatbiz-web` after source edits.
+    volumes:
+      - ../web:/app
+      - web-node-modules:/app/node_modules
 
   # V6a alias: docker compose v5.0.2 strict validation 把 dev compose extends
   # 拉过来的 `depends_on: chatbiz-postgres` / `chatbiz-redis` 引用(来自 base
