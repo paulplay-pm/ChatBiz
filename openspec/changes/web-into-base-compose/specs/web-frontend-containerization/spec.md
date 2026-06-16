@@ -48,7 +48,7 @@ The system MUST declare the `chatbiz-web` service with `depends_on:` on `workflo
 
 #### Scenario: dev overlay chatbiz-web 段含 3 个 upstream 且全 service_healthy
 - **WHEN** the same developer runs `docker compose -f infrastructure/docker-compose.yml -f infrastructure/docker-compose-dev.yml config chatbiz-web` (with the dev overlay in scope) and inspects the rendered `depends_on` block
-- **THEN** the rendered output MUST list exactly three services — `chatbiz-sso`, `workflow-engine`, `mcp` — each with `condition: service_healthy`
+- **THEN** the rendered output MUST list exactly three services — `sso`, `workflow-engine`, `mcp` — each with `condition: service_healthy` (the dev compose's SSO service key is `sso:` with `container_name: chatbiz-sso`; `depends_on` references the service key, not the container name)
 
 #### Scenario: chatbiz-web 段不依赖 audit-and-isolation / credential
 - **WHEN** the same developer inspects the rendered `depends_on` block in either base or dev overlay

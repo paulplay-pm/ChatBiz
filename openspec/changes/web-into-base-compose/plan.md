@@ -234,7 +234,7 @@ Delete lines 174-184 (the entire current `web:` block including its blank line b
     # active). Compose `extends:` does NOT merge lists, so the dev block
     # must redeclare the full depends_on list.
     depends_on:
-      chatbiz-sso:
+      sso:
         condition: service_healthy
       workflow-engine:
         condition: service_healthy
@@ -256,7 +256,7 @@ Run:
 grep -A 6 "^  web:" infrastructure/docker-compose-dev.yml
 ```
 
-Expected: 6-line window containing `extends:`, `file: docker-compose.yml`, `service: chatbiz-web`, and `depends_on:` with `chatbiz-sso` + `workflow-engine` + `mcp` (3 service health gate re-declared in dev overlay).
+Expected: 6-line window containing `extends:`, `file: docker-compose.yml`, `service: chatbiz-web`, and `depends_on:` with `sso` + `workflow-engine` + `mcp` (3 service health gate re-declared in dev overlay). Note: dev compose's SSO service key is `sso:` (with `container_name: chatbiz-sso`); `depends_on` uses the service key, not the container name.
 
 - [ ] **Step 4: Verify the named volume still exists in top-level `volumes:`**
 
