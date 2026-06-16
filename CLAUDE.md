@@ -181,6 +181,14 @@ gateway-scanner, sso]`,新增 service 时:
 **workflow-engine / mcp 2 service 仍是 0% cov,本约定未触发** — 他们
 cov matrix 收尾时一并加。
 
+### Python 后端环境设置(强制)
+
+新开发者入职第一件事:跑 `bash tools/setup-chatbiz-env.sh`,脚本会自动建 `chatbiz` conda env (python 3.12) + 装 4 service (audit-and-isolation / credential / gateway-scanner / sso) 全部 dev deps。memory [[conda-chatbiz-env]] 锁定的"必须用 chatbiz conda env,禁止 base / uv"在本脚本里强制 — `--check` 干跑用 editable install location 校验,worktree / 路径不一致会精确报 [FAIL] 而不是误判。常见用法:
+
+- `bash tools/setup-chatbiz-env.sh --check` — 验证当前 env + 4 service 装好,不修改
+- `bash tools/setup-chatbiz-env.sh --service <name>` — 单装一个 service (e.g. 加新 dev dep 后)
+- `bash tools/setup-chatbiz-env.sh --env-only` — 只建 env,不装 service deps
+
 ### 前端目录与端口约定(强制)
 
 - **所有前端页面代码统一放到 `web/` 目录下**,不要在 `apps/`、`clients/`、`ui/` 等其它地方新建前端项目。当前已有：
