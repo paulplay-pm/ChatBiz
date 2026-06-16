@@ -17,6 +17,7 @@ jobs:
           - audit-and-isolation
           - credential
           - gateway-scanner
+          - mcp
           - sso
     steps:
       - name: Checkout

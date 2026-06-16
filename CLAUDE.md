@@ -171,7 +171,7 @@ OpenSpec CLI 用 `openspec-*`(`openspec-propose` / `openspec-explore` / `openspe
 所有 service 进 `.github/workflows/ci-cov.yml` matrix 时,**必须**同步
 更新(不允许 addopts `--cov-fail-under=100` 在 `pyproject.toml` 但不进
 workflow matrix)。当前 matrix 列表 = `[audit-and-isolation, credential,
-gateway-scanner, sso]`,新增 service 时:
+gateway-scanner, mcp, sso]`,新增 service 时:
 
 1. 写 `services/<new-service>/pyproject.toml` 含 `--cov=app` 或
    `--cov=<module>` + `--cov-fail-under=100`
