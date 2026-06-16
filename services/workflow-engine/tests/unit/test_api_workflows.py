@@ -288,3 +288,62 @@ async def test_delete_cross_user_403(client, auth_headers, db_setup):
 async def test_create_workflow_missing_name_422(client, auth_headers, db_setup):
     r = await client.post("/workflows", headers=auth_headers, json={"definition_json": {}})
     assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_list_workflows_empty(client, auth_headers, db_setup):
+    """GET /workflows with no rows returns total=0 and empty list.
+
+    Exercises the ``for wf in rows:`` zero-iteration path in
+    ``list_workflows`` (line 41 enters the loop body zero times) plus
+    the pagination ``start``/``end`` calculation at lines 54-55 where
+    both clamp to 0. Closes workflow-engine coverage gap on
+    ``app/api/workflows.py``.
+    """
+    r = await client.get("/workflows", headers=auth_headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["total"] == 0
+    assert data["workflows"] == []
+
+
+@pytest.mark.asyncio
+async def test_list_workflows_dedup_keeps_highest_version(
+    client, auth_headers, db_setup
+):
+    """GET /workflows with multiple versions of the same wf_id keeps only the
+    latest version (highest version number).
+
+    Exercises the ``or`` short-circuit in
+    ``if wf.id not in latest or wf.version > latest[wf.id].version:``
+    (line 49-50) for both sides of the ``or``: the first time the id is
+    seen the left side is True; subsequent times the left side is False
+    but the right side evaluates True when version is higher.
+    """
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    TestSession = async_sessionmaker(db_setup, expire_on_commit=False)
+    wf_id = uuid.uuid4()
+    async with TestSession() as s:
+        s.add(WorkflowDefinition(
+            id=wf_id, version=1, name="v1", created_by="test-user",
+            definition_json={"mode": "workflow"},
+        ))
+        s.add(WorkflowDefinition(
+            id=wf_id, version=2, name="v2", created_by="test-user",
+            definition_json={"mode": "workflow"},
+        ))
+        s.add(WorkflowDefinition(
+            id=wf_id, version=3, name="v3", created_by="test-user",
+            definition_json={"mode": "workflow"},
+        ))
+        await s.commit()
+
+    r = await client.get("/workflows", headers=auth_headers)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["total"] == 1
+    assert len(data["workflows"]) == 1
+    assert data["workflows"][0]["id"] == str(wf_id)
+    assert data["workflows"][0]["version"] == 3
+    assert data["workflows"][0]["name"] == "v3"
