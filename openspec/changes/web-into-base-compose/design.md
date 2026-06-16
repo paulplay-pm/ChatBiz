@@ -2,7 +2,7 @@
 
 ## Context
 
-`chatbiz-web` 容器 (`web/` 目录的统一 SPA 运行时) 当前**只在** `infrastructure/docker-compose-dev.yml:174-184` 定义,跟 base compose 的 5 个 Python service 段格式不一致(无 `extends:` 拉 base、service key 是 `web` 而不是 `chatbiz-web`、没有 `image` 字段)。`openspec/config.yaml` apply-rule 第 1 条明文要求"服务容器在 `docker-compose.yml` 注册;格式与 credential/audit-and-isolation/workflow-engine/mcp 保持一致"。`chatbiz-web` 是服务容器,目前未在 base 注册 — 违反 apply-rule。
+`chatbiz-web` 容器 (`web/` 目录的统一 SPA 运行时) 当前**只在** `infrastructure/docker-compose-dev.yml:174-184` 定义 (`service: web` 短名),跟 base compose 的 5 个 Python service 段格式不一致 (无 `extends:` 拉 base、service key 是 `web` 而不是 `chatbiz-` 前缀、没有 `image` 字段)。`openspec/config.yaml` apply-rule 第 1 条明文要求"服务容器在 `docker-compose.yml` 注册;格式与 credential/audit-and-isolation/workflow-engine/mcp 保持一致"。`chatbiz-web` 是服务容器,目前未在 base 注册 — 违反 apply-rule。
 
 `web/Dockerfile` 现状是 1 阶段 (`nginx:1.27-alpine AS runtime`),要求 `portal/canvas/admin` 3 个子应用**先**在 host 跑 `vite build` 把 dist 产物拷进 nginx 镜像,跟其它 service 的多阶段 Dockerfile pattern 不一致 (`services/sso/Dockerfile` / `services/credential/Dockerfile` 都是 builder 阶段装 deps + runtime 阶段只拷产物)。
 
@@ -13,9 +13,9 @@
 ## Goals / Non-Goals
 
 **Goals** (3 条):
-1. `chatbiz-web` 段在 `infrastructure/docker-compose.yml` (base) 注册,跟 `credential` / `audit-and-isolation` / `mcp` / `workflow-engine` / `sso` 同格式 (`container_name: chatbiz-web` + `chatbiz-` 前缀 service key + 显式 `build` / `image` / `ports` / `depends_on` / `healthcheck`)
+1. `chatbiz-web` 段在 `infrastructure/docker-compose.yml` (base) 注册,跟 `credential` / `audit-and-isolation` / `mcp` / `workflow-engine` / `sso` 同格式 (`service key: chatbiz-web` + `container_name: chatbiz-web` + 显式 `build` / `image` / `ports` / `depends_on` / `healthcheck`)。`chatbiz-` 前缀 service key 满足 `CLAUDE.md` 强制约定 "新加 service 必须 chatbiz- 前缀" (与 `chatbiz-postgres` / `chatbiz-redis` 一致)
 2. `web/Dockerfile` 重写为 2 阶段:builder 阶段在容器内 `pnpm install` + 3 个 `vite build`;runtime 阶段只拷 `dist` + `nginx.conf`,跟 `services/sso/Dockerfile` / `services/credential/Dockerfile` 的多阶段 pattern 一致
-3. dev compose 改为 `extends:` 拉 base `web` 段,重定义 `image: chatbiz/web:dev` + bind mount + (可选) reload 模式,跟现有 5 个 service 的 dev 模式对齐
+3. dev compose 改为 `extends:` 拉 base `chatbiz-web` 段,重定义 `image: chatbiz/web:dev` + bind mount + (可选) reload 模式,跟现有 5 个 service 的 dev 模式对齐 (与 `chatbiz-mcp` / `chatbiz-postgres` / `chatbiz-redis` 的 fix-compose v6a alias 模式一致)
 
 **Non-Goals** (3 条,显式 YAGNI):
 1. **不**改 `web/nginx.conf` 内部路径或代理规则 — 现有 6 个 `proxy_pass` 段保持不变
@@ -24,16 +24,16 @@
 
 ## Decisions
 
-### D1: web 段位置 = base + dev extends 重定义
+### D1: chatbiz-web 段位置 = base + dev extends 重定义
 
-**Context**: chatbiz-web 容器现在只在 dev compose 定义,base compose 段没注册。openspec apply-rule 第 1 条要求"服务容器在 docker-compose.yml 注册"。
+**Context**: chatbiz-web 容器现在只在 dev compose 定义 (`service: web` 短名,违反 `chatbiz-` 前缀约定),base compose 段没注册。openspec apply-rule 第 1 条要求"服务容器在 docker-compose.yml 注册"。
 
 **选项**:
-- **A (已选)**: base 新增 `web:` 段,dev 改为 `extends:` 拉 base 重定义 (image: chatbiz/web:dev + bind mount + reload)
+- **A (已选)**: base 新增 `chatbiz-web:` 段,dev 改为 `extends:` 拉 base 重定义 (image: chatbiz/web:dev + bind mount + reload)
 - B: 只在 dev,不动 base — 拒绝理由:违反 openspec apply-rule
 - C: base 加空壳段(只占位),dev fills in — 拒绝理由:跟其它 5 service 命名 pattern 不一致,且 dev extends 拉空壳段没用
 
-**结论**: 选 A。`web:` 段在 base 跟其它 service 同列,dev 拉 base 重定义。
+**结论**: 选 A。`chatbiz-web:` 段在 base 跟其它 service 同列,dev 拉 base 重定义。Service key 强制 `chatbiz-` 前缀,跟 `CLAUDE.md` "新加 service 禁止进 baseline,必须直接满足规则 1+2+3" 锁定;`chatbiz-web` 不进 12 baseline 列表(不误抑制)。
 
 ### D2: Dockerfile 改为 2 阶段 (builder + runtime)
 
@@ -85,8 +85,8 @@
 | # | Step | 产物 |
 |---|---|---|
 | 1 | 重写 `web/Dockerfile` 为 2 阶段 (builder + runtime) | 新 50-60 行 Dockerfile, 跟其它 service 同 pattern |
-| 2 | `docker-compose.yml` 新增 `web:` 段,放 `mcp` 段后 `workflow-engine` 段前 | base compose 自包含 web 段 |
-| 3 | `docker-compose-dev.yml` 把 `web` 段改为 `extends:` 拉 base, 重定义 `image: chatbiz/web:dev` + bind mount `../web:/app` + `web-node-modules` 命名 volume | dev compose 用 extends 模式 |
+| 2 | `docker-compose.yml` 新增 `chatbiz-web:` 段,放 `mcp` 段后 `workflow-engine` 段前 | base compose 自包含 chatbiz-web 段 |
+| 3 | `docker-compose-dev.yml` 把 `chatbiz-web` 段改为 `extends:` 拉 base, 重定义 `image: chatbiz/web:dev` + bind mount `../web:/app` + `web-node-modules` 命名 volume | dev compose 用 extends 模式 |
 | 4 | `tools/check-compose-naming.sh` 跑 → 必须 PASS (web 已 `chatbiz-` 前缀 + 显式 `container_name`) | exit 0 |
 | 5 | `docker compose -f docker-compose.yml config --services` → 列表含 `web` | 列输出 |
 | 6 | `docker compose -f docker-compose.yml -f docker-compose-dev.yml build web` → exit 0, 镜像 `chatbiz/web:dev` 存在 | `docker images` 显示 `chatbiz/web:dev` |
@@ -103,12 +103,12 @@
 | # | 验证项 | 命令 | 期望 |
 |---|---|---|---|
 | V1 | `web/Dockerfile` 多阶段 | `head -25 web/Dockerfile` | 看到 `FROM node:20-alpine AS builder` + `FROM nginx:1.27-alpine AS runtime` |
-| V2 | base compose `web` 段在 | `docker compose -f docker-compose.yml config --services \| grep web` | 输出 `web` |
-| V3 | base compose `web` 段格式 | `docker compose -f docker-compose.yml config \| grep -A 20 "web:"` | 看到 `container_name: chatbiz-web` + `build:` + `depends_on:` (3 个 upstream) |
-| V4 | dev compose `web` 段用 extends | `grep -A 5 "web:" docker-compose-dev.yml` | 看到 `extends: { file: docker-compose.yml, service: web }` |
-| V5 | 命名 lint PASS | `bash tools/check-compose-naming.sh` | exit 0, `OK: 0 error(s), 0 warning(s)` (web 满足规则,baseline 不动) |
-| V6 | 容器能 build | `docker compose -f docker-compose.yml -f docker-compose-dev.yml build web` | exit 0, 镜像 `chatbiz/web:dev` 存在 |
-| V7 | 容器能起 + healthy | `docker compose -f docker-compose.yml -f docker-compose-dev.yml up -d web` + 等 30s | `docker ps --filter name=chatbiz-web` 显示 `(healthy)` |
+| V2 | base compose `chatbiz-web` 段在 | `docker compose -f docker-compose.yml config --services \| grep chatbiz-web` | 输出 `chatbiz-web` |
+| V3 | base compose `chatbiz-web` 段格式 | `docker compose -f docker-compose.yml config \| grep -A 20 "chatbiz-web:"` | 看到 `container_name: chatbiz-web` + `build:` + `depends_on:` (3 个 upstream) |
+| V4 | dev compose `chatbiz-web` 段用 extends | `grep -A 5 "chatbiz-web:" docker-compose-dev.yml` | 看到 `extends: { file: docker-compose.yml, service: chatbiz-web }` |
+| V5 | 命名 lint PASS | `bash tools/check-compose-naming.sh` | exit 0, `OK: 0 error(s), 0 warning(s)` (chatbiz-web 满足规则,baseline 不动) |
+| V6 | 容器能 build | `docker compose -f docker-compose.yml -f docker-compose-dev.yml build chatbiz-web` | exit 0, 镜像 `chatbiz/web:dev` 存在 |
+| V7 | 容器能起 + healthy | `docker compose -f docker-compose.yml -f docker-compose-dev.yml up -d chatbiz-web` + 等 30s | `docker ps --filter name=chatbiz-web` 显示 `(healthy)` |
 | V8 | nginx `/health` 端点 | `curl -fsS http://localhost:5173/health` | exit 0, body `OK` |
 | V9 | nginx upstream proxy 工作 (sso) | `curl -fsS http://localhost:5173/api/auth/sso/jwks.json` | exit 0, JSON 响应 (需要 sso 也起) |
 | V10 | nginx upstream proxy 工作 (workflow) | `curl -fsS http://localhost:5173/workflows/healthz` | exit 0, 200 (需要 workflow-engine 也起) |

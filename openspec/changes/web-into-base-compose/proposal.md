@@ -13,8 +13,8 @@
 ## What Changes
 
 - **修改** `web/Dockerfile`:从 1 阶段 `nginx:1.27-alpine AS runtime` 改为 2 阶段 (`node:20-alpine AS builder` + `nginx:1.27-alpine AS runtime`)。builder 阶段在容器内 `pnpm install` + 跑 3 个 `vite build` (portal / canvas / admin);runtime 阶段只拷 `dist/` + `nginx.conf`,沿用现有 `HEALTHCHECK` + `EXPOSE 80`。
-- **修改** `infrastructure/docker-compose.yml`:在 `mcp` 段后、`workflow-engine` 段前新增 `web:` 段,跟其它 service 段同格式 (`container_name: chatbiz-web` + 显式 `build` 段 + `image: chatbiz/web:dev` + `ports: ["5173:80"]` + `depends_on` 含 3 个 nginx upstream `condition: service_healthy` + `healthcheck`)。
-- **修改** `infrastructure/docker-compose-dev.yml`:把 `web` 段改为 `extends:` 拉 base `web` 段,重定义 `image: chatbiz/web:dev` + 显式 `container_name: chatbiz-web` (dev namespace 独立 lint 可见) + bind mount `../web:/app` + `web-node-modules` 命名 volume (沿用现有第 257-258 行)。
+- **修改** `infrastructure/docker-compose.yml`:在 `mcp` 段后、`workflow-engine` 段前新增 `chatbiz-web:` 段,跟其它 service 段同格式 (`container_name: chatbiz-web` + 显式 `build` 段 + `image: chatbiz/web:dev` + `ports: ["5173:80"]` + `depends_on` 含 3 个 nginx upstream `condition: service_healthy` + `healthcheck`)。`chatbiz-web` service key 满足 `openspec/config.yaml` apply-rule + `CLAUDE.md` 强制约定 "新加 service 必须 `chatbiz-` 前缀"。
+- **修改** `infrastructure/docker-compose-dev.yml`:把 `chatbiz-web` 段改为 `extends:` 拉 base `chatbiz-web` 段,重定义 `image: chatbiz/web:dev` + 显式 `container_name: chatbiz-web` (dev namespace 独立 lint 可见) + bind mount `../web:/app` + `web-node-modules` 命名 volume (沿用现有第 257-258 行)。
 - **不** 改 `web/nginx.conf` 内部路径或代理规则 (现有 6 个 `proxy_pass` 段保持不变)。
 - **不** 改 `web/` 目录下 5 个子应用 (`portal` / `canvas` / `admin` / `ui` / `integration-tests`) 的源代码或构建脚本。
 - **不** 改 `services/<x>/pyproject.toml` 任何字段(本 change 不动 Python 后端)。
