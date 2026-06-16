@@ -33,12 +33,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # `pip install --user` prefix shipped from the builder.
 RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin chatbiz-sso
 
-WORKDIR /home/sso
+WORKDIR /app
 
 # Copy the pip user-site (built in the builder stage) into the new user's
 # $HOME, then chown the working tree to the non-root user.
 COPY --from=builder /root/.local /home/chatbiz-sso/.local
-COPY --chown=chatbiz-sso:chatbiz-sso . /home/sso
+COPY --chown=chatbiz-sso:chatbiz-sso . /app
 
 USER chatbiz-sso
 
