@@ -160,11 +160,9 @@ The block to insert (one blank line above and below, matching the style of the s
     ports:
       - "5173:80"
     depends_on:
-      chatbiz-sso:
-        condition: service_healthy
       workflow-engine:
         condition: service_healthy
-      chatbiz-mcp:
+      mcp:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80/health"]
@@ -192,7 +190,7 @@ Run:
 docker compose -f infrastructure/docker-compose.yml config 2>&1 | grep -A 25 "^  chatbiz-web:" | head -25
 ```
 
-Expected: 25-line window containing (in this order) `container_name: chatbiz-web`, `build:`, `image: chatbiz/web:dev`, `ports:`, and `depends_on:` with `chatbiz-sso`, `workflow-engine`, `chatbiz-mcp` — all three with `condition: service_healthy`.
+Expected: 25-line window containing (in this order) `container_name: chatbiz-web`, `build:`, `image: chatbiz/web:dev`, `ports:`, and `depends_on:` with `workflow-engine` and `mcp` (the base compose service keys resolving to containers `chatbiz-workflow-engine` and `chatbiz-mcp` at runtime) — both with `condition: service_healthy`. The third `chatbiz-sso` gate is added by the dev compose overlay in Task 3.
 
 - [ ] **Step 5: Commit base compose block**
 
@@ -230,6 +228,18 @@ Delete lines 174-184 (the entire current `web:` block including its blank line b
     # (V6b FU-3 rule 2, see tools/check-compose-naming.sh).
     container_name: chatbiz-web
     image: chatbiz/web:dev
+    # Re-declare depends_on to ADD chatbiz-sso as the 3rd health gate
+    # (base compose only has workflow-engine + mcp; chatbiz-sso is a
+    # dev-only service that becomes available when the dev overlay is
+    # active). Compose `extends:` does NOT merge lists, so the dev block
+    # must redeclare the full depends_on list.
+    depends_on:
+      chatbiz-sso:
+        condition: service_healthy
+      workflow-engine:
+        condition: service_healthy
+      mcp:
+        condition: service_healthy
     # Bind-mount the source for live reload of nginx config + dist rebuilds
     # triggered by `docker compose build chatbiz-web` after source edits.
     volumes:
@@ -246,7 +256,7 @@ Run:
 grep -A 6 "^  web:" infrastructure/docker-compose-dev.yml
 ```
 
-Expected: 6-line window containing `extends:`, `file: docker-compose.yml`, and `service: chatbiz-web`.
+Expected: 6-line window containing `extends:`, `file: docker-compose.yml`, `service: chatbiz-web`, and `depends_on:` with `chatbiz-sso` + `workflow-engine` + `mcp` (3 service health gate re-declared in dev overlay).
 
 - [ ] **Step 4: Verify the named volume still exists in top-level `volumes:`**
 

@@ -39,15 +39,19 @@ The system MUST rewrite the `chatbiz-web` service in `infrastructure/docker-comp
 - **WHEN** the same developer runs `bash tools/check-compose-naming.sh` after the change
 - **THEN** the dev compose `chatbiz-web` service MUST be lint-visible as `container_name: chatbiz-web` and MUST NOT trigger the baseline warning path
 
-### Requirement: chatbiz-web 服务 depends_on 3 个 nginx upstream 健康起来后才 ready
-The system MUST declare the `chatbiz-web` service in base compose with `depends_on:` listing exactly three upstream services: `chatbiz-sso`, `workflow-engine`, and `chatbiz-mcp`. Each upstream dependency MUST use `condition: service_healthy`. The set of upstream services MUST match the `proxy_pass` directives declared in `web/nginx.conf` (lines 50-81), and MUST NOT include `audit-and-isolation` or `credential` (which are not proxied through nginx).
+### Requirement: chatbiz-web 服务 depends_on nginx upstream 健康起来后才 ready
+The system MUST declare the `chatbiz-web` service with `depends_on:` on `workflow-engine` and `mcp` (the base compose service keys; `mcp` resolves to container `chatbiz-mcp` at runtime via its `container_name: chatbiz-mcp` directive), each with `condition: service_healthy`. The dev compose overlay MUST additionally depend on `chatbiz-sso` (because `chatbiz-sso` is a dev-only service that does not exist in the base compose). The combined set of upstream services — base (`workflow-engine`, `mcp`) + dev overlay (`chatbiz-sso`) — MUST total exactly three services matching the `proxy_pass` directives declared in `web/nginx.conf` (lines 50-81), and MUST NOT include `audit-and-isolation` or `credential` (which are not proxied through nginx).
 
-#### Scenario: chatbiz-web 段 depends_on 含 3 个 upstream 且全 service_healthy
+#### Scenario: base compose 段 depends_on 含 2 个 upstream 且全 service_healthy
 - **WHEN** a developer runs `docker compose -f infrastructure/docker-compose.yml config chatbiz-web` and inspects the rendered `depends_on` block
-- **THEN** the rendered output MUST list exactly three services — `chatbiz-sso`, `workflow-engine`, `chatbiz-mcp` — each with `condition: service_healthy`
+- **THEN** the rendered output MUST list exactly two services — `workflow-engine` and `mcp` — each with `condition: service_healthy`
+
+#### Scenario: dev overlay chatbiz-web 段含 3 个 upstream 且全 service_healthy
+- **WHEN** the same developer runs `docker compose -f infrastructure/docker-compose.yml -f infrastructure/docker-compose-dev.yml config chatbiz-web` (with the dev overlay in scope) and inspects the rendered `depends_on` block
+- **THEN** the rendered output MUST list exactly three services — `chatbiz-sso`, `workflow-engine`, `mcp` — each with `condition: service_healthy`
 
 #### Scenario: chatbiz-web 段不依赖 audit-and-isolation / credential
-- **WHEN** the same developer inspects the rendered `depends_on` block
+- **WHEN** the same developer inspects the rendered `depends_on` block in either base or dev overlay
 - **THEN** the output MUST NOT include `audit-and-isolation` or `credential` (or any non-proxied backend)
 
 ### Requirement: chatbiz-web 容器单端口 5173 + nginx upstream 代理可工作
