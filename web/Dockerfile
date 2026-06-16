@@ -21,8 +21,12 @@ RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 
 WORKDIR /app
 
-# Copy lockfile + package manifests first to maximize layer cache.
-COPY pnpm-lock.yaml package.json ./
+# Copy lockfile + workspace manifest + package manifests first to maximize
+# layer cache. pnpm-workspace.yaml MUST be present before `pnpm install`,
+# otherwise pnpm falls back to "root only" and silently skips workspace
+# members (admin/canvas/portal), which then fail tsc with TS2307 on every
+# dep that lives in a sub-app's package.json.
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY portal/package.json ./portal/package.json
 COPY canvas/package.json ./canvas/package.json
 COPY admin/package.json ./admin/package.json
