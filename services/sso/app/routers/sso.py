@@ -4,7 +4,10 @@
 - POST /api/v1/auth/sso/wechat/callback → {jwt, refresh, expires_in, user}
 - POST /api/v1/auth/sso/refresh → {jwt, expires_in}
 - GET  /api/v1/auth/sso/jwks.json → JWKS
-- GET  /healthz → 200 iff DB OK
+
+NOTE: /healthz moved to services/sso/app/main.py (root path, no APIRouter prefix)
+by sso-healthz-route-fix change (2026-06-16) so the Dockerfile HEALTHCHECK can
+call it at http://127.0.0.1:8007/healthz without the /api/v1/auth/sso prefix.
 """
 from __future__ import annotations
 
@@ -15,8 +18,6 @@ import secrets
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import JSONResponse
-from sqlalchemy import text
 
 from ..audit import write_audit_event
 from ..jwt_utils import (
@@ -186,16 +187,3 @@ async def jwks(request: Request):
     return get_jwks(request.app.state.rsa_public)
 
 
-# --- /healthz ---
-@router.get("/healthz")
-async def healthz(request: Request):
-    db = request.app.state.db_sessionmaker()
-    try:
-        async with db() as session:
-            await session.execute(text("SELECT 1"))
-        return {"status": "healthy"}
-    except Exception as e:  # noqa: BLE001
-        return JSONResponse(
-            status_code=503,
-            content={"status": "unhealthy", "error": str(e)},
-        )
