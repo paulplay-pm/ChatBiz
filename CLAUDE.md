@@ -171,15 +171,17 @@ OpenSpec CLI 用 `openspec-*`(`openspec-propose` / `openspec-explore` / `openspe
 所有 service 进 `.github/workflows/ci-cov.yml` matrix 时,**必须**同步
 更新(不允许 addopts `--cov-fail-under=100` 在 `pyproject.toml` 但不进
 workflow matrix)。当前 matrix 列表 = `[audit-and-isolation, credential,
-gateway-scanner, mcp, sso]`,新增 service 时:
+gateway-scanner, workflow-engine, mcp, sso]`,新增 service 时:
 
 1. 写 `services/<new-service>/pyproject.toml` 含 `--cov=app` 或
    `--cov=<module>` + `--cov-fail-under=100`
 2. 同步加进 `.github/workflows/ci-cov.yml` matrix
 3. PR 描述里登记端口表 + 新 service name
 
-**workflow-engine / mcp 2 service 仍是 0% cov,本约定未触发** — 他们
-cov matrix 收尾时一并加。
+**workflow-engine** cov tool false negative 持续,见 `coverage-false-
+negative-investigation` 摸底;matrix 已含 6 service。等独立 followup
+(修 cov 闸门或 refactor list_workflows)同步走,workflow-engine CI job
+才通过 `--cov-fail-under=100` 闸门。
 
 ### Python 后端环境设置(强制)
 
