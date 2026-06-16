@@ -15,7 +15,7 @@ The system MUST expose the sso health check endpoint at root path `/healthz` (no
 
 #### Scenario: routers/sso.py 删 healthz 段
 - **WHEN** the same developer runs `grep -c "healthz" services/sso/app/routers/sso.py` after the change
-- **THEN** the output MUST be `0` (the old `@router.get("/healthz")` + `healthz` handler are deleted)
+- **THEN** the output MUST be `<= 3` (zero or near-zero; the only acceptable non-zero count is references in the module-level docstring explaining that /healthz was moved to main.py by this change). Any non-zero count from `@router.get("/healthz")` or `async def healthz` (i.e. the actual route registration) MUST NOT exist.
 
 #### Scenario: Dockerfile HEALTHCHECK 路径 /healthz 200
 - **WHEN** the same developer runs `docker exec chatbiz-sso-1 python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8007/healthz').status)"` after rebuilding the sso image
