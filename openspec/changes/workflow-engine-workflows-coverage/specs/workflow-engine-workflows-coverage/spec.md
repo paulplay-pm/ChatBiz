@@ -33,9 +33,10 @@ exercise both sides of the `or`).
   the entry's `version` is the highest (3), exercising the `or` short-circuit
   in the dedup branch and the assignment `latest[wf.id] = wf`
 
-### Requirement: 100% cov gate is satisfied after change apply
+### Requirement: cov gate MUST be satisfied after change apply
 
-After the new tests are added and the change is applied, running
+The system MUST satisfy the cov-fail-under=100 gate after the new tests are
+added and the change is applied; specifically, running
 `conda run -n chatbiz pytest services/workflow-engine/tests/ --cov=app
 --cov-fail-under=100 -q` MUST exit with code 0 and MUST print
 "Required test coverage of 100% reached. Total coverage: 100.00%".
