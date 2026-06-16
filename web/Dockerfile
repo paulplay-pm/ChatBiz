@@ -46,13 +46,35 @@ RUN VITE_APP_BASE=${VITE_APP_BASE_ADMIN} pnpm --dir admin build
 # ---------- runtime ---------------------------------------------------------
 FROM nginx:1.27-alpine AS runtime
 
-COPY --from=builder /app/portal/dist /usr/share/nginx/html/portal
-COPY --from=builder /app/canvas/dist /usr/share/nginx/html/canvas
-COPY --from=builder /app/admin/dist /usr/share/nginx/html/admin
-COPY --from=builder /app/index.html /usr/share/nginx/html/index.html
-COPY --from=builder /app/nginx.conf /etc/nginx/conf.d/default.conf
+# Install libcap to grant the unprivileged web user CAP_NET_BIND_SERVICE
+# (so it can bind port 80 without running as root). Matches the sso /
+# credential pattern: non-root user, uid 10001.
+RUN apk add --no-cache libcap
+
+# Create unprivileged user. nginx:1.27-alpine ships a built-in 'nginx' user
+# (uid 101), but we use 10001 to align with the rest of the ChatBiz compose
+# stack (see services/sso/Dockerfile, services/credential/Dockerfile).
+RUN addgroup -g 10001 -S web && adduser -u 10001 -S -G web -h /var/cache/nginx -s /sbin/nologin web
+
+# Grant the nginx binary CAP_NET_BIND_SERVICE so the 'web' user can bind
+# port 80 without root. Required because EXPOSE 80 is a privileged port.
+RUN setcap 'cap_net_bind_service=+ep' /usr/sbin/nginx
+
+# Copy built SPA bundles (owned by the unprivileged web user) and the
+# nginx config into the runtime image.
+COPY --chown=web:web --from=builder /app/portal/dist /usr/share/nginx/html/portal
+COPY --chown=web:web --from=builder /app/canvas/dist /usr/share/nginx/html/canvas
+COPY --chown=web:web --from=builder /app/admin/dist /usr/share/nginx/html/admin
+COPY --chown=web:web --from=builder /app/index.html /usr/share/nginx/html/index.html
+COPY --chown=web:web --from=builder /app/nginx.conf /etc/nginx/conf.d/default.conf
+
+# Ensure nginx runtime paths (pid file, temp dirs) are writable by 'web'.
+# nginx:1.27-alpine's default.conf uses /var/run/nginx.pid and /var/cache/nginx.
+RUN touch /var/run/nginx.pid && chown -R web:web /var/run/nginx.pid /var/cache/nginx /usr/share/nginx/html
 
 EXPOSE 80
+
+USER web
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD ["wget", "-qO-", "http://127.0.0.1:80/health"]
