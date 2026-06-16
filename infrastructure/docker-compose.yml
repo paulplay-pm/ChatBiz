@@ -70,10 +70,10 @@ services:
     restart: unless-stopped
     environment:
       # Legacy/common names used by migrations and some scripts.
-      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/credential
+      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@chatbiz-postgres:5432/credential
       REDIS_URL: redis://redis:6379/0
       # Credential service runtime names (app/lifespan.py).
-      CREDENTIAL_DB_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/credential
+      CREDENTIAL_DB_URL: postgresql+asyncpg://chatbiz:chatbiz@chatbiz-postgres:5432/credential
       CREDENTIAL_REDIS_URL: redis://redis:6379/0
       CREDENTIAL_WECHAT_WEBHOOK: ${WECOM_WEBHOOK_URL:-}
       AUDIT_WEBHOOK_URL: ${AUDIT_WEBHOOK_URL:-}
@@ -130,7 +130,7 @@ sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)
         asyncio.run(main())
         PY
     environment:
-      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/credential
+      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@chatbiz-postgres:5432/credential
       PYTHONPATH: /home/credential/.local/lib/python3.12/site-packages:/app
     depends_on:
       chatbiz-postgres:
@@ -144,8 +144,8 @@ sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)
     restart: unless-stopped
     command: ["python", "-m", "app.cron"]
     environment:
-      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/credential
-      CREDENTIAL_DB_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/credential
+      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@chatbiz-postgres:5432/credential
+      CREDENTIAL_DB_URL: postgresql+asyncpg://chatbiz:chatbiz@chatbiz-postgres:5432/credential
       REDIS_URL: redis://redis:6379/0
       CREDENTIAL_REDIS_URL: redis://redis:6379/0
       WECOM_WEBHOOK_URL: ${WECOM_WEBHOOK_URL:-}
@@ -169,7 +169,7 @@ sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)
     container_name: chatbiz-audit-isolation
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/audit_isolation
+      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@chatbiz-postgres:5432/audit_isolation
       REDIS_URL: redis://redis:6379/1
       CREDENTIAL_SERVICE_URL: http://credential:8000
       PII_FAIL_OPEN: "true"
@@ -202,7 +202,7 @@ sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)
     restart: "no"
     command: ["alembic", "upgrade", "head"]
     environment:
-      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/audit_isolation
+      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@chatbiz-postgres:5432/audit_isolation
       PYTHONPATH: /home/audit/.local/lib/python3.12/site-packages:/app
     depends_on:
       chatbiz-postgres:
@@ -285,7 +285,7 @@ sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)
     container_name: chatbiz-workflow-engine
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/workflow_engine
+      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@chatbiz-postgres:5432/workflow_engine
       REDIS_URL: redis://redis:6379/0
       AUDIT_ISOLATION_URL: http://audit-and-isolation:8080
       CREDENTIAL_SERVICE_URL: http://credential:8000
@@ -330,7 +330,7 @@ sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=2)
     restart: "no"
     command: ["alembic", "upgrade", "head"]
     environment:
-      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@postgres:5432/workflow_engine
+      DATABASE_URL: postgresql+asyncpg://chatbiz:chatbiz@chatbiz-postgres:5432/workflow_engine
       PYTHONPATH: /home/wf/.local/lib/python3.12/site-packages:/app
     depends_on:
       chatbiz-postgres:
