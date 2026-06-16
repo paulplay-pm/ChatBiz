@@ -9,6 +9,7 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from .jwt_utils import SecurityError, UserError, WorkflowRuntimeError, InternalError
 from .lifespan import lifespan
@@ -58,6 +59,20 @@ def create_app() -> FastAPI:
     @app.exception_handler(InternalError)
     async def _int(req: Request, e: InternalError):
         return JSONResponse(status_code=500, content=_err(str(e), e.code))
+
+    # /healthz — system-level healthcheck (no APIRouter prefix; must be reachable
+    # at root path so services/sso/Dockerfile HEALTHCHECK can call it).
+    @app.get("/healthz")
+    async def healthz(request: Request):
+        try:
+            async with request.app.state.db_sessionmaker() as session:
+                await session.execute(text("SELECT 1"))
+            return {"status": "healthy"}
+        except Exception as e:  # noqa: BLE001
+            return JSONResponse(
+                status_code=503,
+                content={"status": "unhealthy", "error": str(e)},
+            )
 
     app.include_router(sso_router.router)
     return app
